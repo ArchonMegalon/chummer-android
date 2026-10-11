@@ -1,8 +1,9 @@
 # Saved attribute allocation: read-only review
 
 11 October 2026. This fixes the unchanged-review defect observed on physical
-Play Internal 187. It does not change that version's historical failure record
-or claim a newer Play delivery.
+Play Internal 187. That version's historical failure record remains unchanged.
+The correction is now [available on Play Internal 188](../play/evidence/preview188-internal-observation.json)
+and [physically verified](../play/evidence/preview188-physical-observation.md).
 
 ## Behavior and safety
 
@@ -58,5 +59,10 @@ Test-app IPv4/IPv6 egress was blocked; no provider operation was requested.
 Exact artifacts, source exports, failed and passing logs, screenshots and state
 comparisons remain in the private local packet. The build uses the current
 locked package closure with pinned Presentation source and Core content, not
-a source-free build. No production AAB was signed or uploaded for this fix yet;
-version 187 is already consumed and must not be uploaded again.
+a source-free build. The later production 188 ARM64 AAB was locally built,
+original-key signed, independently verified and uploaded once. Play187→188
+update, Play certificate, read-only saved review, actual Back and cold re-review
+passed on the authorized physical phone. All 13 displayed values and budgets
+were unchanged, without another save. See the separate 188 records above for
+exact artifact/physical identities and limitations. Both 187 and 188 are consumed;
+neither may be re-uploaded to relabel evidence.
