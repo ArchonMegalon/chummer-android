@@ -164,13 +164,13 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
 
     def test_rating_preview_uses_detached_core_rules_without_store_reads(self) -> None:
         page = (NATIVE / "CreationSkillsPage.cs").read_text(encoding="utf-8")
-        rating = page[page.index("    private void BindRatingAdjustment("):
+        rating = page[page.index("    private void AddRatingSlider("):
                       page.index("    private async Task PreviewAsync(")]
         for marker in ("RunWithConditionalRefreshAsync", "render == _renderGeneration",
                        "IsCurrentAppearanceGeneration(appearance)",
                        "Coordinator.IsCreationSkillsDraftDisplayCurrent(state)",
                        "_draft.HasPreparedState(state)", "_draft.TryPreviewPrepared(",
-                       "adopted && !_ratingShapeChecks.All(check => check())"):
+                       "accepted && !_ratingShapeChecks.All(check => check())"):
             self.assertIn(marker, rating)
         self.assertLess(rating.index("_draft.TryPreviewPrepared("), rating.index("foreach (var update"))
         self.assertNotIn("Task.Run", rating)

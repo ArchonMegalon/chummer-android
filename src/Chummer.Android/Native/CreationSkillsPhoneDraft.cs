@@ -33,15 +33,25 @@ internal sealed class CreationSkillsPhoneDraft
         if (!HasPreparedState(state)) return false;
         var result = _session!.Preview(skills, groups);
         blockers = result.Blockers;
-        if (result.Value is not { } preview
-            || !(result.Outcome == CharacterCreationFoundationOutcomes.Success && preview.CanConfirm && blockers.Count == 0
-                || result.Outcome == CharacterCreationFoundationOutcomes.Blocked
-                && (blockers.SequenceEqual(new[] { CharacterCreationSkillsBlockers.NativeLanguageRequired })
-                    || blockers.SequenceEqual(new[] { CharacterCreationSkillsBlockers.DraftDuplicate })))) return false;
+        if (!CanStagePrepared(result) || result.Value is not { } preview) return false;
         Adopt(preview);
         if (blockers.SequenceEqual(new[] { CharacterCreationSkillsBlockers.DraftDuplicate })) blockers = [];
         return true;
     }
+
+    // Scale affordances share the same Core evaluator and staging policy, but
+    // never adopt a speculative rating or mint review/save authority.
+    public bool CanSelectPrepared(CharacterCreationSkillsState state,
+        IReadOnlyList<CharacterCreationSkillAllocation> skills,
+        IReadOnlyList<CharacterCreationSkillGroupAllocation> groups)
+        => HasPreparedState(state) && CanStagePrepared(_session!.Preview(skills, groups));
+
+    private static bool CanStagePrepared(CharacterCreationFoundationResult<CharacterCreationSkillsPreview> result)
+        => result.Value is { } preview
+            && (result.Outcome == CharacterCreationFoundationOutcomes.Success && preview.CanConfirm && result.Blockers.Count == 0
+                || result.Outcome == CharacterCreationFoundationOutcomes.Blocked
+                && (result.Blockers.SequenceEqual(new[] { CharacterCreationSkillsBlockers.NativeLanguageRequired })
+                    || result.Blockers.SequenceEqual(new[] { CharacterCreationSkillsBlockers.DraftDuplicate })));
 
     public void Bind(CharacterCreationSkillsState state, CharacterOverviewState overview)
     {

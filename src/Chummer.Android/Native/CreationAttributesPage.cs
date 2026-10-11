@@ -23,7 +23,6 @@ public sealed class CreationAttributesPage : NativePageBase
     private Label? _specialAttributesHeading;
     private Button? _reviewButton;
     private CancellationTokenSource? _reviewPreparation;
-    private readonly List<Button> _inlineButtons = [];
     private readonly List<Action> _projectionUpdates = [];
     private IReadOnlyList<CharacterCreationAttributeProjection> _renderedAttributes = [];
     private string? _expandedAttributeId;
@@ -92,7 +91,6 @@ public sealed class CreationAttributesPage : NativePageBase
         _budgetFocusTarget = null;
         _queuedFocusTarget = null;
         _reviewButton = null;
-        _inlineButtons.Clear();
         _projectionUpdates.Clear();
         _renderedAttributes = [];
         _expandedKarmaOptions = null;
@@ -106,7 +104,7 @@ public sealed class CreationAttributesPage : NativePageBase
         // the fold instead of repeating two headings before three budgets.
         _body.Add(NativeTheme.Body(
             PhoneStrings.Get("CreationAttributesInlineHelp",
-                "Drag or use − and + to spend points. Tap an attribute for Karma options."),
+                "Drag to set a value. Grey values are unavailable. Tap an attribute for Karma options."),
             NativeTheme.Muted));
 
         CharacterCreationFoundationResult<CharacterCreationAttributesState>? load = null;
@@ -349,118 +347,51 @@ public sealed class CreationAttributesPage : NativePageBase
             if (attribute.IsEnabled)
             {
                 var grid = (Grid)row.Content!;
-                grid.ColumnSpacing = 8;
-                grid.ColumnDefinitions.Add(new(GridLength.Auto));
-                grid.ColumnDefinitions.Add(new(GridLength.Auto));
-                AddInlineAdjustment(state, attribute, row, grid, -1, 2);
-                AddInlineAdjustment(state, attribute, row, grid, 1, 3);
-                grid.RowDefinitions.Add(new(GridLength.Auto));
-                grid.RowDefinitions.Add(new(GridLength.Auto));
+                grid.RowDefinitions = new RowDefinitionCollection
+                {
+                    new(GridLength.Auto), new(GridLength.Auto), new(GridLength.Auto)
+                };
                 karmaOptions = new Grid
                 {
-                    ColumnDefinitions = new ColumnDefinitionCollection
-                    {
-                        new(GridLength.Star), new(GridLength.Auto), new(GridLength.Auto)
-                    },
-                    ColumnSpacing = 8,
+                    RowDefinitions = new RowDefinitionCollection { new(GridLength.Auto), new(GridLength.Auto) },
                     Margin = new Thickness(0, 10, 0, 0),
                     IsVisible = _expandedAttributeId == attribute.AttributeId,
                     AutomationId = $"creation-attributes-karma-{Token(attribute.AttributeId)}"
                 };
                 karmaOptions.Add(NativeTheme.Body(PhoneStrings.Get("CreationKarmaOptions", "Karma options")));
                 if (karmaOptions.IsVisible) _expandedKarmaOptions = karmaOptions;
-                AddInlineAdjustment(state, attribute, row, karmaOptions, -1, 1, karma: true);
-                AddInlineAdjustment(state, attribute, row, karmaOptions, 1, 2, karma: true);
-                grid.Add(karmaOptions, 0, 1);
-                Grid.SetColumnSpan(karmaOptions, 4);
-                grid.RowDefinitions.Add(new(GridLength.Auto));
+                AddAttributeSlider(state, attribute, row, karmaOptions, karma: true);
+                grid.Add(karmaOptions, 0, 2);
+                Grid.SetColumnSpan(karmaOptions, 2);
                 AddAttributeSlider(state, attribute, row, grid);
             }
             _body.Add(row);
         }
     }
 
-    private void AddInlineAdjustment(CharacterCreationAttributesState state,
-        CharacterCreationAttributeProjection attribute, Border row, Grid grid, int delta, int column, bool karma = false)
-    {
-        CharacterCreationAttributeAllocation[] expected = [];
-        IReadOnlyList<CharacterCreationAttributeAllocation>? allocations = null;
-        Button button = NativeTheme.SecondaryButton(delta < 0 ? "−" : "+");
-        button.AutomationId = $"creation-attributes-inline-{(karma ? "karma-" : string.Empty)}{(delta < 0 ? "decrease" : "increase")}-{Token(attribute.AttributeId)}";
-        button.WidthRequest = 48;
-        button.Padding = 0;
-        button.FontSize = 24;
-        button.VerticalOptions = LayoutOptions.Center;
-        void Update()
-        {
-            expected = _draft.Allocations(state).ToArray();
-            allocations = _draft.ChangedAllocations(state, attribute.AttributeId, karma ? 0 : delta, karma ? delta : 0);
-            var current = _draft.Attribute(state, attribute.AttributeId)!;
-            var pointBudget = current.Category == CharacterCreationAttributeCategories.Special
-                ? _draft.SpecialBudget(state) : _draft.NormalBudget(state);
-            button.IsEnabled = allocations is not null
-                && (delta < 0 || current.Current < current.Maximum
-                    && (karma ? _draft.KarmaBudget(state).Remaining > 0 : pointBudget.Remaining >= 1));
-        }
-        Update();
-        _projectionUpdates.Add(Update);
-        SemanticProperties.SetDescription(button, AttributeLabel(attribute.AttributeId) + " · " +
-            CreationAllocationStrings.Get(karma
-                    ? delta < 0 ? "AttributeAllocation.KarmaDecrease" : "AttributeAllocation.KarmaIncrease"
-                    : delta < 0 ? "AttributeAllocation.PriorityDecrease" : "AttributeAllocation.PriorityIncrease",
-                delta < 0 ? "Point −" : "Point +"));
-        _inlineButtons.Add(button);
-        long appearance = CaptureAppearanceGeneration();
-        button.Clicked += async (_, _) => await RunWithConditionalRefreshAsync(() =>
-        {
-            bool Current() => IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(row.Parent, _body)
-                && (!karma || _expandedAttributeId == attribute.AttributeId)
-                && Coordinator.IsCreationAttributesDraftDisplayCurrent(state) && _draft.HasPreparedState(state)
-                && _draft.Allocations(state).SequenceEqual(expected);
-            if (!button.IsEnabled || allocations is null || !Current()) return Task.FromResult(false);
-            try
-            {
-                var result = _draft.PreviewPrepared(state, allocations);
-                if (!Current()) return Task.FromResult(false);
-                bool hadBlockers = _previewBlockers.Count > 0;
-                bool accepted = _draft.TryAdopt(state, Coordinator.State, result, allocations);
-                _previewBlockers = accepted ? [] : result.Value?.Blockers ?? result.Blockers;
-                // Keep native controls, scroll position and the expanded Karma
-                // row. Only Core-accepted values are projected; every next tap
-                // receives new allocations from that displayed draft.
-                return Task.FromResult(!accepted || hadBlockers || !TryUpdateProjection(state));
-            }
-            catch (Exception error) when (error is not OutOfMemoryException)
-            {
-                if (!IsCurrentAppearanceGeneration(appearance)) return Task.FromResult(false);
-                _previewBlockers = [Coordinator.IsCreationAttributesStateCurrent(state)
-                    ? CharacterCreationAttributesBlockers.AuthorityUnavailable
-                    : CharacterCreationAttributesBlockers.StaleWorkspaceRevision];
-                return Task.FromResult(true);
-            }
-        });
-        grid.Add(button, column);
-    }
-
     private void AddAttributeSlider(CharacterCreationAttributesState state,
-        CharacterCreationAttributeProjection attribute, Border row, Grid grid)
+        CharacterCreationAttributeProjection attribute, Border row, Grid grid, bool karma = false)
     {
         long appearance = CaptureAppearanceGeneration();
         long render = _renderGeneration;
         var feedback = NativeTheme.Body(string.Empty, NativeTheme.Danger);
-        feedback.AutomationId = $"creation-attributes-slider-feedback-{Token(attribute.AttributeId)}";
+        string token = (karma ? "karma-" : string.Empty) + Token(attribute.AttributeId);
+        feedback.AutomationId = $"creation-attributes-slider-feedback-{token}";
         feedback.IsVisible = false;
         CharacterCreationAttributeProjection Current() => _draft.Attribute(state, attribute.AttributeId)!;
-        var slider = new CreationIntegerSlider($"creation-attributes-slider-{Token(attribute.AttributeId)}",
+        var slider = new CreationIntegerSlider($"creation-attributes-slider-{token}",
             AttributeLabel(attribute.AttributeId), () => Current().Current,
-            () => (Current().Current - Current().PriorityPointsSpent, Current().Maximum, attribute.IsEnabled),
+            () => (Current().Current - (karma ? Current().KarmaLevels : Current().PriorityPointsSpent),
+                Current().Maximum, attribute.IsEnabled),
             target => RunWithConditionalRefreshAsync(() =>
             {
                 if (render != _renderGeneration || !IsCurrentAppearanceGeneration(appearance)
+                    || (karma && _expandedAttributeId != attribute.AttributeId)
                     || !ReferenceEquals(row.Parent, _body)
                     || !Coordinator.IsCreationAttributesDraftDisplayCurrent(state)
                     || !_draft.HasPreparedState(state)) return Task.FromResult(false);
-                var allocations = _draft.ChangedAllocations(state, attribute.AttributeId, target - Current().Current, 0);
+                int delta = target - Current().Current;
+                var allocations = _draft.ChangedAllocations(state, attribute.AttributeId, karma ? 0 : delta, karma ? delta : 0);
                 if (allocations is null) return Task.FromResult(false);
                 var result = _draft.PreviewPrepared(state, allocations);
                 bool accepted = _draft.TryAdopt(state, Coordinator.State, result, allocations);
@@ -468,13 +399,22 @@ public sealed class CreationAttributesPage : NativePageBase
                     : string.Join("\n", result.Blockers.Select(CreationAllocationStrings.AttributeBlocker));
                 feedback.IsVisible = !string.IsNullOrEmpty(feedback.Text);
                 return Task.FromResult(accepted && !TryUpdateProjection(state));
-            }));
+            }), target =>
+            {
+                if (!_draft.HasPreparedState(state)) return false;
+                if (target == Current().Current) return true;
+                int delta = target - Current().Current;
+                var allocations = _draft.ChangedAllocations(state, attribute.AttributeId, karma ? 0 : delta, karma ? delta : 0);
+                return allocations is not null && CreationAttributesPhoneAuthority.CanAdoptPreview(
+                    state, Coordinator.State, _draft.PreviewPrepared(state, allocations), allocations);
+            }, () => _draft.ProjectionIdentity);
         _projectionUpdates.Add(slider.UpdateProjection);
         var controls = new VerticalStackLayout { Spacing = 2 };
         controls.Add(slider);
+        controls.Add(slider.RatingScale);
         controls.Add(feedback);
-        grid.Add(controls, 0, 2);
-        Grid.SetColumnSpan(controls, 4);
+        grid.Add(controls, 0, 1);
+        Grid.SetColumnSpan(controls, karma ? 1 : 2);
     }
 
     private bool TryUpdateProjection(CharacterCreationAttributesState state)

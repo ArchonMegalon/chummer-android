@@ -21,6 +21,8 @@ internal sealed class CreationAttributesPhoneDraft
     public bool HasPreparedState(CharacterCreationAttributesState state)
         => ReferenceEquals(_preparedState, state) && _session is not null;
 
+    public object? ProjectionIdentity => _projection ?? (object?)_preparedState;
+
     public void RetireSession() { _session = null; _preparedState = null; }
 
     public CharacterCreationFoundationResult<CharacterCreationAttributesPreview> PreviewPrepared(
