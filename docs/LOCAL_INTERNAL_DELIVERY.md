@@ -132,7 +132,26 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 193 is the latest [observed Internal availability](../play/evidence/preview193-internal-observation.json),
+Preview 194 is the latest [observed Internal availability](../play/evidence/preview194-internal-observation.json),
+released on 11 October at 18:01 Europe/Vienna. Resources Save now opens Gear
+automatically; failed next-step reads offer read-only continuation without
+another save, and Back skips the consumed confirmation. PR 700 passed nine
+actual-Core/MAUI forward cases, six Resources save/recovery cases, 79 focused
+source/localization/version checks and affected compilation. The German 130%
+API36 x64 Release/Internal SDK-test saved once, opened Gear, skipped review on
+Back and reopened the saved Resources in a new process. One draft advanced
+5/5 to 6/6 with one receipt; its raw character and six other workspaces were
+unchanged, and all seven cold files matched post-save bytes. No Gear save was
+issued. Local ARM64 build, isolated original-key signing, independent keyless
+certificate/payload checks and one scoped upload/readback passed. Slider-only
+controls from 192 and Qualities forward navigation from 193 remain. Physical
+Play194 installation is not yet verified. Slow restoration/save, emulator
+SystemUI ANR and transient null hierarchy remain; no startup-performance,
+complete Creation/Career/Origin or phone-beta claim is made. Original FirstBook
+uncertainty and diagnostic-contract portability remain open. Version194 is
+consumed; this evidence update needs no rebuild or re-upload.
+
+Preview 193's [observed Internal availability](../play/evidence/preview193-internal-observation.json) was
 released on 11 October at 17:15 Europe/Vienna. Qualities Save now opens the next
 applicable step: verified Magic/Resonance or mundane Resources. Failed next-step
 reads offer continuation without replaying the save; Back skips the consumed
