@@ -39,6 +39,7 @@ public sealed class CreationQualitiesPage : NativePageBase
     private HelpReturnPosition? _helpReturn;
     private bool _returnedFromHelp;
     private long _renderGeneration;
+    private (CharacterOverviewState Display, CharacterCreationFoundationResult<CharacterCreationQualitiesState> Load)? _initialLoad;
 
     private sealed record HelpReturnPosition(
         CreationQualityInfoPage Page, CharacterOverviewState Display, double Y, string Filter, int Offset);
@@ -47,6 +48,12 @@ public sealed class CreationQualitiesPage : NativePageBase
         : this(coordinator, CharacterCreationQualitiesCheckpointStore.CreateDefault(
             coordinator.State.DisplayOwnerContext, coordinator.IsCreationQualitiesOwnerCurrent))
     {
+    }
+
+    internal CreationQualitiesPage(RunnerSessionCoordinator coordinator, CharacterOverviewState display,
+        CharacterCreationFoundationResult<CharacterCreationQualitiesState> load) : this(coordinator)
+    {
+        _initialLoad = (display, load);
     }
 
     internal CreationQualitiesPage(
@@ -143,9 +150,16 @@ public sealed class CreationQualitiesPage : NativePageBase
         Refresh();
         CharacterOverviewState original = Coordinator.State;
         CreationQualitiesPhoneDraft draft = _draft.Copy();
+        var initial = _initialLoad;
+        _initialLoad = null;
         try
         {
-            var loaded = await Coordinator.LoadCreationQualitiesForDisplayAsync(original, cancellationToken);
+            // One exact, still-current wizard handoff avoids reading the large
+            // catalogue twice. Later appearances always revalidate through Core.
+            var loaded = initial is { } supplied && ReferenceEquals(supplied.Display, original)
+                && Coordinator.IsCreationCatalogDisplayCurrent(original)
+                ? supplied.Load
+                : await Coordinator.LoadCreationQualitiesForDisplayAsync(original, cancellationToken);
             // Digest checks and Presentation projection are substantial too
             // (especially Android's crypto interop). Keep them off the UI,
             // not merely the initial Core store read.

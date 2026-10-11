@@ -448,6 +448,11 @@ internal static class Program
             await AfterRunAuthorityHarness.RunAttributeForwardAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--creation-skills-forward-content-root")
+        {
+            await AfterRunAuthorityHarness.RunSkillsForwardAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--creation-prerequisite-proof-capture-content-root")
         {
             await AfterRunAuthorityHarness.RunCreationPrerequisiteProofCaptureCasesAsync(args[1]);

@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="SkillsPreview.Saving" xml:space="preserve"><value>Guardando…</value></data>
+  <data name="SkillsPreview.OpeningQualities" xml:space="preserve"><value>Abriendo cualidades…</value></data>
+  <data name="SkillsPreview.ContinueQualities" xml:space="preserve"><value>Continuar a cualidades</value></data>
+  <data name="SkillsPreview.NextUnavailable" xml:space="preserve"><value>Habilidades guardadas. No se pudieron cargar las cualidades. Pulsa Continuar para intentar cargarlas de nuevo.</value></data>
   <data name="AttributesPreview.OpeningSkills" xml:space="preserve"><value>Abriendo habilidades…</value></data>
   <data name="AttributesPreview.ContinueSkills" xml:space="preserve"><value>Continuar a habilidades</value></data>
   <data name="AttributesPreview.NextUnavailable" xml:space="preserve"><value>Atributos guardados. No se pudieron cargar las habilidades. Pulsa Continuar para volver a intentar cargarlas.</value></data>
