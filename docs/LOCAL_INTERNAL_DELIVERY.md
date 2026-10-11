@@ -143,9 +143,14 @@ Release/Internal test-package smoke at 130% font reopened the same Priority
 runner/Basics after verified process death, with four saved files unchanged.
 The version-only delta explicitly reuses that bounded product evidence. Local
 ARM64 build, original-key signing, independent keyless verification and one
-Internal upload/readback passed. **Physical Play186 installation, startup
-improvement and complete Creation/Career/live manuscript acceptance remain
-unverified.** The original uncertain FirstBook successor remains fenced; no
+Internal upload/readback passed. A later [physical Play186 update](../play/evidence/preview186-physical-observation.md)
+verified Play184→186 installation, the Play signing certificate, restoration of
+the same runner/two dossiers and exact full stored 2,447-word chapter after a
+verified new process, with its illustration visible. No new generation, export,
+acknowledgement or finalization occurred; Priority Basics remains emulator/
+managed evidence, not this phone route. **Startup improvement and complete
+Creation/Career/live manuscript acceptance remain unverified.** The original
+uncertain FirstBook successor remains fenced; no
 paid replay occurred. Version186 is consumed; previous artifacts remain.
 
 Preview 185's [observed Internal availability](../play/evidence/preview185-internal-observation.json) was
