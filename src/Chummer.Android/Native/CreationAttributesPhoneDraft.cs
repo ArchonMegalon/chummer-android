@@ -1,4 +1,5 @@
 using Chummer.Contracts.Characters;
+using Chummer.Application.Characters;
 using Chummer.Presentation.Overview;
 
 namespace Chummer.Android.Native;
@@ -14,6 +15,19 @@ internal sealed class CreationAttributesPhoneDraft
     private CharacterCreationAttributesBinding? _binding;
     private string? _snapshotDigest;
     private CharacterCreationAttributesPreview? _projection;
+    private CharacterCreationAttributesState? _preparedState;
+    private CharacterCreationAttributesService.DraftSession? _session;
+
+    public bool HasPreparedState(CharacterCreationAttributesState state)
+        => ReferenceEquals(_preparedState, state) && _session is not null;
+
+    public void RetireSession() { _session = null; _preparedState = null; }
+
+    public CharacterCreationFoundationResult<CharacterCreationAttributesPreview> PreviewPrepared(
+        CharacterCreationAttributesState state, IReadOnlyList<CharacterCreationAttributeAllocation> allocations)
+        => HasPreparedState(state) ? _session!.Preview(allocations)
+            : new(CharacterCreationFoundationOutcomes.Blocked, null,
+                [CharacterCreationAttributesBlockers.StaleWorkspaceRevision]);
 
     // Worker preparation owns a copy; it must never enumerate or update the UI draft.
     internal CreationAttributesPhoneDraft Copy()
@@ -34,12 +48,20 @@ internal sealed class CreationAttributesPhoneDraft
         CharacterOverviewState overview)
     {
         if (Matches(state, overview))
+        {
+            if (!HasPreparedState(state))
+            {
+                _session = CharacterCreationAttributesService.CreateDraftSession(state);
+                _preparedState = state;
+            }
             return;
+        }
 
         _binding = null;
         _snapshotDigest = null;
         _projection = null;
         _allocations.Clear();
+        RetireSession();
         if (!CreationAttributesPhoneAuthority.IsReady(state, overview))
             return;
 
@@ -53,6 +75,8 @@ internal sealed class CreationAttributesPhoneDraft
                 attribute.KarmaLevels));
         foreach (CharacterCreationAttributeAllocation allocation in restored)
             _allocations.Add(allocation.AttributeId, allocation);
+        _session = CharacterCreationAttributesService.CreateDraftSession(state);
+        _preparedState = state;
     }
 
     public bool Matches(

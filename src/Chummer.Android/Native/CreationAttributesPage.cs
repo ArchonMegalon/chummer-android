@@ -23,7 +23,6 @@ public sealed class CreationAttributesPage : NativePageBase
     private Label? _specialAttributesHeading;
     private Button? _reviewButton;
     private CancellationTokenSource? _reviewPreparation;
-    private CancellationTokenSource? _inlinePreparation;
     private readonly List<Button> _inlineButtons = [];
     private readonly List<Action> _projectionUpdates = [];
     private IReadOnlyList<CharacterCreationAttributeProjection> _renderedAttributes = [];
@@ -88,7 +87,7 @@ public sealed class CreationAttributesPage : NativePageBase
     {
         // Keep the pressed review control visible while its read runs off-thread.
         // The action gate excludes other mutations; leaving cancels this read.
-        if (_reviewPreparation is not null || _inlinePreparation is not null) return;
+        if (_reviewPreparation is not null) return;
         ++_renderGeneration;
         _budgetFocusTarget = null;
         _queuedFocusTarget = null;
@@ -107,7 +106,7 @@ public sealed class CreationAttributesPage : NativePageBase
         // the fold instead of repeating two headings before three budgets.
         _body.Add(NativeTheme.Body(
             PhoneStrings.Get("CreationAttributesInlineHelp",
-                "Spend points with − and +. Tap an attribute for Karma options on this page."),
+                "Drag or use − and + to spend points. Tap an attribute for Karma options."),
             NativeTheme.Muted));
 
         CharacterCreationFoundationResult<CharacterCreationAttributesState>? load = null;
@@ -178,8 +177,7 @@ public sealed class CreationAttributesPage : NativePageBase
         _pendingBudgetId = null;
         _budgetFocusTarget = null;
         _queuedFocusTarget = null;
-        _inlinePreparation?.Cancel();
-        _inlinePreparation = null;
+        _draft.RetireSession();
         var pending = _reviewPreparation;
         _reviewPreparation = null;
         _reviewButton = null;
@@ -316,7 +314,7 @@ public sealed class CreationAttributesPage : NativePageBase
                 AttributeDetail(attribute),
                 () =>
                 {
-                    if (_inlinePreparation is not null || !IsCurrentAppearanceGeneration(appearance)
+                    if (!IsCurrentAppearanceGeneration(appearance)
                         || !ReferenceEquals(row?.Parent, _body) || !Coordinator.IsCreationAttributesStateCurrent(state)
                         || !_draft.Matches(state, Coordinator.State) || karmaOptions is null)
                         return Task.CompletedTask;
@@ -375,6 +373,8 @@ public sealed class CreationAttributesPage : NativePageBase
                 AddInlineAdjustment(state, attribute, row, karmaOptions, 1, 2, karma: true);
                 grid.Add(karmaOptions, 0, 1);
                 Grid.SetColumnSpan(karmaOptions, 4);
+                grid.RowDefinitions.Add(new(GridLength.Auto));
+                AddAttributeSlider(state, attribute, row, grid);
             }
             _body.Add(row);
         }
@@ -411,52 +411,70 @@ public sealed class CreationAttributesPage : NativePageBase
                 delta < 0 ? "Point −" : "Point +"));
         _inlineButtons.Add(button);
         long appearance = CaptureAppearanceGeneration();
-        button.Clicked += async (_, _) => await RunWithConditionalRefreshAsync(async () =>
+        button.Clicked += async (_, _) => await RunWithConditionalRefreshAsync(() =>
         {
             bool Current() => IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(row.Parent, _body)
                 && (!karma || _expandedAttributeId == attribute.AttributeId)
-                && Coordinator.IsCreationAttributesStateCurrent(state) && _draft.Matches(state, Coordinator.State)
+                && Coordinator.IsCreationAttributesDraftDisplayCurrent(state) && _draft.HasPreparedState(state)
                 && _draft.Allocations(state).SequenceEqual(expected);
-            if (!button.IsEnabled || allocations is null || !Current()) return false;
-            var original = Coordinator.State;
-            using var lifetime = new CancellationTokenSource();
-            _inlinePreparation = lifetime;
-            foreach (var control in _inlineButtons) control.IsEnabled = false;
-            if (_reviewButton is not null) _reviewButton.IsEnabled = false;
-            button.Text = "…";
+            if (!button.IsEnabled || allocations is null || !Current()) return Task.FromResult(false);
             try
             {
-                var result = await Task.Run(() => Coordinator.ReadCreationAuthority(original,
-                    () => Coordinator.PreviewCreationAttributes(state.Binding, allocations), lifetime.Token), lifetime.Token);
-                lifetime.Token.ThrowIfCancellationRequested();
-                if (!Current()) return false;
+                var result = _draft.PreviewPrepared(state, allocations);
+                if (!Current()) return Task.FromResult(false);
                 bool hadBlockers = _previewBlockers.Count > 0;
                 bool accepted = _draft.TryAdopt(state, Coordinator.State, result, allocations);
                 _previewBlockers = accepted ? [] : result.Value?.Blockers ?? result.Blockers;
                 // Keep native controls, scroll position and the expanded Karma
                 // row. Only Core-accepted values are projected; every next tap
                 // receives new allocations from that displayed draft.
-                return !accepted || hadBlockers || !TryUpdateProjection(state);
-            }
-            catch (OperationCanceledException) when (lifetime.IsCancellationRequested)
-            {
-                return false;
+                return Task.FromResult(!accepted || hadBlockers || !TryUpdateProjection(state));
             }
             catch (Exception error) when (error is not OutOfMemoryException)
             {
-                if (!IsCurrentAppearanceGeneration(appearance)) return false;
+                if (!IsCurrentAppearanceGeneration(appearance)) return Task.FromResult(false);
                 _previewBlockers = [Coordinator.IsCreationAttributesStateCurrent(state)
                     ? CharacterCreationAttributesBlockers.AuthorityUnavailable
                     : CharacterCreationAttributesBlockers.StaleWorkspaceRevision];
-                return true;
-            }
-            finally
-            {
-                button.Text = delta < 0 ? "−" : "+";
-                if (ReferenceEquals(_inlinePreparation, lifetime)) _inlinePreparation = null;
+                return Task.FromResult(true);
             }
         });
         grid.Add(button, column);
+    }
+
+    private void AddAttributeSlider(CharacterCreationAttributesState state,
+        CharacterCreationAttributeProjection attribute, Border row, Grid grid)
+    {
+        long appearance = CaptureAppearanceGeneration();
+        long render = _renderGeneration;
+        var feedback = NativeTheme.Body(string.Empty, NativeTheme.Danger);
+        feedback.AutomationId = $"creation-attributes-slider-feedback-{Token(attribute.AttributeId)}";
+        feedback.IsVisible = false;
+        CharacterCreationAttributeProjection Current() => _draft.Attribute(state, attribute.AttributeId)!;
+        var slider = new CreationIntegerSlider($"creation-attributes-slider-{Token(attribute.AttributeId)}",
+            AttributeLabel(attribute.AttributeId), () => Current().Current,
+            () => (Current().Current - Current().PriorityPointsSpent, Current().Maximum, attribute.IsEnabled),
+            target => RunWithConditionalRefreshAsync(() =>
+            {
+                if (render != _renderGeneration || !IsCurrentAppearanceGeneration(appearance)
+                    || !ReferenceEquals(row.Parent, _body)
+                    || !Coordinator.IsCreationAttributesDraftDisplayCurrent(state)
+                    || !_draft.HasPreparedState(state)) return Task.FromResult(false);
+                var allocations = _draft.ChangedAllocations(state, attribute.AttributeId, target - Current().Current, 0);
+                if (allocations is null) return Task.FromResult(false);
+                var result = _draft.PreviewPrepared(state, allocations);
+                bool accepted = _draft.TryAdopt(state, Coordinator.State, result, allocations);
+                feedback.Text = accepted ? string.Empty
+                    : string.Join("\n", result.Blockers.Select(CreationAllocationStrings.AttributeBlocker));
+                feedback.IsVisible = !string.IsNullOrEmpty(feedback.Text);
+                return Task.FromResult(accepted && !TryUpdateProjection(state));
+            }));
+        _projectionUpdates.Add(slider.UpdateProjection);
+        var controls = new VerticalStackLayout { Spacing = 2 };
+        controls.Add(slider);
+        controls.Add(feedback);
+        grid.Add(controls, 0, 2);
+        Grid.SetColumnSpan(controls, 4);
     }
 
     private bool TryUpdateProjection(CharacterCreationAttributesState state)

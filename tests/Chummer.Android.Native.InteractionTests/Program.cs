@@ -448,6 +448,11 @@ internal static class Program
             await AfterRunAuthorityHarness.RunAttributeForwardAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--creation-draft-sliders-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationDraftSlidersAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--creation-skills-forward-content-root")
         {
             await AfterRunAuthorityHarness.RunSkillsForwardAsync(args[1]);

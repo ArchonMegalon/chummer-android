@@ -129,7 +129,7 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, page + draft + authority)
 
-    def test_each_adjustment_requires_a_fresh_core_preview(self) -> None:
+    def test_legacy_allocation_dialog_retains_fresh_core_preview(self) -> None:
         page = (NATIVE / "CreationAttributesPage.cs").read_text(encoding="utf-8")
         allocation = page[page.index("public sealed class CreationAttributeAllocationPage") :]
         allocation = allocation[: allocation.index("public sealed class CreationAttributesPreviewPage")]
@@ -141,6 +141,19 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
         self.assertIn("_draft.TryAdopt(prepared.State, Coordinator.State, result, choice.Allocations)", allocation)
         self.assertNotIn("KarmaAttribute", allocation)
         self.assertNotIn("PriorityPointCost +", allocation)
+
+    def test_inline_steppers_and_sliders_use_core_draft_without_store_reads(self) -> None:
+        page = (NATIVE / "CreationAttributesPage.cs").read_text(encoding="utf-8")
+        inline = page.split("private void AddInlineAdjustment(", 1)[1].split("private bool TryUpdateProjection(", 1)[0]
+        for marker in ("_draft.PreviewPrepared(state, allocations)",
+                       "Coordinator.IsCreationAttributesDraftDisplayCurrent(state)",
+                       "_draft.HasPreparedState(state)", "_draft.TryAdopt(",
+                       "new CreationIntegerSlider(", "feedback.IsVisible"):
+            self.assertIn(marker, inline)
+        self.assertNotIn("Task.Run", inline)
+        self.assertNotIn("Coordinator.PreviewCreationAttributes", inline)
+        self.assertNotIn("ConfirmCreationAttributes", inline)
+        self.assertIn("_draft.RetireSession();", page)
 
     def test_attribute_render_does_not_synchronously_read_core(self) -> None:
         page = (NATIVE / "CreationAttributesPage.cs").read_text(encoding="utf-8")

@@ -149,7 +149,7 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, combined)
 
-    def test_every_adjustment_requires_a_fresh_core_preview(self) -> None:
+    def test_explicit_review_retains_fresh_core_preview(self) -> None:
         page = (NATIVE / "CreationSkillsPage.cs").read_text(encoding="utf-8")
         for mutation in ("_draft.WithSkill(", "_draft.WithGroup(", "_draft.WithSpecialization("):
             self.assertIn(mutation, page)
@@ -162,21 +162,23 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
         self.assertNotIn("ActivePointTotal =", page)
         self.assertNotIn("KnowledgePointTotal =", page)
 
-    def test_rating_preview_retains_controls_only_after_current_core_acceptance(self) -> None:
+    def test_rating_preview_uses_detached_core_rules_without_store_reads(self) -> None:
         page = (NATIVE / "CreationSkillsPage.cs").read_text(encoding="utf-8")
         rating = page[page.index("    private void BindRatingAdjustment("):
                       page.index("    private async Task PreviewAsync(")]
         for marker in ("RunWithConditionalRefreshAsync", "render == _renderGeneration",
                        "IsCurrentAppearanceGeneration(appearance)",
-                       "Coordinator.ReadCreationAuthority(original,", "lifetime.Token.ThrowIfCancellationRequested()",
-                       "if (!Current()) return false;", "_draft.TryAdopt(",
-                       "!adopted || !sameBlockers || !_ratingShapeChecks.All(check => check())",
-                       'button.Text = "…"', "control.IsEnabled = false"):
+                       "Coordinator.IsCreationSkillsDraftDisplayCurrent(state)",
+                       "_draft.HasPreparedState(state)", "_draft.TryPreviewPrepared(",
+                       "adopted && !_ratingShapeChecks.All(check => check())"):
             self.assertIn(marker, rating)
-        self.assertLess(rating.index("_draft.TryAdopt("), rating.index("foreach (var update"))
+        self.assertLess(rating.index("_draft.TryPreviewPrepared("), rating.index("foreach (var update"))
+        self.assertNotIn("Task.Run", rating)
+        self.assertNotIn("Coordinator.PreviewCreationSkills", rating)
         self.assertNotIn("ConfirmCreationSkills", rating)
         self.assertNotIn("error.Message", rating)
-        self.assertIn("_ratingPreparation?.Cancel();", page)
+        self.assertIn("_draft.RetireSession();", page)
+        self.assertIn("new CreationIntegerSlider(", rating)
 
     def test_incomplete_selection_is_local_only_and_explained_before_catalogs(self) -> None:
         page = (NATIVE / "CreationSkillsPage.cs").read_text(encoding="utf-8")

@@ -38,6 +38,7 @@
     <Compile Include="CreationSpecialAttributesRuntimeTests.cs" />
     <Compile Include="CreationAllocationForwardRuntimeTests.cs" />
     <Compile Include="CreationSkillsForwardRuntimeTests.cs" />
+    <Compile Include="CreationDraftSliderRuntimeTests.cs" />
     <Compile Include="GearSaveFeedbackRuntimeTests.cs" />
     <Compile Include="ResourcesSaveFeedbackRuntimeTests.cs" />
     <Compile Include="MinimalUiRuntimeTests.cs" />

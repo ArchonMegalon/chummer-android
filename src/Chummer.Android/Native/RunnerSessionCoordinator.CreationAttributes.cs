@@ -42,6 +42,12 @@ public sealed partial class RunnerSessionCoordinator
            && ReferenceEquals(issued.State, state) && AttributesDisplayCurrent(issued.Display)
            && CreationAttributesPhoneAuthority.MatchesOverview(state, State);
 
+    // Cheap lifetime check for an already detached Core draft. No save capability
+    // is issued here; fresh Preview/Confirm retain their full source/store checks.
+    internal bool IsCreationAttributesDraftDisplayCurrent(CharacterCreationAttributesState state)
+        => _attributeLoads.TryGetValue(state.Binding, out var issued)
+           && ReferenceEquals(issued.State, state) && AttributesDisplayCurrent(issued.Display);
+
     public CharacterCreationFoundationResult<CharacterCreationAttributesState> LoadCreationAttributes()
         => LoadCreationAttributesForDisplay(State);
 
