@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="AttributesPreview.OpeningSkills" xml:space="preserve"><value>Abriendo habilidades…</value></data>
+  <data name="AttributesPreview.ContinueSkills" xml:space="preserve"><value>Continuar a habilidades</value></data>
+  <data name="AttributesPreview.NextUnavailable" xml:space="preserve"><value>Atributos guardados. No se pudieron cargar las habilidades. Pulsa Continuar para volver a intentar cargarlas.</value></data>
   <data name="Skills.CheckingRating" xml:space="preserve"><value>Comprobando…</value></data>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>

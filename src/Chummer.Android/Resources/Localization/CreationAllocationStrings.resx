@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="AttributesPreview.OpeningSkills" xml:space="preserve"><value>Opening skills…</value></data>
+  <data name="AttributesPreview.ContinueSkills" xml:space="preserve"><value>Continue to skills</value></data>
+  <data name="AttributesPreview.NextUnavailable" xml:space="preserve"><value>Attributes saved. Skills could not be loaded. Tap Continue to try loading them again.</value></data>
   <data name="Skills.CheckingRating" xml:space="preserve"><value>Checking…</value></data>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
