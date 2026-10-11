@@ -132,7 +132,26 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 186 is the latest [observed Internal availability](../play/evidence/preview186-internal-observation.json),
+Preview 187 is the latest [observed Internal availability](../play/evidence/preview187-internal-observation.json),
+released on 11 October at 04:06 Europe/Vienna. Attribute review now groups
+budgets and all thirteen projected values into compact cards, with large bold
+values and nonzero point/Karma costs. Rules and save guards are unchanged.
+Actual MAUI/Core EN/DE/ES regressions and existing save/owner/special-point
+checks passed; the API36 x64 Release/Internal smoke at German130% font saved
+Edge3 to4 once, then reopened exact values/budgets in a verified new process.
+Other four runners were unchanged and all five cold files matched post-save.
+The version-only release reuses that explicitly bounded product evidence.
+Local ARM64 build, original-key signing, independent keyless verification and
+one Internal upload/readback passed. A later [physical Play186→187 update](../play/evidence/preview187-physical-observation.md)
+verified the Play certificate, changed-draft compact review and a cold reopen
+with the original saved runner/values/budgets. The temporary changes were never
+saved. **Unchanged saved-allocation review still reports a duplicate blocker;
+this is an open UX defect, not a passing route. Startup performance, complete
+Creation/Career and the full live manuscript remain open.** Original FirstBook
+uncertainty remains fenced, without paid replay. Version187 is consumed; prior
+artifacts remain.
+
+Preview 186's [observed Internal availability](../play/evidence/preview186-internal-observation.json) was
 released on 11 October at 02:53 Europe/Vienna. Creation Basics now hides technical
 profile IDs, workspace revisions/digests and the developer warning while retaining
 human profile names. Sections and build-method names are localized in English,
@@ -1580,10 +1599,11 @@ Preview 61 and earlier evidence stay immutable. Preview 55's
 editorial-assisted illustrated chapter does not establish unattended
 full-book quality or cross-chapter likeness approval.
 
-[Preview 182](../play/evidence/preview182-physical-observation.md) is the latest
-physically observed Play version, with bounded retained-runner route coverage.
+[Preview 187](../play/evidence/preview187-physical-observation.md) is the latest
+physically observed Play version, with bounded update/display/recovery coverage
+and an explicitly open unchanged-allocation review defect.
 The [Preview 89 update observation](../play/evidence/preview89-physical-observation.md)
-remains historical; its in-place update evidence is not reused as a Preview 182
+remains historical; its in-place update evidence is not reused as a newer
 update transaction.
 [Preview 52](../play/evidence/preview52-internal-observation.md) remains historical:
 its normal Play update from 51, first launch and saved-runner process
