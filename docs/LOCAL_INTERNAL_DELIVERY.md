@@ -132,7 +132,24 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 196 is the latest [observed Internal availability](../play/evidence/preview196-internal-observation.json),
+Preview 197 is the latest [observed Internal availability](../play/evidence/preview197-internal-observation.json),
+released on 12 October at 00:50 Europe/Vienna. Successful Priority/Sum-to-Ten
+final confirmation opens the restored Career root directly; Back skips the
+consumed wizard. Saved-receipt recovery and exact owner/page/navigation guards
+remain. Android706 merged normally with the reviewed tree.26 actual-Core/MAUI
+cases,8 focused source checks and1 version check passed. German130% API36
+SDK-test evidence confirms one Priority finalization, automatic Career, Back
+to launcher and new-process restoration: revision7/7->8/8, one receipt,
+7karma/5020nuyen, seven other runners unchanged and all eight cold files identical.
+The local ARM64/Internal build, source/content/proof/hygiene checks, isolated
+original-key signing, independent keyless signature/payload verification and one
+scoped upload/readback passed. Core/UI inputs are unchanged. Physical Play197,
+startup/reload performance and complete Creation/Career/Origin remain unverified.
+Earlier emulator/observer failures, original FirstBook uncertainty and local
+diagnostic-contract portability remain open.197 is consumed; documentation
+updates do not require a rebuild or re-upload.
+
+Preview 196's [observed Internal availability](../play/evidence/preview196-internal-observation.json) was
 released on 11 October at 23:54 Europe/Vienna. Contacts and Lifestyles now return
 Save to the freshly admitted list and offer the next step. Pending confirmed
 Resources/Gear funds admit Lifestyle purchases and survive Career finalization.
