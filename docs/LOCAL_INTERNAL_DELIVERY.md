@@ -132,7 +132,25 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 201 is the latest [observed Internal availability](../play/evidence/preview201-internal-observation.json),
+Preview 202 is the latest [observed Internal availability](../play/evidence/preview202-internal-observation.json),
+released on 12 October at 11:21 Europe/Vienna. Core #153 removes duplicate
+quality and magic evaluations from the Creation overview by reusing the same
+fresh request's admitted finalization-load results. UI #434/#435 and Android #716
+admit the exact sealed graph; source, owner, budget and mutation checks remain.
+Affected managed checks and the API 36 SDK-test update/new-process read-only
+Resources route passed; all nine saved synthetic runners remain byte-identical,
+selected revision 7/7. Slider-only controls and forward wizard are retained.
+Local ARM64/Internal build, content/proof/hygiene checks, isolated original-key
+signing, independent keyless verification and one scoped upload/readback passed.
+Separate diagnostic results show about 25.5 MB fewer allocations, not a controlled
+startup-speedup claim. Cold shell initialization (13,109 ms) and selected restore
+(28,792 ms) are separate phases; SystemUI ANR and transient null-root captures
+remain recorded. Physical Preview 202, startup/reload reliability and complete
+Creation/Career/Origin acceptance are unverified. Original FirstBook uncertainty
+and local diagnostic-contract portability remain open. Version 202 is consumed;
+this evidence-only update needs no rebuild or re-upload.
+
+Preview 201's [historical Internal availability](../play/evidence/preview201-internal-observation.json) was
 released on 12 October at 08:13 Europe/Vienna. Core #152 streams the canonical
 prerequisite catalogue into its digest writer, avoiding the full serialized
 output allocation while retaining exact bytes and source/owner/mutation checks.
