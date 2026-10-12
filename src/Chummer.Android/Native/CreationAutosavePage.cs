@@ -14,6 +14,10 @@ public abstract class CreationAutosavePage : NativePageBase
     private View? _editor;
     private Label? _status;
     private Button? _next;
+    private string _statusMessage = string.Empty;
+    private bool _statusError;
+    private bool _statusBusy;
+    private string? _allocationFeedback;
     protected bool IsSaving => _saving is { IsCompleted: false };
     protected bool CanEditAllocation => !IsSaving && !_requiresReopen && !_navigating;
     // Re-entry may refresh a saved page, never discard a pending edit or turn
@@ -36,8 +40,9 @@ public abstract class CreationAutosavePage : NativePageBase
     protected void SetAutosaveContent(View editor, string prefix)
     {
         _editor = editor;
-        _status = NativeTheme.Body(PhoneStrings.Get("CreationAutosaveHelp", "Changes save automatically."), NativeTheme.Muted);
+        _status = NativeTheme.Body(string.Empty, NativeTheme.Muted);
         _status.AutomationId = prefix + "-save-status";
+        ShowStatus(PhoneStrings.Get("CreationAutosaveHelp", "Changes save automatically."));
         _next = NativeTheme.PrimaryButton(PhoneStrings.Get("CreationAutosaveContinue", "Continue"));
         _next.AutomationId = prefix + "-continue";
         _next.Clicked += async (_, _) =>
@@ -75,6 +80,7 @@ public abstract class CreationAutosavePage : NativePageBase
     protected void DraftChanged()
     {
         if (!CanEditAllocation) return;
+        _allocationFeedback = null;
         _dirty = true;
         ShowStatus(PhoneStrings.Get("CreationAutosavePending", "Not saved yet…"));
         ScheduleSave();
@@ -127,7 +133,7 @@ public abstract class CreationAutosavePage : NativePageBase
         long appearance = CaptureAppearanceGeneration();
         if (_editor is not null) _editor.IsEnabled = false;
         if (_next is not null) _next.IsEnabled = false;
-        ShowStatus(PhoneStrings.Get("CreationAutosaveSaving", "Saving…"));
+        ShowStatus(PhoneStrings.Get("CreationAutosaveSaving", "Saving…"), busy: true);
         SaveResult result;
         try { result = await SaveDraftAsync(); }
         catch (Exception error) when (error is not OutOfMemoryException)
@@ -153,11 +159,29 @@ public abstract class CreationAutosavePage : NativePageBase
         finally { completion.TrySetResult(result.Saved); }
     }
 
-    private void ShowStatus(string message, bool error = false)
+    // A refused gesture leaves the last accepted draft intact. Explain it in
+    // the fixed footer, never below the slider's scrolling viewport. Saving
+    // and failed/uncertain writes take precedence over this local feedback.
+    protected void ShowAllocationFeedback(string? message)
+    {
+        _allocationFeedback = string.IsNullOrWhiteSpace(message) ? null : message;
+        RenderStatus();
+    }
+
+    private void ShowStatus(string message, bool error = false, bool busy = false)
+    {
+        _statusMessage = message;
+        _statusError = error;
+        _statusBusy = busy;
+        RenderStatus();
+    }
+
+    private void RenderStatus()
     {
         if (_status is null) return;
-        _status.Text = message;
-        _status.TextColor = error ? NativeTheme.Danger : NativeTheme.Muted;
+        bool refusal = !_statusError && !_statusBusy && _allocationFeedback is not null;
+        _status.Text = refusal ? _allocationFeedback : _statusMessage;
+        _status.TextColor = _statusError || refusal ? NativeTheme.Danger : NativeTheme.Muted;
     }
 
     protected override bool TryDeferCoordinatorRefresh()
@@ -188,6 +212,7 @@ public abstract class CreationAutosavePage : NativePageBase
     {
         // Flush the original, owner-bound edit on departure too; never cancel an admitted write.
         _ = FlushAutosaveAsync();
+        ShowAllocationFeedback(null);
         base.OnDisappearing();
     }
 
