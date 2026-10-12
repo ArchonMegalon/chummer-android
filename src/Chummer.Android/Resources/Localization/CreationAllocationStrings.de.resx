@@ -994,4 +994,14 @@ Angriffswert (Sehr nah / Nah / Mittel / Weit / Sehr weit): {3}</value></data>
   <data name="Skills.Message.Unknown" xml:space="preserve"><value>Diese Auswahl kann nicht bestätigt werden. Prüfe die aktuelle Auswahl; die technischen Details enthalten den genauen Grund.</value></data>
   <data name="Skills.CheckChoices" xml:space="preserve"><value>Auswahl prüfen</value></data>
   <data name="SkillsReReview.UnavailableSpecialization" xml:space="preserve"><value>Frühere Spezialisierung (nicht im aktuellen Katalog)</value></data>
+  <data name="QualitiesReReview.Title" xml:space="preserve"><value>Vor-/Nachteile beibehalten?</value></data>
+  <data name="QualitiesReReview.Body" xml:space="preserve"><value>Deine Attribute wurden geändert. Diese gespeicherten Vor-/Nachteile passen weiterhin und bleiben unverändert:
+
+{0}
+
+Verbleibendes Karma: {1}</value></data>
+  <data name="QualitiesReReview.None" xml:space="preserve"><value>Keine gekauften Vor-/Nachteile</value></data>
+  <data name="QualitiesReReview.Keep" xml:space="preserve"><value>Beibehalten und weiter</value></data>
+  <data name="QualitiesReReview.Cancel" xml:space="preserve"><value>Abbrechen</value></data>
+  <data name="QualitiesReReview.Reopen" xml:space="preserve"><value>Öffne den Runner erneut und prüfe die gespeicherten Vor-/Nachteile, bevor du weitermachst.</value></data>
 </root>

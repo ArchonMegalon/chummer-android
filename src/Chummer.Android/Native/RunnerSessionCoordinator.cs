@@ -2044,7 +2044,8 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         ConfirmCreationQualitiesCoreAsync(
             CharacterCreationQualitiesCheckpoint checkpoint,
             CharacterOverviewState beforeActivation,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            string? historicalReceiptDigest = null)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         if (_ownerBoundQualitiesService is not { } service
@@ -2069,6 +2070,13 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             confirmed = await Task.Run(() =>
             {
                 Interlocked.Exchange(ref entered, 1);
+                if (historicalReceiptDigest is not null)
+                    return service is IOwnerBoundCharacterCreationQualitiesReReviewService reReview
+                        ? reReview.ConfirmReReview(owner, new(checkpoint.Preview.Binding,
+                            historicalReceiptDigest, checkpoint.SelectedOptionIds, checkpoint.Preview.PreviewDigest,
+                            checkpoint.IdempotencyKey, checkpoint.TransactionId, true))
+                        : new(CharacterCreationFoundationOutcomes.Blocked, null,
+                            [CharacterCreationQualitiesBlockers.DraftInvalid]);
                 return service.Confirm(owner, new(
                 checkpoint.Preview.Binding,
                 checkpoint.SelectedOptionIds,

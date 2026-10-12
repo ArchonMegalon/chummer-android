@@ -994,4 +994,14 @@ Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
   <data name="Skills.Message.Unknown" xml:space="preserve"><value>This choice cannot be confirmed. Check the current choices; technical details contain the exact reason.</value></data>
   <data name="Skills.CheckChoices" xml:space="preserve"><value>Check your choices</value></data>
   <data name="SkillsReReview.UnavailableSpecialization" xml:space="preserve"><value>Previously selected specialization (not in the current catalog)</value></data>
+  <data name="QualitiesReReview.Title" xml:space="preserve"><value>Keep saved qualities?</value></data>
+  <data name="QualitiesReReview.Body" xml:space="preserve"><value>Your attributes changed. These saved qualities still fit and will stay unchanged:
+
+{0}
+
+Karma remaining: {1}</value></data>
+  <data name="QualitiesReReview.None" xml:space="preserve"><value>No purchased qualities</value></data>
+  <data name="QualitiesReReview.Keep" xml:space="preserve"><value>Keep and continue</value></data>
+  <data name="QualitiesReReview.Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="QualitiesReReview.Reopen" xml:space="preserve"><value>Reopen the runner to check the saved qualities before continuing.</value></data>
 </root>

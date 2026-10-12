@@ -28,13 +28,33 @@ internal static class CreationQualitiesPhoneAuthority
     public static bool IsReady(
         CharacterCreationQualitiesState state,
         CharacterOverviewState overview)
+        => IsExactState(state, overview) && state.CanEdit && state.Blockers.Count == 0
+           && (state.PendingDraft is null
+               ? state.Preview.Selections.Count == 0
+               : PendingDraftMatches(state.PendingDraft, state));
+
+    // Separate exception to ordinary editing. Core admits only unchanged,
+    // receipted choices with an older Attributes binding and a legal current budget.
+    public static bool IsReReviewReady(CharacterCreationQualitiesReReviewState review,
+        CharacterOverviewState overview)
+        => Canonical(review.HistoricalReceiptDigest)
+           && IsExactState(review.Current, overview)
+           && !review.Current.CanEdit
+           && review.Current.Blockers.SequenceEqual([CharacterCreationQualitiesBlockers.DraftInvalid])
+           && review.Current.Preview is { CanConfirm: true, Blockers.Count: 0 }
+           && review.Current.PendingDraft is { CharacterEffectsApplied: false } draft
+           && draft.WorkspaceId == review.Current.Binding.WorkspaceId
+           && draft.AttributesDraftRevision > 0
+           && draft.AttributesDraftRevision < review.Current.Binding.AttributesDraftRevision
+           && Equal(draft.DraftDigest, CharacterCreationQualitiesRules.ComputeDraftDigest(draft))
+           && draft.SelectedOptionIds.SequenceEqual(review.Current.Preview.Selections.Select(row => row.OptionId));
+
+    private static bool IsExactState(CharacterCreationQualitiesState state, CharacterOverviewState overview)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(overview);
         if (!MatchesOverview(state, overview)
             || !string.Equals(state.Schema, CharacterCreationQualitiesSchemas.StateV1, StringComparison.Ordinal)
-            || !state.CanEdit
-            || state.Blockers.Count != 0
             || !Canonical(state.SnapshotDigest)
             || !CharacterCreationQualitiesRules.DigestsEqual(
                 state.SnapshotDigest,
@@ -59,9 +79,7 @@ internal static class CreationQualitiesPhoneAuthority
             return false;
         }
 
-        return state.PendingDraft is null
-            ? state.Preview.Selections.Count == 0
-            : PendingDraftMatches(state.PendingDraft, state);
+        return true;
     }
 
     public static CharacterCreationQualitiesEditorState ProjectEditor(
