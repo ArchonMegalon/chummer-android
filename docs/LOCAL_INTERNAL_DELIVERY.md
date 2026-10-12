@@ -132,7 +132,20 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 203 is the latest [observed Internal availability](../play/evidence/preview203-internal-observation.json),
+Preview 204 is the latest [observed Internal availability](../play/evidence/preview204-internal-observation.json),
+released on 12 October at 18:10 Europe/Vienna. Coalesced Skills search and direct
+Attributes→Skills→Qualities navigation retain slider autosave. Earlier Qualities
+can be explicitly re-reviewed without discarding choices; cancel remains inert.
+Core #155, UI #440 and Android #720 merged normally. Focused actual-Core/MAUI
+checks, the final cold native forward route, local ARM64/Internal build,
+original-key isolated signing and independent keyless verification passed.
+One upload and confirmation produced scoped Console availability readback.
+Earlier mutation/restart evidence is reused only for unchanged inputs. Slow
+startup/SystemUI boot problems, physical Play204 and complete Creation/Origin
+remain open. Requested quality polarity/cost/archetype filters are not in204.
+Version204 is consumed; do not rebuild or re-upload it.
+
+Preview 203's [historical Internal availability](../play/evidence/preview203-internal-observation.json) was
 released on 12 October at 15:07 Europe/Vienna. Attributes and Skills now autosave
 after slider changes and Continue without a separate ordinary review. Skills
 search covers the full catalogue and specialization selection is direct. Scale
