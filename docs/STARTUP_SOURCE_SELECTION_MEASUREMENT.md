@@ -41,7 +41,24 @@ overviews had SHA-256
 The overall times were 2,950 ms before and 2,978 ms after. This demonstrates
 fewer unnecessary file validations, **not** an end-to-end startup speedup.
 
-The next native measurement must consume the actual new sealed dependency graph.
+## Verified package intake
+
+The 12 October intake now binds Core runtime `f4bf073a50636ae4fe00b32b0141019509f64eb9`,
+Core recipe `e06e2124df4a3c02c64939bba45d0b48cb3e3c1a`, and Presentation seal
+`f6321a324f7b590e162856033be1e45d5f16e9af`. The fresh local UI consumer passed
+882 runtime tests and its existing focused checks. Its receipt SHA-256 is
+`5d716d8157debe01df5757ab90c3be81b68192a92cc9df45ecd6a933844b4b21`.
+This is local verification, not a hosted check or source-free Android build.
+
+The Android intake compiled the native compile-check project, MAUI Compile
+target and interaction-test project with zero warnings or errors. The existing
+cold-restore and failed-read checks passed. The same nine-runner saved-roster
+fixture restored the canonical selected runner in 2,731 ms, with all nine
+workspace files unchanged and the same complete overview hash above. This is
+a managed harness measurement, not a native startup benchmark. All 18 actual
+package bytes and the 331 unchanged content files passed the Android verifiers.
+
+The next native measurement must consume this actual sealed dependency graph.
 Slow native startup/reload, physical Preview 198 installation, complete
 Creation/Career/Origin acceptance and broader parity remain open. No release
 artifact, signed bundle or Play upload is produced by this harness change.
