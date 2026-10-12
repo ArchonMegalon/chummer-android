@@ -132,7 +132,22 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 204 is the latest [observed Internal availability](../play/evidence/preview204-internal-observation.json),
+Preview 205 is the latest [observed Internal availability](../play/evidence/preview205-internal-observation.json),
+released on 12 October at 19:57 Europe/Vienna. Magic/Resonance joins remaining
+budgets and selected counts into the actionable choices list instead of repeating
+them above it. Qualities gain polarity/Karma filters and trained-skill relevance;
+Gear gains category/search filtering with a retained basket. Deferred, bounded
+Gear rendering addresses an observed Picker/input ANR. Android #722 merged
+normally with the reviewed tree; Core/UI inputs are unchanged from204.
+Focused actual-Core/MAUI checks, affected compile, bounded native Gear smoke,
+local ARM64/Internal build, isolated original-key signing and independent keyless
+verification passed. Earlier native Magic and quality-filter observations are
+reused only for unchanged inputs; relevance sorting has managed coverage, not
+its own native observation. One upload/confirmation produced actual Console
+availability. Physical Play205, startup/reload and complete Creation/Origin
+remain open. Version205 is consumed; do not rebuild or re-upload it.
+
+Preview 204's [historical Internal availability](../play/evidence/preview204-internal-observation.json) was
 released on 12 October at 18:10 Europe/Vienna. Coalesced Skills search and direct
 Attributes→Skills→Qualities navigation retain slider autosave. Earlier Qualities
 can be explicitly re-reviewed without discarding choices; cancel remains inert.
