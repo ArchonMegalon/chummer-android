@@ -1,5 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="Qualities.Filter.Type" xml:space="preserve"><value>Tipo</value></data>
+  <data name="Qualities.Filter.All" xml:space="preserve"><value>Todas (+ / −)</value></data>
+  <data name="Qualities.Filter.Positive" xml:space="preserve"><value>+ Ventajas</value></data>
+  <data name="Qualities.Filter.Negative" xml:space="preserve"><value>− Desventajas</value></data>
+  <data name="Qualities.Filter.Karma" xml:space="preserve"><value>Karma</value></data>
+  <data name="Qualities.Filter.AnyCost" xml:space="preserve"><value>Cualquier coste</value></data>
+  <data name="Qualities.Filter.Sort" xml:space="preserve"><value>Ordenar</value></data>
+  <data name="Qualities.Filter.Name" xml:space="preserve"><value>Nombre</value></data>
+  <data name="Qualities.Filter.CostUp" xml:space="preserve"><value>Karma ↑</value></data>
+  <data name="Qualities.Filter.CostDown" xml:space="preserve"><value>Karma ↓</value></data>
+  <data name="Qualities.Filter.Fit" xml:space="preserve"><value>Para mi personaje</value></data>
+  <data name="Qualities.Filter.FitLoading" xml:space="preserve"><value>Buscando sugerencias…</value></data>
+  <data name="Qualities.Filter.FitEmpty" xml:space="preserve"><value>Aún no hay coincidencias claras. Se muestran todas las opciones disponibles.</value></data>
+  <data name="Qualities.Filter.FitHint" xml:space="preserve"><value>Sugerencias según tus habilidades, no una garantía de personaje óptimo.</value></data>
+  <data name="Qualities.Filter.Related" xml:space="preserve"><value>Relacionado con {0}</value></data>
+  <data name="Gear.Filter.Type" xml:space="preserve"><value>Tipo de equipo</value></data>
+  <data name="Gear.Filter.All" xml:space="preserve"><value>Todos los tipos</value></data>
   <data name="Priority.Choice.Unsupported" xml:space="preserve"><value>Este asistente aún no admite todas las reglas de esta elección. Elige una opción disponible para continuar.</value></data>
   <data name="Priority.Choice.Changed" xml:space="preserve"><value>Tu personaje o las reglas han cambiado. Vuelve al método de creación y abre las opciones de nuevo.</value></data>
   <data name="Priority.Choice.Unavailable" xml:space="preserve"><value>Esta elección no está disponible. Abre Detalles técnicos para conocer el motivo exacto.</value></data>

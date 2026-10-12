@@ -1,5 +1,93 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="Gear.Type.Ammunition" xml:space="preserve"><value>Munition</value></data>
+  <data name="Gear.Type.Audio Enhancements" xml:space="preserve"><value>Audioverstärkung</value></data>
+  <data name="Gear.Type.Biotech" xml:space="preserve"><value>Biotech</value></data>
+  <data name="Gear.Type.Commlink Accessories" xml:space="preserve"><value>Kommlink-Zubehör</value></data>
+  <data name="Gear.Type.Contracts/Upkeep" xml:space="preserve"><value>Verträge/Unterhalt</value></data>
+  <data name="Gear.Type.Drugs" xml:space="preserve"><value>Drogen</value></data>
+  <data name="Gear.Type.Explosives" xml:space="preserve"><value>Sprengstoffe</value></data>
+  <data name="Gear.Type.Foci" xml:space="preserve"><value>Foki</value></data>
+  <data name="Gear.Type.ID/Credsticks" xml:space="preserve"><value>IDs/Credsticks</value></data>
+  <data name="Gear.Type.Magical Compounds" xml:space="preserve"><value>Magische Präparate</value></data>
+  <data name="Gear.Type.Magical Supplies" xml:space="preserve"><value>Magische Güter</value></data>
+  <data name="Gear.Type.RFID Tags" xml:space="preserve"><value>RFID-Marker</value></data>
+  <data name="Gear.Type.Security Devices" xml:space="preserve"><value>Sicherheitsgeräte</value></data>
+  <data name="Gear.Type.Sensor Functions" xml:space="preserve"><value>Sensor-Funktionen</value></data>
+  <data name="Gear.Type.Sensors" xml:space="preserve"><value>Sensorpakete</value></data>
+  <data name="Gear.Type.Skillsofts" xml:space="preserve"><value>Talentsofts</value></data>
+  <data name="Gear.Type.Tools" xml:space="preserve"><value>Werkzeug</value></data>
+  <data name="Gear.Type.Toxins" xml:space="preserve"><value>Toxine</value></data>
+  <data name="Gear.Type.Vision Enhancements" xml:space="preserve"><value>Sichtverstärkung</value></data>
+  <data name="Gear.Type.Chemicals" xml:space="preserve"><value>Chemikalien</value></data>
+  <data name="Gear.Type.Cyberdecks" xml:space="preserve"><value>Cyberdecks</value></data>
+  <data name="Gear.Type.Cyberdeck Modules" xml:space="preserve"><value>Cyberdeck-Module</value></data>
+  <data name="Gear.Type.Armor Enhancements" xml:space="preserve"><value>Panzerungsverstärkungen</value></data>
+  <data name="Gear.Type.Audio Devices" xml:space="preserve"><value>Audiogeräte</value></data>
+  <data name="Gear.Type.Breaking and Entering Gear" xml:space="preserve"><value>Einbruchswerkzeug</value></data>
+  <data name="Gear.Type.BTLs" xml:space="preserve"><value>BTLs</value></data>
+  <data name="Gear.Type.Commlinks" xml:space="preserve"><value>Kommlinks</value></data>
+  <data name="Gear.Type.Common Programs" xml:space="preserve"><value>Standardprogramme</value></data>
+  <data name="Gear.Type.Communications and Countermeasures" xml:space="preserve"><value>Kommunikation und Gegenmaßnahmen</value></data>
+  <data name="Gear.Type.Custom" xml:space="preserve"><value>Eigene</value></data>
+  <data name="Gear.Type.Disguises" xml:space="preserve"><value>Verkleidungen</value></data>
+  <data name="Gear.Type.Electronics Accessories" xml:space="preserve"><value>Elektronikzubehör</value></data>
+  <data name="Gear.Type.Extraction Devices" xml:space="preserve"><value>Extraktionszubehör</value></data>
+  <data name="Gear.Type.Formulae" xml:space="preserve"><value>Formeln</value></data>
+  <data name="Gear.Type.Grapple Gun" xml:space="preserve"><value>Enterhakenkanone</value></data>
+  <data name="Gear.Type.Hacking Programs" xml:space="preserve"><value>Hackingprogramme</value></data>
+  <data name="Gear.Type.PI-Tac" xml:space="preserve"><value>PI-Tac</value></data>
+  <data name="Gear.Type.Rigger Command Consoles" xml:space="preserve"><value>Riggerkonsole</value></data>
+  <data name="Gear.Type.Sensor Housings" xml:space="preserve"><value>Gehäuse</value></data>
+  <data name="Gear.Type.Software" xml:space="preserve"><value>Software</value></data>
+  <data name="Gear.Type.Survival Gear" xml:space="preserve"><value>Überlebensausrüstung</value></data>
+  <data name="Gear.Type.Tools of the Trade" xml:space="preserve"><value>Handwerkszeug</value></data>
+  <data name="Gear.Type.Vision Devices" xml:space="preserve"><value>Sichtgeräte</value></data>
+  <data name="Gear.Type.Commlink/Cyberdeck Form Factors" xml:space="preserve"><value>Bauformen für Kommlinks/Cyberdecks</value></data>
+  <data name="Gear.Type.Commlink Apps" xml:space="preserve"><value>Kommlink-Apps</value></data>
+  <data name="Gear.Type.Critter Gear" xml:space="preserve"><value>Critter-Ausrüstung</value></data>
+  <data name="Gear.Type.Electronic Modification" xml:space="preserve"><value>Gerätemodifikationen</value></data>
+  <data name="Gear.Type.Electronic Parts" xml:space="preserve"><value>Elektronische Bauteile</value></data>
+  <data name="Gear.Type.Entertainment" xml:space="preserve"><value>Unterhaltung</value></data>
+  <data name="Gear.Type.Food" xml:space="preserve"><value>Nahrung</value></data>
+  <data name="Gear.Type.Housewares" xml:space="preserve"><value>Haushaltswaren</value></data>
+  <data name="Gear.Type.Miscellany" xml:space="preserve"><value>Alltägliches: Sonstiges</value></data>
+  <data name="Gear.Type.Nanogear" xml:space="preserve"><value>Nanotech-Ausrüstung</value></data>
+  <data name="Gear.Type.Services" xml:space="preserve"><value>Dienstleistungen</value></data>
+  <data name="Gear.Type.Software Tweaks" xml:space="preserve"><value>Softwareanpassungen</value></data>
+  <data name="Gear.Type.Alchemical Tools" xml:space="preserve"><value>Alchemistische Werkzeuge</value></data>
+  <data name="Gear.Type.Autosofts" xml:space="preserve"><value>Autosofts</value></data>
+  <data name="Gear.Type.Currency" xml:space="preserve"><value>Währung</value></data>
+  <data name="Gear.Type.Cyberterminals" xml:space="preserve"><value>Cyberterminals</value></data>
+  <data name="Gear.Type.Metatype-Specific" xml:space="preserve"><value>Metatyp-spezifisch</value></data>
+  <data name="Gear.Type.Tailored Perfume/Cologne" xml:space="preserve"><value>Maßgeschneidertes Parfüm/Rasierwasser</value></data>
+  <data name="Gear.Type.Matrix Accessories" xml:space="preserve"><value>Matrix-Zubehör</value></data>
+  <data name="Gear.Type.Booster Chips" xml:space="preserve"><value>Boosterchips</value></data>
+  <data name="Gear.Type.Custom Cyberdeck Attributes" xml:space="preserve"><value>Attribute des angepassten Cyberdecks</value></data>
+  <data name="Gear.Type.Custom Drug" xml:space="preserve"><value>Maßgeschneiderte Drogen</value></data>
+  <data name="Gear.Type.Appearance Modification" xml:space="preserve"><value>Erscheinungsmodifikatoren</value></data>
+  <data name="Gear.Type.Printing" xml:space="preserve"><value>Druckerpressen</value></data>
+  <data name="Gear.Type.Reporter Gear" xml:space="preserve"><value>Reporterausrüstung</value></data>
+  <data name="Gear.Type.Musical Intruments" xml:space="preserve"><value>Musikinstrumente</value></data>
+  <data name="Gear.Type.Paydata" xml:space="preserve"><value>Paydata</value></data>
+  <data name="Gear.Type.Musical Instruments" xml:space="preserve"><value>Musikinstrumente</value></data>
+  <data name="Qualities.Filter.Type" xml:space="preserve"><value>Typ</value></data>
+  <data name="Qualities.Filter.All" xml:space="preserve"><value>Alle (+ / −)</value></data>
+  <data name="Qualities.Filter.Positive" xml:space="preserve"><value>+ Vorteile</value></data>
+  <data name="Qualities.Filter.Negative" xml:space="preserve"><value>− Nachteile</value></data>
+  <data name="Qualities.Filter.Karma" xml:space="preserve"><value>Karma</value></data>
+  <data name="Qualities.Filter.AnyCost" xml:space="preserve"><value>Alle Karmakosten</value></data>
+  <data name="Qualities.Filter.Sort" xml:space="preserve"><value>Sortieren</value></data>
+  <data name="Qualities.Filter.Name" xml:space="preserve"><value>Name</value></data>
+  <data name="Qualities.Filter.CostUp" xml:space="preserve"><value>Karma ↑</value></data>
+  <data name="Qualities.Filter.CostDown" xml:space="preserve"><value>Karma ↓</value></data>
+  <data name="Qualities.Filter.Fit" xml:space="preserve"><value>Passend zu meinem Charakter</value></data>
+  <data name="Qualities.Filter.FitLoading" xml:space="preserve"><value>Passende Vorschläge werden gesucht…</value></data>
+  <data name="Qualities.Filter.FitEmpty" xml:space="preserve"><value>Noch keine eindeutigen Vorschläge. Alle verfügbaren Möglichkeiten bleiben sichtbar.</value></data>
+  <data name="Qualities.Filter.FitHint" xml:space="preserve"><value>Vorschläge anhand deiner Fertigkeiten, keine Garantie für einen optimalen Charakter.</value></data>
+  <data name="Qualities.Filter.Related" xml:space="preserve"><value>Passend zu {0}</value></data>
+  <data name="Gear.Filter.Type" xml:space="preserve"><value>Ausrüstungstyp</value></data>
+  <data name="Gear.Filter.All" xml:space="preserve"><value>Alle Ausrüstungstypen</value></data>
   <data name="Priority.Choice.Unsupported" xml:space="preserve"><value>Dieser Assistent unterstützt noch nicht alle Regeln für diese Auswahl. Wähle eine verfügbare Option, um fortzufahren.</value></data>
   <data name="Priority.Choice.Changed" xml:space="preserve"><value>Dein Runner oder die Regeln haben sich geändert. Gehe zur Bauart zurück und öffne die Auswahl erneut.</value></data>
   <data name="Priority.Choice.Unavailable" xml:space="preserve"><value>Diese Auswahl ist nicht verfügbar. Den genauen Grund findest du unter Technische Details.</value></data>

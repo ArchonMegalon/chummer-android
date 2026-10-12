@@ -1,5 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="Qualities.Filter.Type" xml:space="preserve"><value>Type</value></data>
+  <data name="Qualities.Filter.All" xml:space="preserve"><value>All (+ / −)</value></data>
+  <data name="Qualities.Filter.Positive" xml:space="preserve"><value>+ Advantages</value></data>
+  <data name="Qualities.Filter.Negative" xml:space="preserve"><value>− Disadvantages</value></data>
+  <data name="Qualities.Filter.Karma" xml:space="preserve"><value>Karma</value></data>
+  <data name="Qualities.Filter.AnyCost" xml:space="preserve"><value>Any Karma</value></data>
+  <data name="Qualities.Filter.Sort" xml:space="preserve"><value>Sort</value></data>
+  <data name="Qualities.Filter.Name" xml:space="preserve"><value>Name</value></data>
+  <data name="Qualities.Filter.CostUp" xml:space="preserve"><value>Karma ↑</value></data>
+  <data name="Qualities.Filter.CostDown" xml:space="preserve"><value>Karma ↓</value></data>
+  <data name="Qualities.Filter.Fit" xml:space="preserve"><value>Fits my character</value></data>
+  <data name="Qualities.Filter.FitLoading" xml:space="preserve"><value>Finding matches…</value></data>
+  <data name="Qualities.Filter.FitEmpty" xml:space="preserve"><value>No clear matches yet. All available choices remain shown.</value></data>
+  <data name="Qualities.Filter.FitHint" xml:space="preserve"><value>Suggestions based on your trained skills, not a best-build guarantee.</value></data>
+  <data name="Qualities.Filter.Related" xml:space="preserve"><value>Related to {0}</value></data>
+  <data name="Gear.Filter.Type" xml:space="preserve"><value>Equipment type</value></data>
+  <data name="Gear.Filter.All" xml:space="preserve"><value>All equipment types</value></data>
   <data name="Priority.Choice.Unsupported" xml:space="preserve"><value>This wizard does not yet support all rules for this choice. Choose an available option to continue.</value></data>
   <data name="Priority.Choice.Changed" xml:space="preserve"><value>Your runner or rules changed. Return to Build method and reopen the choices.</value></data>
   <data name="Priority.Choice.Unavailable" xml:space="preserve"><value>This choice is unavailable. Open Technical details for the exact reason.</value></data>
