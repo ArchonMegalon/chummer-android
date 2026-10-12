@@ -394,14 +394,43 @@ internal static partial class AfterRunAuthorityHarness
         }
         Require(hashes.ContainsKey(selectedId + ".json"), "Selected fixture is absent from the roster.");
         runtime.Settings.Set("chummer.android.selected-workspace.v1", selectedId);
+        // The canonical Shell session takes precedence over Android's fallback
+        // hint. Copying runner files alone gives Shell no saved selection and
+        // makes it select a recent row instead of the fixture under measurement.
+        await ((Chummer.Presentation.Shell.IOwnerBoundShellStateClient)runtime.Client)
+            .SaveShellSessionAsync(owners.Capture(), new Chummer.Contracts.Presentation.ShellSessionState(
+                ActiveWorkspaceId: selectedId, ActiveTabId: "tab-info"), default);
         Require(runtime.Presenter.State.Profile is null, "Saved fixture was warmed before startup.");
         var elapsed = System.Diagnostics.Stopwatch.StartNew();
         await runtime.Coordinator.InitializeAsync().WaitAsync(TimeSpan.FromSeconds(20));
         await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
         var state = runtime.Coordinator.State;
         Console.WriteLine($"Saved synthetic roster: count={files.Length}, rosterReads={rosterReads}, elapsedMs={elapsed.ElapsedMilliseconds}");
+        Console.WriteLine($"Saved roster readiness: busy={state.IsBusy}, error={state.Error is not null}, profile={state.Profile is not null}, selected={state.WorkspaceId?.Value == selectedId}, owner={state.DisplayOwnerContext == owners.Capture()}, open={state.OpenWorkspaces.Count}, route={runtime.Coordinator.CaptureInitialPhoneRouteReadiness().Kind}");
         foreach (var metric in metrics)
             Console.WriteLine("STARTUP_PRODUCTION_STAGE " + JsonSerializer.Serialize(metric));
+        // Numeric metadata only: the resolver's diagnostics also contain paths,
+        // which deliberately must not be serialized into this observation.
+        var resolver = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions
+            .GetRequiredService<ICharacterSourceDataResolver>(runtime.Services);
+        var diagnostics = resolver.GetType().GetProperty("LastSourceInputSnapshotDiagnostics",
+            BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(resolver);
+        if (diagnostics is not null)
+        {
+            foreach (string name in new[] { "PhysicalReadCount", "PhysicalXmlParseCount", "CacheHitCount",
+                "ValidationReadCount", "ValidationBytesRead", "DirectoryValidationCount", "PrerequisiteProjectionCount" })
+                Console.WriteLine($"STARTUP_SOURCE_COUNT {name}={diagnostics.GetType().GetProperty(name)?.GetValue(diagnostics)}");
+            if (diagnostics.GetType().GetProperty("PhysicalReadsByPath")?.GetValue(diagnostics)
+                is IReadOnlyDictionary<string, int> captured)
+            {
+                string root = Path.GetFullPath(contentRoot).TrimEnd(Path.DirectorySeparatorChar)
+                    + Path.DirectorySeparatorChar;
+                foreach (var group in captured.Keys.GroupBy(path =>
+                    Path.GetFullPath(path).StartsWith(root, StringComparison.Ordinal)
+                        ? Path.GetFileName(path) : "outside-content-root").OrderBy(group => group.Key, StringComparer.Ordinal))
+                    Console.WriteLine($"STARTUP_SOURCE_FILE name={group.Key}, count={group.Count()}, bytes={group.Sum(path => new FileInfo(path).Length)}");
+            }
+        }
         Require(state is { IsBusy: false, Error: null, Profile: not null }
             && state.WorkspaceId?.Value == selectedId && state.DisplayOwnerContext == owners.Capture()
             && state.OpenWorkspaces.Count == files.Length && rosterReads == 1
@@ -410,10 +439,25 @@ internal static partial class AfterRunAuthorityHarness
         Require(finalization is { OverviewCalls: 1, LastOverview: not null }
             && ReferenceEquals(state.CreationFinalization, finalization.LastOverview.Finalization.Value),
             "Saved Priority roster must exercise the shared Core overview used by the app.");
+        Console.WriteLine("STARTUP_CREATION_OVERVIEW_SHA256 " + Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(finalization!.LastOverview))));
         foreach (var (name, hash) in hashes)
             Require(Hash(Path.Combine(destination, name)) == hash && Hash(Path.Combine(fixtureDirectory, name)) == hash,
                 "Read-only startup changed a saved fixture or the retained source bytes.");
         Console.WriteLine("PASS exact saved roster restore: selected owner-bound runner, no saved-byte changes");
+
+        var coldStore = new FileWorkspaceStore(runtime.StateDirectory);
+        int row = 0;
+        foreach (string path in files.Order(StringComparer.Ordinal))
+        {
+            var id = new CharacterWorkspaceId(Path.GetFileNameWithoutExtension(path));
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            var read = coldStore.Get(id);
+            Console.WriteLine($"STARTUP_COLD_STORE_ROW index={row++}, bytes={new FileInfo(path).Length}, elapsedMs={watch.ElapsedMilliseconds}, accepted={read.Success}");
+        }
+        foreach (var (name, hash) in hashes)
+            Require(Hash(Path.Combine(destination, name)) == hash && Hash(Path.Combine(fixtureDirectory, name)) == hash,
+                "Cold store observation changed a saved fixture or its retained source.");
 
         static string Hash(string path)
         {
