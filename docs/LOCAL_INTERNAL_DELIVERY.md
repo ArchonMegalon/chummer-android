@@ -132,7 +132,25 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 200 is the latest [observed Internal availability](../play/evidence/preview200-internal-observation.json),
+Preview 201 is the latest [observed Internal availability](../play/evidence/preview201-internal-observation.json),
+released on 12 October at 08:13 Europe/Vienna. Core #152 streams the canonical
+prerequisite catalogue into its digest writer, avoiding the full serialized
+output allocation while retaining exact bytes and source/owner/mutation checks.
+UI #433 and Android #714 admit the sealed graph. Affected managed checks and the
+API 36 SDK-test update/new-process read-only recovery passed: nine synthetic
+runners and all workspace bytes are preserved; selected Finalizer continues
+to Resources at revision 7/7 with 6,000 nuyen and no new purchase or save.
+Local ARM64/Internal build, content/proof/hygiene checks, original-key isolated
+signing, independent keyless signature/payload verification and one scoped Play
+upload/readback passed. Slider-only controls and forward wizard remain.
+Cold shell initialization (15,213 ms) and selected restore (24,003 ms) are separate phases,
+not first-usable latency or a controlled speedup; initial SystemUI ANRs remain
+recorded. Physical Preview 201, startup/reload reliability and full Creation/Career/Origin
+acceptance are unverified. Original FirstBook uncertainty and local diagnostic
+contract portability remain open. Version 201 is consumed; this documentation requires
+no rebuild or re-upload.
+
+Preview 200's [historical Internal availability](../play/evidence/preview200-internal-observation.json) was
 released on 12 October at 06:12 Europe/Vienna. Core151 reuses the parsed canonical
 XML/digest of small immutable Magic payload identities, retaining expected-digest,
 root, typed-value, source, owner and budget checks. UI431 and Android712 admit
