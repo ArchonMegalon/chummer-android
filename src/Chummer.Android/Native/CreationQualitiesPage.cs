@@ -17,6 +17,11 @@ public sealed class CreationQualitiesPage : NativePageBase
     private const int CatalogPageSize = 20;
     private int _catalogOffset;
     private string _filter = string.Empty;
+    private CreationQualityFilters _filters = new();
+    private IReadOnlyDictionary<string, QualityFitHint> _fitHints = new Dictionary<string, QualityFitHint>();
+    private bool _fitReady;
+    private bool _fitAttempted;
+    private CancellationTokenSource? _fitLifetime;
     private CreationQualitiesPhoneDraft _draft = new();
     private readonly CharacterCreationQualitiesCheckpointStore _store;
     private readonly VerticalStackLayout _technicalDetails = new() { Spacing = 8 };
@@ -42,7 +47,8 @@ public sealed class CreationQualitiesPage : NativePageBase
     private (CharacterOverviewState Display, CharacterCreationFoundationResult<CharacterCreationQualitiesState> Load)? _initialLoad;
 
     private sealed record HelpReturnPosition(
-        CreationQualityInfoPage Page, CharacterOverviewState Display, double Y, string Filter, int Offset);
+        CreationQualityInfoPage Page, CharacterOverviewState Display, double Y, string Filter, int Offset,
+        CreationQualityFilters Filters);
 
     public CreationQualitiesPage(RunnerSessionCoordinator coordinator)
         : this(coordinator, CharacterCreationQualitiesCheckpointStore.CreateDefault(
@@ -87,6 +93,7 @@ public sealed class CreationQualitiesPage : NativePageBase
 
     protected override void OnDisappearing()
     {
+        _fitLifetime?.Cancel();
         // Keep the ticket while opening help, but never carry an unfinished
         // restoration into another navigation or background/foreground cycle.
         if (_returnedFromHelp) _helpReturn = null;
@@ -99,7 +106,7 @@ public sealed class CreationQualitiesPage : NativePageBase
         if (!ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), this)
             || !Coordinator.IsCreationCatalogDisplayCurrent(original)) return;
         _helpReturn = double.IsFinite(_scroll.ScrollY) && _scroll.ScrollY > 0
-            ? new(page, original, _scroll.ScrollY, _filter, _catalogOffset) : null;
+            ? new(page, original, _scroll.ScrollY, _filter, _catalogOffset, _filters) : null;
         _returnedFromHelp = false;
         try { await Navigation.PushAsync(page); }
         catch { _helpReturn = null; throw; }
@@ -109,7 +116,7 @@ public sealed class CreationQualitiesPage : NativePageBase
     {
         if (!_returnedFromHelp || _helpReturn is not { } position || _loading) return;
         if (!IsCatalogCurrent() || !Coordinator.IsCreationCatalogDisplayCurrent(position.Display)
-            || position.Filter != _filter || position.Offset != _catalogOffset)
+            || position.Filter != _filter || position.Offset != _catalogOffset || position.Filters != _filters)
         {
             _helpReturn = null;
             return;
@@ -124,7 +131,7 @@ public sealed class CreationQualitiesPage : NativePageBase
                 || render != _renderGeneration || !IsCurrentAppearanceGeneration(appearance)
                 || !ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), this)
                 || !IsCatalogCurrent() || !Coordinator.IsCreationCatalogDisplayCurrent(position.Display)
-                || position.Filter != _filter || position.Offset != _catalogOffset
+                || position.Filter != _filter || position.Offset != _catalogOffset || position.Filters != _filters
                 || _scroll.Height <= 0 || _scroll.ContentSize.Height <= _scroll.Height) return;
             _helpReturn = null; // One attempt; late layout callbacks cannot move the user again.
             try
@@ -144,6 +151,11 @@ public sealed class CreationQualitiesPage : NativePageBase
         _loadedDisplay = null;
         _editor = null;
         _availableOptions = [];
+        _fitLifetime?.Cancel();
+        _fitLifetime = null;
+        _fitReady = false;
+        _fitAttempted = false;
+        _fitHints = new Dictionary<string, QualityFitHint>();
         _canReview = false;
         _reviewCheckpointDigest = null;
         _loading = true;
@@ -502,9 +514,96 @@ public sealed class CreationQualitiesPage : NativePageBase
                 ApplyFilter(string.Empty);
         };
         _body.Add(search);
+        AddCatalogFilters();
         _body.Add(_catalog);
         _checkpointOwnsLane = checkpointOwnsLane;
         RenderCatalog(state, editor, checkpointOwnsLane);
+    }
+
+    private void AddCatalogFilters()
+    {
+        var filters = new Grid
+        {
+            ColumnDefinitions = [new(GridLength.Star), new(GridLength.Star)], ColumnSpacing = 8, RowSpacing = 4,
+            RowDefinitions = [new(GridLength.Auto), new(GridLength.Auto)]
+        };
+        Picker Picker(string id, string title, string[] items, int selected)
+            => new() { AutomationId = id, Title = title, ItemsSource = items, SelectedIndex = selected,
+                TextColor = NativeTheme.Text, BackgroundColor = NativeTheme.Surface };
+        var polarity = Picker("creation-qualities-polarity", CreationFlowStrings.Get("Qualities.Filter.Type", "Type"),
+            [CreationFlowStrings.Get("Qualities.Filter.All", "All (+ / −)"),
+             CreationFlowStrings.Get("Qualities.Filter.Positive", "+ Advantages"),
+             CreationFlowStrings.Get("Qualities.Filter.Negative", "− Disadvantages")], _filters.Polarity);
+        var cost = Picker("creation-qualities-cost", CreationFlowStrings.Get("Qualities.Filter.Karma", "Karma"),
+            [CreationFlowStrings.Get("Qualities.Filter.AnyCost", "Any Karma"), "0", "1–5", "6–10", "11–15", "16–20", "21+"],
+            _filters.CostBand);
+        var sort = Picker("creation-qualities-sort", CreationFlowStrings.Get("Qualities.Filter.Sort", "Sort"),
+            [CreationFlowStrings.Get("Qualities.Filter.Name", "Name"),
+             CreationFlowStrings.Get("Qualities.Filter.CostUp", "Karma ↑"),
+             CreationFlowStrings.Get("Qualities.Filter.CostDown", "Karma ↓"),
+             CreationFlowStrings.Get("Qualities.Filter.Fit", "Fits my character")], _filters.Sort);
+        filters.Add(polarity, 0, 0);
+        filters.Add(cost, 1, 0);
+        filters.Add(sort, 0, 1);
+        Grid.SetColumnSpan(sort, 2);
+        void Changed()
+        {
+            if (!ReferenceEquals(filters.Parent, _body) || !IsCatalogCurrent()) return;
+            _filters = new(Math.Max(0, polarity.SelectedIndex), Math.Max(0, cost.SelectedIndex), Math.Max(0, sort.SelectedIndex));
+            ApplyFilter(_filter);
+        }
+        polarity.SelectedIndexChanged += (_, _) => Changed();
+        cost.SelectedIndexChanged += (_, _) => Changed();
+        sort.SelectedIndexChanged += async (_, _) =>
+        {
+            Changed();
+            if (ReferenceEquals(filters.Parent, _body) && _filters.Sort == 3)
+                await RunAsync(PrepareFitAsync);
+        };
+        _body.Add(filters);
+        // An appearance reload invalidates hints, not the user's selected sort.
+        // Dispatch after the current catalog has been attached to the page.
+        if (_filters.Sort == 3 && !_fitReady && !_fitAttempted && _fitLifetime is null)
+            Dispatcher.Dispatch(async () =>
+            {
+                if (ReferenceEquals(filters.Parent, _body) && _filters.Sort == 3)
+                    await RunAsync(PrepareFitAsync);
+            });
+    }
+
+    private async Task PrepareFitAsync()
+    {
+        if (_fitReady || _fitLifetime is not null || !IsCatalogCurrent()
+            || _loaded?.Value is not { } state || _loadedDisplay is not { } original) return;
+        using var lifetime = new CancellationTokenSource();
+        _fitAttempted = true;
+        _fitLifetime = lifetime;
+        long appearance = CaptureAppearanceGeneration();
+        ApplyFilter(_filter);
+        try
+        {
+            var hints = await Task.Run(() => Coordinator.ReadCreationAuthority(original, () =>
+            {
+                var skills = Coordinator.LoadCreationSkills();
+                return skills.Value is { } current && Coordinator.IsCreationSkillsStateCurrent(current)
+                    && CreationSkillsPhoneAuthority.IsReady(current, original)
+                    ? CreationQualityFit.Project(state.Authority.Options, current.Skills, lifetime.Token)
+                    : new Dictionary<string, QualityFitHint>();
+            }, lifetime.Token), lifetime.Token);
+            if (lifetime.IsCancellationRequested || !IsCurrentAppearanceGeneration(appearance)
+                || !Coordinator.IsCreationCatalogDisplayCurrent(original)) return;
+            _fitHints = hints;
+            _fitReady = true;
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        finally
+        {
+            if (ReferenceEquals(_fitLifetime, lifetime))
+            {
+                _fitLifetime = null;
+                if (IsCurrentAppearanceGeneration(appearance) && IsCatalogCurrent()) ApplyFilter(_filter);
+            }
+        }
     }
 
     private void RenderCatalog(
@@ -516,13 +615,18 @@ public sealed class CreationQualitiesPage : NativePageBase
         // on clear can send the next Enter key to a different action (Review).
         _catalog.Clear();
 
-        CharacterCreationQualitiesDesktopOption[] matches = _availableOptions
-            .Where(option => QualityCatalogStrings.MatchesSearch(
-                option.SourceId, option.Name, option.FollowUpChoiceLabel, _filter))
-            .OrderBy(option => option.Type)
-            .ThenBy(option => option.Name, StringComparer.CurrentCultureIgnoreCase)
-            .ThenBy(option => option.OptionId, StringComparer.Ordinal)
-            .ToArray();
+        CharacterCreationQualitiesDesktopOption[] matches = _filters.Apply(_availableOptions,
+            option => QualityCatalogStrings.MatchesSearch(option.SourceId, option.Name, option.FollowUpChoiceLabel, _filter),
+            _draft.IsSelected, _fitHints);
+        if (_filters.Sort == 3)
+        {
+            _catalog.Add(NativeTheme.Body(CreationFlowStrings.Get(
+                _fitLifetime is not null ? "Qualities.Filter.FitLoading" : _fitHints.Count == 0
+                    ? "Qualities.Filter.FitEmpty" : "Qualities.Filter.FitHint",
+                _fitLifetime is not null ? "Finding matches…" : _fitHints.Count == 0
+                    ? "No clear matches yet. All available choices remain shown."
+                    : "Suggestions based on your trained skills, not a best-build guarantee."), NativeTheme.Muted));
+        }
         _catalogOffset = Math.Min(_catalogOffset, Math.Max(0, matches.Length - 1) / CatalogPageSize * CatalogPageSize);
         int end = Math.Min(matches.Length, _catalogOffset + CatalogPageSize);
         Label range = NativeTheme.Body(matches.Length == 0
@@ -558,16 +662,8 @@ public sealed class CreationQualitiesPage : NativePageBase
         _catalog.Add(pager);
 
         CharacterCreationQualitiesDesktopOption[] visible = matches.Skip(_catalogOffset).Take(CatalogPageSize).ToArray();
-        foreach (CharacterCreationQualityType type in Enum.GetValues<CharacterCreationQualityType>())
+        foreach (CharacterCreationQualitiesDesktopOption option in visible)
         {
-            if (!visible.Any(option => option.Type == type))
-                continue;
-            _catalog.Add(NativeTheme.Eyebrow(type == CharacterCreationQualityType.Positive
-                ? CreationFlowStrings.Get("Qualities.Positive", "Positive qualities")
-                : CreationFlowStrings.Get("Qualities.Negative", "Negative qualities")));
-            foreach (CharacterCreationQualitiesDesktopOption option in visible
-                         .Where(candidate => candidate.Type == type))
-            {
                 bool selected = _draft.IsSelected(option.OptionId);
                 bool exact = CreationQualitiesPhoneAuthority.IsOptionConfigurable(option);
                 string followUp = string.IsNullOrWhiteSpace(option.FollowUpChoiceLabel)
@@ -586,6 +682,9 @@ public sealed class CreationQualitiesPage : NativePageBase
                 if (!exact)
                     detail += $" · {UnavailableReason(option.DisableReasonKey)}";
                 string name = QualityCatalogStrings.Name(option.SourceId, option.Name);
+                name = (option.Type == CharacterCreationQualityType.Positive ? "+ " : "− ") + name;
+                if (_filters.Sort == 3 && _fitHints.TryGetValue(option.OptionId, out var hint))
+                    detail += " · " + CreationFlowStrings.Format("Qualities.Filter.Related", "Related to {0}", hint.SkillName);
                 Border row = NativeTheme.NavigationRow(
                     name,
                     detail,
@@ -618,7 +717,6 @@ public sealed class CreationQualitiesPage : NativePageBase
                 };
                 rowGrid.Add(info, 2);
                 _catalog.Add(row);
-            }
         }
     }
 
@@ -631,6 +729,7 @@ public sealed class CreationQualitiesPage : NativePageBase
     }
 
     private bool IsCatalogCurrent() => ReferenceEquals(_catalog.Parent, _body)
+        && IsCurrentAppearanceGeneration(CaptureAppearanceGeneration())
         && _loadedDisplay is { } original && Coordinator.IsCreationCatalogDisplayCurrent(original);
 
     private void AddReview(

@@ -13,6 +13,11 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--creation-catalog-filters-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCatalogFiltersAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--qualities-after-attributes-content-root")
         {
             await AfterRunAuthorityHarness.RunQualitiesAfterAttributesAsync(args[1]);

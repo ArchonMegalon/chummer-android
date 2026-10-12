@@ -1,5 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="Qualities.Filter.Type" xml:space="preserve"><value>Tipo</value></data>
+  <data name="Qualities.Filter.All" xml:space="preserve"><value>Todas (+ / −)</value></data>
+  <data name="Qualities.Filter.Positive" xml:space="preserve"><value>+ Ventajas</value></data>
+  <data name="Qualities.Filter.Negative" xml:space="preserve"><value>− Desventajas</value></data>
+  <data name="Qualities.Filter.Karma" xml:space="preserve"><value>Karma</value></data>
+  <data name="Qualities.Filter.AnyCost" xml:space="preserve"><value>Cualquier coste</value></data>
+  <data name="Qualities.Filter.Sort" xml:space="preserve"><value>Ordenar</value></data>
+  <data name="Qualities.Filter.Name" xml:space="preserve"><value>Nombre</value></data>
+  <data name="Qualities.Filter.CostUp" xml:space="preserve"><value>Karma ↑</value></data>
+  <data name="Qualities.Filter.CostDown" xml:space="preserve"><value>Karma ↓</value></data>
+  <data name="Qualities.Filter.Fit" xml:space="preserve"><value>Para mi personaje</value></data>
+  <data name="Qualities.Filter.FitLoading" xml:space="preserve"><value>Buscando sugerencias…</value></data>
+  <data name="Qualities.Filter.FitEmpty" xml:space="preserve"><value>Aún no hay coincidencias claras. Se muestran todas las opciones disponibles.</value></data>
+  <data name="Qualities.Filter.FitHint" xml:space="preserve"><value>Sugerencias según tus habilidades, no una garantía de personaje óptimo.</value></data>
+  <data name="Qualities.Filter.Related" xml:space="preserve"><value>Relacionado con {0}</value></data>
+  <data name="Gear.Filter.Type" xml:space="preserve"><value>Tipo de equipo</value></data>
+  <data name="Gear.Filter.All" xml:space="preserve"><value>Todos los tipos</value></data>
   <data name="Priority.Choice.Unsupported" xml:space="preserve"><value>Este asistente aún no admite todas las reglas de esta elección. Elige una opción disponible para continuar.</value></data>
   <data name="Priority.Choice.Changed" xml:space="preserve"><value>Tu personaje o las reglas han cambiado. Vuelve al método de creación y abre las opciones de nuevo.</value></data>
   <data name="Priority.Choice.Unavailable" xml:space="preserve"><value>Esta elección no está disponible. Abre Detalles técnicos para conocer el motivo exacto.</value></data>
@@ -116,7 +133,7 @@
   <data name="Magic.Catalog.Empty" xml:space="preserve"><value>Core no proyectó identidades seleccionables para esta categoría. No existe una alternativa basada en etiquetas ni personalizada.</value></data>
   <data name="Magic.Catalog.Eyebrow" xml:space="preserve"><value>SR5 · Borrador · Catálogo</value></data>
   <data name="Magic.Catalog.OptionDetail" xml:space="preserve"><value>{0}{1} {2} · {3} {4}</value></data>
-  <data name="Magic.CatalogRouteDetail" xml:space="preserve"><value>{0} seleccionados · {1} {2} restantes · {3} opciones de Core</value></data>
+  <data name="Magic.CatalogRouteDetail" xml:space="preserve"><value>{0} seleccionados · {1} de {2} {3} restantes</value></data>
   <data name="Magic.DraftEyebrow" xml:space="preserve"><value>SR5 · Borrador</value></data>
   <data name="Magic.DraftIncomplete" xml:space="preserve"><value>Aún faltan algunas elecciones. Revisa los puntos restantes y los avisos antes de guardar.</value></data>
   <data name="Magic.ExactBudgets" xml:space="preserve"><value>Tus puntos y elecciones disponibles</value></data>

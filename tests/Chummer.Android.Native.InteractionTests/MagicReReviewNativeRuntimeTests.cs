@@ -61,6 +61,7 @@ internal static partial class AfterRunAuthorityHarness
                 var page = navigation.CurrentPage as CreationMagicResonancePage
                     ?? throw new InvalidOperationException("Budget did not open the native Magic editor.");
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+                AssertMergedMagicChoices(page);
                 var scroll = (ScrollView)page.Content!;
                 var observed = new List<Element?>();
                 ((IScrollViewController)scroll).ScrollToRequested += (_, request) =>
@@ -102,6 +103,28 @@ internal static partial class AfterRunAuthorityHarness
                     await ui.DrainDispatchedAsyncVoidAsync();
                     Require(observed.Count == 1, "Later render replayed the initial budget jump.");
                 }
+                if (budget == cases[0].Budget)
+                {
+                    // The budget-bearing row itself still opens the chooser.
+                    var choice = MinimalVisible(page).OfType<Button>().First(button => button.IsEnabled
+                        && button.AutomationId?.StartsWith("creation-magic-resonance-catalog-", StringComparison.Ordinal) == true);
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)choice).SendClicked()));
+                    Require(navigation.CurrentPage is CreationMagicResonanceCatalogPage,
+                        "Merged choice row did not open its catalog.");
+                    await navigation.PopAsync(false);
+
+                    // Recovery continues to disable every chooser. Layout
+                    // simplification must not turn budget facts into admission.
+                    var editor = (CharacterCreationMagicResonanceEditorState)typeof(CreationMagicResonancePage)
+                        .GetField("_editor", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+                    ((VerticalStackLayout)scroll.Content).Clear();
+                    typeof(CreationMagicResonancePage).GetMethod("AddCatalogRoutes", BindingFlags.Instance | BindingFlags.NonPublic)!
+                        .Invoke(page, [editor, true]);
+                    var locked = MinimalVisible(page).OfType<Button>().Where(button =>
+                        button.AutomationId?.StartsWith("creation-magic-resonance-catalog-", StringComparison.Ordinal) == true).ToArray();
+                    Require(locked.Length == 5 && locked.All(button => !button.IsEnabled),
+                        "Merged choice enabled a recovery-locked route.");
+                }
                 IssuedPageLifecycle(page, "OnDisappearing");
                 await navigation.PopAsync(false);
             }
@@ -140,7 +163,43 @@ internal static partial class AfterRunAuthorityHarness
         var blocked = fallback with { CanOpen = false, OpenForBudget = _ => { focused++; return Task.CompletedTask; } };
         await blocked.OpenBudgetAsync(CharacterCreationMagicResonancePresentationBudgetIds.Spells);
         Require(ordinary == 1 && focused == 0, "Budget hint bypassed a fallback or blocked route.");
-        Console.WriteLine("PASS native Magic budget focus: exact Talent destinations, fresh layout, one-shot, departure/owner ABA and no save");
+        Console.WriteLine("PASS native Magic merged choices: one budget-bearing action per kind, catalog navigation, recovery locks; exact focus, departure/owner ABA and no save");
+    }
+
+    private static void AssertMergedMagicChoices(CreationMagicResonancePage page)
+    {
+        var editor = (CharacterCreationMagicResonanceEditorState)typeof(CreationMagicResonancePage)
+            .GetField("_editor", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+        var draft = (CreationMagicResonancePhoneDraft)typeof(CreationMagicResonancePage)
+            .GetField("_draft", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+        var visible = MinimalVisible(page).ToArray();
+        Require(!visible.Any(element => element.AutomationId?.StartsWith("creation-magic-resonance-budget-", StringComparison.Ordinal) == true),
+            "A second, noninteractive budget ribbon remains visible.");
+        Require(visible.OfType<Label>().Count(label => label.Text == CreationFlowStrings.Get("Magic.ExactBudgets", "").ToUpperInvariant()) == 1,
+            "Choices heading is duplicated or absent.");
+        foreach (var (kind, token, allowed, selected) in new[]
+        {
+            (CharacterCreationMagicResonanceKinds.Tradition, "tradition", editor.Talent.RequiresTradition, draft.Selections.Tradition is null ? 0 : 1),
+            (CharacterCreationMagicResonanceKinds.Stream, "stream", editor.Talent.RequiresStream, draft.Selections.Stream is null ? 0 : 1),
+            (CharacterCreationMagicResonanceKinds.AdeptPower, "adept-power", editor.Talent.AllowsAdeptPowers, draft.Selections.AdeptPowers.Count),
+            (CharacterCreationMagicResonanceKinds.Spell, "spell", editor.Talent.AllowsSpells, draft.Selections.Spells.Count),
+            (CharacterCreationMagicResonanceKinds.ComplexForm, "complex-form", editor.Talent.AllowsComplexForms, draft.Selections.ComplexForms.Count)
+        })
+        {
+            var row = visible.OfType<Border>().Single(element => element.AutomationId == "creation-magic-resonance-section-" + token);
+            var button = MinimalVisible(row).OfType<Button>().Single();
+            Require(button.AutomationId == "creation-magic-resonance-catalog-" + token && button.IsEnabled == allowed,
+                "Merged choice changed Talent availability: " + kind);
+            var budget = editor.Budgets.Single(item => item.Kind == kind);
+            string expected = allowed ? CreationFlowStrings.Format("Magic.CatalogRouteDetail", "missing",
+                selected.ToString(CultureInfo.InvariantCulture), CreationMagicResonancePage.Decimal(budget.Remaining),
+                CreationMagicResonancePage.Decimal(budget.Total), CreationMagicResonancePage.BudgetUnit(kind))
+                : CreationFlowStrings.Get("Magic.NotAllowed", "missing");
+            Require(MinimalVisible(row).OfType<Label>().Count(label => label.Text == expected) == 1,
+                "Merged choice omitted or duplicated the exact remaining/total budget: " + kind);
+            Require(SemanticProperties.GetDescription(button)?.Contains(expected, StringComparison.Ordinal) == true,
+                "Merged choice lost its accessible budget description.");
+        }
     }
 
     public static async Task RunMagicReReviewCasesAsync(string contentRoot, string sourceDirectory,

@@ -10,7 +10,11 @@ namespace Chummer.Android.Native;
 /// </summary>
 public sealed class CreationGearPage : NativePageBase
 {
-    private const int CatalogPageSize = 40;
+    // Keep native view creation bounded on small phones; the full admitted
+    // catalogue remains searchable and reachable through the existing pager.
+    private const int CatalogPageSize = 12;
+    private long _catalogRefreshGeneration;
+    internal Task CatalogRefresh { get; private set; } = Task.CompletedTask;
     private readonly ICharacterCreationGearInteractionPresenter _gear;
     private readonly ICharacterOverviewPresenter _overview;
     private readonly AndroidSurfaceCopy _copy;
@@ -23,6 +27,9 @@ public sealed class CreationGearPage : NativePageBase
     private Dictionary<string, int> _basket = new(StringComparer.Ordinal);
     private string? _initializedSnapshotDigest;
     private string _filter = string.Empty;
+    private string? _category;
+    private readonly VerticalStackLayout _catalog = new() { Spacing = 14 };
+    private readonly VerticalStackLayout _catalogDetails = new() { Spacing = 6 };
     private int _catalogOffset;
     private CharacterOverviewState? _loadedDisplay;
     private CharacterCreationGearInteractionLoadResult? _loaded;
@@ -38,6 +45,7 @@ public sealed class CreationGearPage : NativePageBase
 
     protected override void OnDisappearing()
     {
+        _catalogRefreshGeneration++;
         _continueLifetime?.Cancel();
         base.OnDisappearing();
     }
@@ -107,10 +115,12 @@ public sealed class CreationGearPage : NativePageBase
     {
         if (_continueLifetime is not null && _loadedDisplay is { } continuing
             && Coordinator.IsCreationCatalogDisplayCurrent(continuing)) return;
+        _catalogRefreshGeneration++;
         _catalogRows.Clear();
         _basketBody = new() { Spacing = 14 };
         _basketDetails = new() { Spacing = 6 };
         _body.Clear();
+        _technicalDetails.Remove(_catalogDetails);
         _technicalDetails = new() { Spacing = 6 };
         _body.Add(NativeTheme.Title(_copy["Gear.Title"]));
         _technicalDetails.Add(NativeTheme.Body(_copy["Gear.Intro"], NativeTheme.Muted));
@@ -340,20 +350,82 @@ public sealed class CreationGearPage : NativePageBase
         };
         search.SearchButtonPressed += (_, _) =>
         {
+            if (!ReferenceEquals(search.Parent, _body) || !IsCatalogCurrent()) return;
             search.Unfocus();
             ApplyFilter(search.Text);
         };
         search.TextChanged += (_, args) =>
         {
-            if (string.IsNullOrWhiteSpace(args.NewTextValue) && !string.IsNullOrWhiteSpace(_filter))
+            if (ReferenceEquals(search.Parent, _body) && IsCatalogCurrent()
+                && string.IsNullOrWhiteSpace(args.NewTextValue) && !string.IsNullOrWhiteSpace(_filter))
                 ApplyFilter(string.Empty);
         };
         _body.Add(search);
 
+        // Derive types from the admitted catalog, not the current search/page or
+        // a second rules read. A type never admits previously unavailable gear.
+        string[] categories = state.Authority.Options.Where(IsCatalogOptionAvailable)
+            .Select(option => option.Category).Distinct(StringComparer.Ordinal)
+            .OrderBy(CategoryName, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(category => category, StringComparer.Ordinal).ToArray();
+        if (_category is not null && !categories.Contains(_category, StringComparer.Ordinal)) _category = null;
+        Picker type = new()
+        {
+            AutomationId = "creation-gear-type",
+            Title = CreationFlowStrings.Get("Gear.Filter.Type", "Equipment type"),
+            ItemsSource = new[] { CreationFlowStrings.Get("Gear.Filter.All", "All equipment types") }
+                .Concat(categories.Select(CategoryName)).ToArray(),
+            SelectedIndex = _category is null ? 0 : Array.IndexOf(categories, _category) + 1,
+            TextColor = NativeTheme.Text,
+            BackgroundColor = NativeTheme.Surface
+        };
+        SemanticProperties.SetDescription(type, type.Title);
+        type.SelectedIndexChanged += (_, _) =>
+        {
+            if (!ReferenceEquals(type.Parent, _body) || !IsCatalogCurrent()
+                || type.SelectedIndex < 0 || type.SelectedIndex > categories.Length) return;
+            _category = type.SelectedIndex == 0 ? null : categories[type.SelectedIndex - 1];
+            _catalogOffset = 0;
+            // The native Picker dismisses its dialog only after this callback
+            // returns. Do not rebuild dozens of native controls inside it.
+            CatalogRefresh = RefreshCatalogAfterPickerAsync(state, type,
+                CaptureAppearanceGeneration(), ++_catalogRefreshGeneration);
+        };
+        _body.Add(type);
+        _technicalDetails.Add(_catalogDetails);
+        _body.Add(_catalog);
+        RenderCatalog(state);
+    }
+
+    private static string CategoryName(string category)
+        => CreationFlowStrings.Get("Gear.Type." + category, category);
+
+    private async Task RefreshCatalogAfterPickerAsync(CharacterCreationGearInteractionState state,
+        Picker type, long appearance, long request)
+    {
+        await Task.Yield();
+        if (request != _catalogRefreshGeneration || !IsCurrentAppearanceGeneration(appearance)
+            || !ReferenceEquals(type.Parent, _body) || !ReferenceEquals(state, _loaded?.State)
+            || !IsCatalogCurrent()) return;
+        RenderCatalog(state);
+    }
+
+    private bool IsCatalogCurrent() => ReferenceEquals(_catalog.Parent, _body)
+        && IsCurrentAppearanceGeneration(CaptureAppearanceGeneration())
+        && _loadedDisplay is { } original && Coordinator.IsCreationCatalogDisplayCurrent(original);
+
+    private void RenderCatalog(CharacterCreationGearInteractionState state)
+    {
+        _catalogRefreshGeneration++;
+        _catalog.Clear();
+        _catalogDetails.Clear();
+        _catalogRows.Clear();
+
         CharacterCreationGearCatalogOption[] matches = state.Authority.Options
             .Where(IsCatalogOptionAvailable)
+            .Where(option => _category is null || string.Equals(option.Category, _category, StringComparison.Ordinal))
             .Where(MatchesFilter)
-            .OrderBy(option => option.Category, StringComparer.Ordinal)
+            .OrderBy(option => CategoryName(option.Category), StringComparer.CurrentCultureIgnoreCase)
             .ThenBy(option => option.Name, StringComparer.Ordinal)
             .ThenBy(option => option.OptionId, StringComparer.Ordinal)
             .ToArray();
@@ -365,14 +437,14 @@ public sealed class CreationGearPage : NativePageBase
                 : _copy.Format("Gear.Showing", _catalogOffset + 1, end, matches.Length),
             NativeTheme.Muted);
         range.AutomationId = "creation-gear-catalog-range";
-        _body.Add(range);
+        _catalog.Add(range);
 
         foreach (CharacterCreationGearCatalogOption option in matches.Skip(_catalogOffset).Take(CatalogPageSize))
         {
             bool enabled = CanAddCatalogOption(state, option);
             string detail = _copy.Format(
                     "Gear.CatalogDetail",
-                    option.Category,
+                    CategoryName(option.Category),
                     option.PackageCost,
                     option.PackageQuantity,
                     option.Availability,
@@ -385,17 +457,17 @@ public sealed class CreationGearPage : NativePageBase
                 detail,
                 () =>
                 {
-                    if (!ReferenceEquals(row?.Parent, _body)) return Task.CompletedTask;
+                    if (!ReferenceEquals(row?.Parent, _catalog) || !IsCatalogCurrent()) return Task.CompletedTask;
                     int next = _basket.TryGetValue(option.OptionId, out int current) ? current + 1 : 1;
                     UpdateQuantity(state, option.OptionId, next);
                     return Task.CompletedTask;
                 },
                 enabled,
                 $"creation-gear-catalog-{Token(option.OptionId)}");
-            _body.Add(row);
+            _catalog.Add(row);
             _catalogRows.Add((option, row));
-            _technicalDetails.Add(ExactValue($"creation-gear-catalog-{Token(option.OptionId)}-option-id", option.OptionId));
-            _technicalDetails.Add(ExactValue($"creation-gear-catalog-{Token(option.OptionId)}-option-digest", option.OptionDigest));
+            _catalogDetails.Add(ExactValue($"creation-gear-catalog-{Token(option.OptionId)}-option-id", option.OptionId));
+            _catalogDetails.Add(ExactValue($"creation-gear-catalog-{Token(option.OptionId)}-option-digest", option.OptionDigest));
         }
 
         HorizontalStackLayout pager = new() { Spacing = 10 };
@@ -404,8 +476,9 @@ public sealed class CreationGearPage : NativePageBase
         previous.IsEnabled = _catalogOffset > 0;
         previous.Clicked += (_, _) =>
         {
+            if (!ReferenceEquals(pager.Parent, _catalog) || !IsCatalogCurrent()) return;
             _catalogOffset = Math.Max(0, _catalogOffset - CatalogPageSize);
-            Refresh();
+            RenderCatalog(state);
         };
         pager.Add(previous);
         Button next = NativeTheme.SecondaryButton(_copy["Common.Next"]);
@@ -413,18 +486,20 @@ public sealed class CreationGearPage : NativePageBase
         next.IsEnabled = end < matches.Length;
         next.Clicked += (_, _) =>
         {
+            if (!ReferenceEquals(pager.Parent, _catalog) || !IsCatalogCurrent()) return;
             _catalogOffset += CatalogPageSize;
-            Refresh();
+            RenderCatalog(state);
         };
         pager.Add(next);
-        _body.Add(pager);
+        _catalog.Add(pager);
     }
 
     private void ApplyFilter(string? value)
     {
+        if (!IsCatalogCurrent() || _loaded?.State is not { } state) return;
         _filter = value?.Trim() ?? string.Empty;
         _catalogOffset = 0;
-        Refresh();
+        RenderCatalog(state);
     }
 
     private bool MatchesFilter(CharacterCreationGearCatalogOption option)
@@ -433,6 +508,7 @@ public sealed class CreationGearPage : NativePageBase
             return true;
         return option.Name.Contains(_filter, StringComparison.CurrentCultureIgnoreCase)
                || option.Category.Contains(_filter, StringComparison.CurrentCultureIgnoreCase)
+               || CategoryName(option.Category).Contains(_filter, StringComparison.CurrentCultureIgnoreCase)
                || option.SourceBook.Contains(_filter, StringComparison.CurrentCultureIgnoreCase)
                || option.Legality.Contains(_filter, StringComparison.OrdinalIgnoreCase);
     }
