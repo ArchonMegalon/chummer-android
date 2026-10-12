@@ -82,6 +82,24 @@ public sealed class CreationAttributesPage : CreationAutosavePage
         })) _queuedFocusTarget = null;
     }
 
+    protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
+    {
+        if (!CanReloadSavedAllocation || _revalidationAuthority is not { } original
+            || Coordinator.IsCreationAttributesStateCurrent(original)
+            || !ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), this)) return;
+        long appearance = CaptureAppearanceGeneration();
+        var loaded = await Task.Run(() => Coordinator.ReloadCreationAttributesForPage(original, cancellationToken),
+            cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!CanReloadSavedAllocation || !IsCurrentAppearanceGeneration(appearance)
+            || !ReferenceEquals(_revalidationAuthority, original)
+            || !ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), this)
+            || loaded is not { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } fresh }
+            || !Coordinator.IsCreationAttributesStateCurrent(fresh)) return;
+        _authority = _revalidationAuthority = fresh;
+        _previewBlockers = [];
+    }
+
     protected override void Refresh()
     {
         if (IsSaving) return;

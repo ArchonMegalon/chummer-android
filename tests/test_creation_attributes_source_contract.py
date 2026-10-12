@@ -7,6 +7,30 @@ NATIVE = REPO / "src" / "Chummer.Android" / "Native"
 
 
 class CreationAttributesSourceContractTests(unittest.TestCase):
+    def test_saved_page_reentry_reads_fresh_authority_without_reviving_old_actions(self) -> None:
+        page = (NATIVE / "CreationAttributesPage.cs").read_text(encoding="utf-8")
+        reentry = page.split("protected override async Task PrepareForAppearanceRefreshAsync", 1)[1].split(
+            "protected override void Refresh()", 1)[0]
+        for marker in ("CanReloadSavedAllocation", "await Task.Run(",
+                       "Coordinator.ReloadCreationAttributesForPage(original, cancellationToken)",
+                       "IsCurrentAppearanceGeneration(appearance)",
+                       "ReferenceEquals(_revalidationAuthority, original)",
+                       "Navigation.NavigationStack.LastOrDefault()",
+                       "Coordinator.IsCreationAttributesStateCurrent(fresh)"):
+            self.assertIn(marker, reentry)
+        self.assertNotIn("ConfirmCreationAttributes", reentry)
+        autosave = (NATIVE / "CreationAutosavePage.cs").read_text(encoding="utf-8")
+        self.assertIn("CanReloadSavedAllocation => !_dirty && CanEditAllocation", autosave)
+        coordinator = (NATIVE / "RunnerSessionCoordinator.CreationAttributes.cs").read_text(encoding="utf-8")
+        reload = coordinator.split("ReloadCreationAttributesForPage(", 1)[1].split(
+            "internal CharacterCreationFoundationResult<CharacterCreationAttributesPreview>", 1)[0]
+        for marker in ("ReferenceEquals(load.State, issued)",
+                       "load.Display.WorkspaceId != current.WorkspaceId",
+                       "load.Display.DisplayOwnerContext != current.DisplayOwnerContext",
+                       "IsNativePersistenceOwnerCurrent(load.Display.DisplayOwnerContext)",
+                       "AttributesDisplayCurrent(current)", "ReadCreationAuthority(current"):
+            self.assertIn(marker, reload)
+
     def test_attribute_choices_stay_on_one_page_with_compact_budgets(self) -> None:
         page = (NATIVE / "CreationAttributesPage.cs").read_text(encoding="utf-8")
         entry = page.split("public sealed class CreationAttributeAllocationPage", 1)[0]

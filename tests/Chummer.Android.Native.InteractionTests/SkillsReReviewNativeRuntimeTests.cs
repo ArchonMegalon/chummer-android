@@ -30,6 +30,7 @@ internal static partial class AfterRunAuthorityHarness
         {
             string? path = null;
             SkillsReReviewReadProbe? entryProbe = null;
+            AttributesCommitProbe? attributesProbe = null;
             FailedCommittedSkillsRead? failedSave = null;
             var owners = new ControlledLinkedOwner();
             var owner = linked ? ContactsOwnerA : OwnerScope.LocalSingleUser;
@@ -37,8 +38,10 @@ internal static partial class AfterRunAuthorityHarness
             await using var runtime = new NativeRewardRuntime(contentRoot, creationSkillsSeed: target =>
                 path = SeedHistoricalSkills(target, sourceDirectory, resolver, id, sourceState, sourcePreview, sourceReceipt, obsolete, owner),
                 skillsDecorator: inner => failCommittedRead || uncertain ? failedSave = new FailedCommittedSkillsRead(inner, uncertain)
-                    : entryProbe = new SkillsReReviewReadProbe(inner), linkedOwners: owners);
+                    : entryProbe = new SkillsReReviewReadProbe(inner), linkedOwners: owners, creationAttributes: true,
+                attributesDecorator: inner => attributesProbe = new(inner));
             runtime.Id = id;
+            await runtime.Coordinator.InitializeAsync();
             await runtime.Presenter.LoadAsync(id, default);
             Require(runtime.Coordinator.State.Profile?.Created == false && runtime.Coordinator.State.WorkspaceId == id,
                 "Real Presentation did not load the historical Creation runner.");
@@ -165,7 +168,9 @@ internal static partial class AfterRunAuthorityHarness
                 .Invoke(page, [Array.Empty<CharacterCreationSkillAllocation>(), groups])!;
             Require(nativeDraft.Preview!.PreviewDigest == preview.PreviewDigest,
                 "A queued action changed the proposal after page departure.");
-            var confirmed = await runtime.Coordinator.ConfirmCreationSkillsReReviewAsync(preview, skills, groups, true);
+            var confirmed = await ConfirmSkillsReReviewThroughPageAsync(runtime, page,
+                expectForward: !failCommittedRead && !uncertain, departAfterCommit: !linked ? entryProbe : null,
+                attributesProbe!);
             if (uncertain)
             {
                 Require(confirmed.Outcome == "outcome-unknown" && confirmed.Receipt is null && failedSave!.ConfirmCalls == 1,
@@ -238,17 +243,163 @@ internal static partial class AfterRunAuthorityHarness
                 "A completed migration remained eligible for automatic reapplication.");
             if (linked)
             {
+                var retainedAttributes = runtime.Coordinator.LoadCreationAttributes().Value!;
                 owners.Set(ContactsOwnerB);
                 Require(!runtime.Coordinator.CanDisplayCreationSkillsReReviewReceipt(confirmed.Receipt!),
                     "A receipt remained visible to another account.");
+                Require(runtime.Coordinator.ReloadCreationAttributesForPage(retainedAttributes, default).Value is null,
+                    "Attributes re-entry changed to a different account.");
                 owners.Set(owner);
                 Require(!runtime.Coordinator.CanDisplayCreationSkillsReReviewReceipt(confirmed.Receipt!),
                     "A→B→A revived a receipt retained by an old display lifetime.");
+                await HydrateFinalizationOwnerAsync(runtime, owners, after);
+                Require(runtime.Coordinator.LoadCreationAttributes().Value is not null
+                    && runtime.Coordinator.ReloadCreationAttributesForPage(retainedAttributes, default).Value is null,
+                    "A fresh owner-A display rehabilitated an old Attributes page after owner A→B→A.");
             }
             Console.WriteLine("PASS native historical Skills review → " + (obsolete ? "two incremental repairs" : "unchanged legal choices")
                 + (failCommittedRead ? " → failed committed read retains receipt → explicit reopen" : " → real presenter/shell")
                 + " → cold reopen/replay (managed; no Activity proof)");
         }
+    }
+
+    private static async Task<CreationSkillsPhoneConfirmResult> ConfirmSkillsReReviewThroughPageAsync(
+        NativeRewardRuntime runtime, CreationSkillsReReviewPage page, bool expectForward,
+        SkillsReReviewReadProbe? departAfterCommit, AttributesCommitProbe attributesProbe)
+    {
+        using var ui = new IssuedPageUiContext();
+        CreationSkillsPhoneConfirmResult? result = null;
+        await ui.RunAsync(async () =>
+        {
+            var attributes = runtime.Coordinator.LoadCreationAttributes().Value
+                ?? throw new InvalidOperationException("SETUP: real Attributes parent is unavailable.");
+            Require(runtime.Coordinator.ReloadCreationAttributesForPage(attributes with { }, default).Value is null,
+                "Attributes re-entry accepted an unissued lookalike snapshot.");
+            var prior = new CreationAttributesPage(runtime.Coordinator, attributes);
+            var nav = new NavigationPage(prior);
+            var window = new Window(nav);
+            CreationIntegerSlider? retiredSlider = null;
+            try
+            {
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => SkillsReReviewPageLifecycle(prior, "OnAppearing")));
+                Require(MinimalVisible(prior).OfType<Slider>().Any(),
+                    "SETUP: real Attributes parent did not render allocation sliders.");
+                retiredSlider = MinimalVisible(prior).OfType<CreationIntegerSlider>().First(x => x.IsEnabled);
+                await RetireSkillsReReviewTestPageAsync(prior);
+                await nav.PushAsync(page, animated: false);
+                using var alerts = new IssuedPageAlerts(page, window, args => args.SetResult(true));
+                await alerts.PreflightAsync();
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => SkillsReReviewPageLifecycle(page, "OnAppearing")));
+                var confirm = SkillsReviewButton(page);
+                Require(confirm.IsEnabled, "SETUP: current reviewed Skills cannot be confirmed through the actual page.");
+                if (departAfterCommit is not null)
+                    departAfterCommit.AfterConfirm = () =>
+                    {
+                        var departed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                        ui.Post(_ =>
+                        {
+                            try { SkillsReReviewPageLifecycle(page, "OnDisappearing"); departed.SetResult(); }
+                            catch (Exception error) { departed.SetException(error); }
+                        }, null);
+                        departed.Task.WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
+                    };
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)confirm).SendClicked()));
+                result = (CreationSkillsPhoneConfirmResult?)typeof(CreationSkillsReReviewPage)
+                    .GetField("_confirmation", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page);
+                Require(result is not null && alerts.Titles.Count == 1,
+                    "Skills review did not obtain one explicit confirmation and retain its outcome.");
+                if (departAfterCommit is not null)
+                {
+                    departAfterCommit.AfterConfirm = null;
+                    Require(ReferenceEquals(nav.Navigation.NavigationStack.Last(), page),
+                        "A completed save stole navigation after the review departed.");
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => SkillsReReviewPageLifecycle(page, "OnAppearing")));
+                    var next = MinimalVisible(page).OfType<Button>()
+                        .Single(x => x.AutomationId == "creation-skills-rereview-continue");
+                    Require(next.IsEnabled, "A fresh appearance cannot continue the already-saved exact review.");
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)next).SendClicked()));
+                }
+                if (expectForward)
+                {
+                    Require(nav.Navigation.NavigationStack.Last() is CreationSkillsPage
+                        && !nav.Navigation.NavigationStack.Contains(page),
+                        "Saved Skills re-review stranded the user on its receipt instead of the editable Skills page.");
+                    var next = (CreationSkillsPage)nav.Navigation.NavigationStack.Last();
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => SkillsReReviewPageLifecycle(next, "OnAppearing")));
+                    Require(MinimalVisible(next).OfType<SearchBar>().Any(x => x.AutomationId == "creation-skills-search")
+                        && runtime.Coordinator.IsCreationSkillsStateCurrent(result!.RefreshedState!),
+                        "Forward navigation discarded the exact fresh Skills state or did not render the editor.");
+                    await RetireSkillsReReviewTestPageAsync(next);
+                    await nav.PopAsync(animated: false);
+                    Require(ReferenceEquals(nav.Navigation.NavigationStack.Last(), prior),
+                        "Back returned to a consumed historical review.");
+                    int attributeReads = attributesProbe.LoadCalls;
+                    attributesProbe.BeforeRead = () => Require(!ReferenceEquals(SynchronizationContext.Current, ui),
+                        "Returning to Attributes performed its Core read on the UI context.");
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => SkillsReReviewPageLifecycle(prior, "OnAppearing")));
+                    attributesProbe.BeforeRead = null;
+                    Require(MinimalVisible(prior).OfType<Slider>().Any()
+                        && !MinimalVisible(prior).Any(x => x.AutomationId == "creation-attributes-unavailable"),
+                        "Back from saved Skills stranded the real Attributes parent on stale authority blockers.");
+                    Require(attributesProbe.LoadCalls == attributeReads + 1
+                        && !runtime.Coordinator.IsCreationAttributesStateCurrent(attributes),
+                        "Re-entry reread repeatedly or revived the retired Attributes snapshot.");
+                    long revision = runtime.Coordinator.State.ContentRevision;
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => retiredSlider.Value = retiredSlider.Value < retiredSlider.Maximum
+                        ? retiredSlider.Value + 1 : retiredSlider.Value - 1));
+                    await prior.FlushAutosaveAsync();
+                    Require(runtime.Coordinator.State.ContentRevision == revision && attributesProbe.ConfirmCalls == 0,
+                        "Retired allocation controls changed the freshly reopened Attributes draft.");
+                    await RetireSkillsReReviewTestPageAsync(prior);
+                }
+                else
+                    Require(ReferenceEquals(nav.Navigation.NavigationStack.Last(), page)
+                        && !MinimalVisible(page).OfType<Button>().Any(x =>
+                            x.AutomationId == "creation-skills-rereview-continue" && x.IsEnabled),
+                        "An uncertain or unrefreshed save allowed forward editing.");
+                ((IButtonController)confirm).SendClicked();
+                await ui.DrainDispatchedAsyncVoidAsync();
+                Require(alerts.Titles.Count == 1, "A retired confirmation invited another mutation.");
+                SkillsReReviewPageLifecycle(page, "OnDisappearing");
+                await ui.DrainDispatchedAsyncVoidAsync();
+            }
+            catch (Exception error)
+            {
+                Console.Error.WriteLine("Skills re-review page assertion: " + error);
+                throw;
+            }
+            finally
+            {
+                // Retire and join real derived-page work even when an assertion
+                // fails, before disposing the managed UI synchronization context.
+                foreach (var pending in nav.Navigation.NavigationStack.OfType<NativePageBase>()
+                    .Append(prior).Append(page).Distinct())
+                    await RetireSkillsReReviewTestPageAsync(pending);
+                await ui.DrainDispatchedAsyncVoidAsync();
+                if (retiredSlider is not null)
+                {
+                    // The intentionally invoked old ValueChanged also queues a
+                    // projection on that detached control. Join its affordance
+                    // work; it is no longer part of the current page tree.
+                    retiredSlider.RetireScale();
+                    await retiredSlider.ScalePreparation.WaitAsync(TimeSpan.FromSeconds(20));
+                }
+            }
+        });
+        return result!;
+    }
+
+    // Invoke the actual derived lifecycle, including draft/slider retirement;
+    // NativePageBase alone does not represent an Attributes/Skills departure.
+    private static void SkillsReReviewPageLifecycle(NativePageBase page, string method)
+        => page.GetType().GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic,
+            binder: null, types: Type.EmptyTypes, modifiers: null)!.Invoke(page, null);
+
+    private static async Task RetireSkillsReReviewTestPageAsync(NativePageBase page)
+    {
+        var sliders = MinimalVisible(page).OfType<CreationIntegerSlider>().ToArray();
+        SkillsReReviewPageLifecycle(page, "OnDisappearing");
+        await Task.WhenAll(sliders.Select(x => x.ScalePreparation)).WaitAsync(TimeSpan.FromSeconds(20));
     }
 
     private static VerticalStackLayout SkillsReviewTechnicalContent(CreationSkillsReReviewPage page) =>
@@ -427,6 +578,7 @@ internal static partial class AfterRunAuthorityHarness
         private readonly IOwnerBoundCharacterCreationSkillsReReviewService _review = (IOwnerBoundCharacterCreationSkillsReReviewService)inner;
         private int _pause, _reads;
         public int ReadCount => Volatile.Read(ref _reads);
+        public Action? AfterConfirm;
         public TaskCompletionSource ReadEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource ReleaseRead { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public void PauseNextRead() => Interlocked.Exchange(ref _pause, 1);
@@ -445,7 +597,12 @@ internal static partial class AfterRunAuthorityHarness
             return result;
         }
         public CharacterCreationFoundationResult<CharacterCreationSkillsReReviewPreview> PreviewReReview(OwnerContextStamp owner, CharacterCreationSkillsReReviewPreviewRequest request) => _review.PreviewReReview(owner, request);
-        public CharacterCreationFoundationResult<CharacterCreationSkillsReceipt> ConfirmReReview(OwnerContextStamp owner, CharacterCreationSkillsReReviewConfirmRequest request) => _review.ConfirmReReview(owner, request);
+        public CharacterCreationFoundationResult<CharacterCreationSkillsReceipt> ConfirmReReview(OwnerContextStamp owner, CharacterCreationSkillsReReviewConfirmRequest request)
+        {
+            var result = _review.ConfirmReReview(owner, request);
+            AfterConfirm?.Invoke();
+            return result;
+        }
     }
 
     private sealed class FailedCommittedSkillsRead(IOwnerBoundCharacterCreationSkillsService inner, bool uncertain = false)

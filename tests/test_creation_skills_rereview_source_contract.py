@@ -10,6 +10,19 @@ RESOURCES = ROOT / "src/Chummer.Android/Resources/Localization"
 
 
 class SkillsReReviewSourceTests(unittest.TestCase):
+    def test_saved_review_continues_without_reapplying_and_keeps_exact_lifetime(self):
+        page = (NATIVE / "CreationSkillsReReviewPage.cs").read_text()
+        self.assertIn("if (CurrentPage()) await ContinueToSkillsAsync(_confirmation, confirmationAppearance)", page)
+        forward = page[page.index("private bool CanContinue("):page.index("private void AddChange(")]
+        for marker in ("Coordinator.IsCreationSkillsReceiptCurrent(receipt)",
+                       "Coordinator.IsCreationSkillsStateCurrent(state)",
+                       "IsCurrentAppearanceGeneration(appearance)",
+                       "navigation.NavigationStack.SequenceEqual(stack)",
+                       "new CreationSkillsPage(Coordinator, state)", "navigation.RemovePage(this)"):
+            self.assertIn(marker, forward)
+        self.assertNotIn("ConfirmCreationSkills", forward)
+        self.assertIn('"creation-skills-rereview-continue"', page)
+
     def test_dashboard_recovery_uses_the_actual_guarded_navigation_entry(self):
         build = (NATIVE / "BuildPage.cs").read_text()
         self.assertIn('OpenCreationSkillsReReviewAsync, enabled: true, automationId: "creation-skills-rereview-open"', build)
