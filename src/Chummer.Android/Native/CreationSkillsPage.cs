@@ -22,6 +22,7 @@ public sealed class CreationSkillsPage : CreationAutosavePage
     private int _knowledgeCatalogOffset;
     private long _renderGeneration;
     private readonly List<Action> _projectionUpdates = [];
+    private readonly List<CreationIntegerSlider> _sliders = [];
     private readonly List<Func<bool>> _ratingShapeChecks = [];
     private string? _ratingFeedbackKey;
     private IReadOnlyList<string> _ratingFeedback = [];
@@ -58,6 +59,8 @@ public sealed class CreationSkillsPage : CreationAutosavePage
     protected override void Refresh()
     {
         if (IsSaving) return;
+        foreach (var slider in _sliders) slider.RetireScale();
+        _sliders.Clear();
         _renderGeneration++;
         _projectionUpdates.Clear();
         _ratingShapeChecks.Clear();
@@ -126,6 +129,7 @@ public sealed class CreationSkillsPage : CreationAutosavePage
     protected override void OnDisappearing()
     {
         _draft.RetireSession();
+        foreach (var slider in _sliders) slider.RetireScale();
         base.OnDisappearing();
     }
 
@@ -520,6 +524,7 @@ public sealed class CreationSkillsPage : CreationAutosavePage
                 Current() && !_ratingShapeChecks.All(check => check())));
         };
         _projectionUpdates.Add(slider.UpdateProjection);
+        _sliders.Add(slider);
         card.Add(slider);
         card.Add(slider.RatingScale);
     }

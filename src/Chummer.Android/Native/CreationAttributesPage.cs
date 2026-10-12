@@ -22,6 +22,7 @@ public sealed class CreationAttributesPage : CreationAutosavePage
     private Label? _normalAttributesHeading;
     private Label? _specialAttributesHeading;
     private readonly List<Action> _projectionUpdates = [];
+    private readonly List<CreationIntegerSlider> _sliders = [];
     private IReadOnlyList<CharacterCreationAttributeProjection> _renderedAttributes = [];
     private string? _expandedAttributeId;
     private Grid? _expandedKarmaOptions;
@@ -84,6 +85,8 @@ public sealed class CreationAttributesPage : CreationAutosavePage
     protected override void Refresh()
     {
         if (IsSaving) return;
+        foreach (var slider in _sliders) slider.RetireScale();
+        _sliders.Clear();
         ++_renderGeneration;
         _budgetFocusTarget = null;
         _queuedFocusTarget = null;
@@ -171,6 +174,7 @@ public sealed class CreationAttributesPage : CreationAutosavePage
         _budgetFocusTarget = null;
         _queuedFocusTarget = null;
         _draft.RetireSession();
+        foreach (var slider in _sliders) slider.RetireScale();
         base.OnDisappearing();
     }
 
@@ -401,6 +405,7 @@ public sealed class CreationAttributesPage : CreationAutosavePage
             });
         slider.DragStarted += (_, _) => BeginAllocationGesture();
         slider.DragCompleted += (_, _) => EndAllocationGesture();
+        _sliders.Add(slider);
         _projectionUpdates.Add(slider.UpdateProjection);
         var controls = new VerticalStackLayout { Spacing = 2 };
         controls.Add(slider);

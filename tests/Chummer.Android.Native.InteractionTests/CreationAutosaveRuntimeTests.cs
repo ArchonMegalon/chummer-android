@@ -42,9 +42,10 @@ internal static partial class AfterRunAuthorityHarness
                 allowed = true;
                 version = new();
                 scale.UpdateProjection();
-                await scale.ScalePreparation.WaitAsync(TimeSpan.FromSeconds(5));
                 release.Set();
                 await oldScale.WaitAsync(TimeSpan.FromSeconds(5));
+                await scale.ScalePreparation.WaitAsync(TimeSpan.FromSeconds(5));
+                Require(checks == 7, "Retired scale continued evaluating its remaining ratings.");
                 Require(scale.RatingScale.Children.OfType<Label>().All(x => x.TextDecorations == TextDecorations.None),
                     "A retired scale result overwrote current affordances.");
                 int completedChecks = checks;

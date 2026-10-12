@@ -3,6 +3,10 @@ namespace Chummer.Android.Native;
 /// <summary>Integer-only local draft input. Programmatic updates never dispatch another edit.</summary>
 internal sealed class CreationIntegerSlider : Slider
 {
+    // Affordances are optional background work, not one competing rules job per
+    // visible slider. Bound allocations/GC and retire superseded work promptly.
+    private static readonly SemaphoreSlim ScaleWorker = new(1, 1);
+    private CancellationTokenSource? _scaleCancellation;
     private bool _updating;
     private bool _handlingInput;
     private bool _projectionQueued;
@@ -125,13 +129,16 @@ internal sealed class CreationIntegerSlider : Slider
                 }
             }
             long generation = ++_scaleGeneration;
+            _scaleCancellation?.Cancel();
             if (enabled && _prepareSelection is not null)
             {
                 // Capture immutable requests on the UI thread. Workers never read
                 // the mutable editor draft or touch native controls. These are only
                 // affordances; accepted edits and saving still go through Core.
                 var checks = ratings.Select(rating => (Rating: rating, Check: _prepareSelection(rating))).ToArray();
-                ScalePreparation = PrepareScaleAsync(checks, generation, version);
+                var cancellation = new CancellationTokenSource();
+                _scaleCancellation = cancellation;
+                ScalePreparation = PrepareScaleAsync(checks, generation, version, cancellation);
             }
             else
                 foreach (int rating in ratings)
@@ -140,12 +147,40 @@ internal sealed class CreationIntegerSlider : Slider
         RenderScale();
     }
 
-    private async Task PrepareScaleAsync((int Rating, Func<bool> Check)[] checks, long generation, object? version)
+    internal void RetireScale()
+    {
+        ++_scaleGeneration;
+        _scaleCancellation?.Cancel();
+    }
+
+    private async Task PrepareScaleAsync((int Rating, Func<bool> Check)[] checks, long generation, object? version,
+        CancellationTokenSource cancellation)
     {
         (int Rating, bool Available)[] results;
-        try { results = await Task.Run(() => checks.Select(check => (check.Rating, check.Check())).ToArray()); }
+        var token = cancellation.Token;
+        try
+        {
+            // Let a gesture settle before recomputing every dependent budget.
+            await Task.Delay(250, token);
+            await ScaleWorker.WaitAsync(token);
+            try
+            {
+                results = await Task.Run(() => checks.Select(check =>
+                {
+                    token.ThrowIfCancellationRequested();
+                    return (check.Rating, check.Check());
+                }).ToArray(), token);
+            }
+            finally { ScaleWorker.Release(); }
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { return; }
         catch (Exception error) when (error is not OutOfMemoryException)
         { results = checks.Select(check => (check.Rating, false)).ToArray(); }
+        finally
+        {
+            if (ReferenceEquals(_scaleCancellation, cancellation)) _scaleCancellation = null;
+            cancellation.Dispose();
+        }
         if (generation != _scaleGeneration || !ReferenceEquals(version, _selectionVersion?.Invoke())) return;
         foreach (var result in results) _available[result.Rating] = result.Available;
         RenderScale();
