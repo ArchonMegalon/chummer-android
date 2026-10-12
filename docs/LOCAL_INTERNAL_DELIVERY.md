@@ -132,7 +132,21 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 205 is the latest [observed Internal availability](../play/evidence/preview205-internal-observation.json),
+Preview 206 is the latest [observed Internal availability](../play/evidence/preview206-internal-observation.json),
+released on 12 October at 20:30 Europe/Vienna. Qualities replaces oversized budget
+cards and repeated headings with a compact readable budget block; actual choices
+and filters appear before background details. Review remains reachable outside
+the scrolling catalogue, guarded by current display and checkpoint identity.
+Skill-based suggestions are labelled honestly. Android #724 merged normally
+with the reviewed tree; Core/UI inputs are unchanged from205. Focused
+actual-Core/MAUI checks, affected compile, native206 filter/help/review-checkpoint
+smoke, local ARM64/Internal build, isolated original-key signing and independent
+keyless verification passed. One upload/confirmation produced actual Console
+availability. No native Save/Abandon or new persistence acceptance is claimed.
+Physical Play206, slow cold restoration, reload and complete Creation/Origin
+remain open. Version206 is consumed; do not rebuild or re-upload it.
+
+Preview 205's [historical Internal availability](../play/evidence/preview205-internal-observation.json) was
 released on 12 October at 19:57 Europe/Vienna. Magic/Resonance joins remaining
 budgets and selected counts into the actionable choices list instead of repeating
 them above it. Qualities gain polarity/Karma filters and trained-skill relevance;
