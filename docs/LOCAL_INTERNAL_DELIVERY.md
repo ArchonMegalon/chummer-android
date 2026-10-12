@@ -132,7 +132,23 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 209 is the latest [observed Internal availability](../play/evidence/preview209-internal-observation.json),
+Preview 210 is the latest [observed Internal availability](../play/evidence/preview210-internal-observation.json),
+released on 13 October at 01:14 Europe/Vienna. Skills and Attributes now show
+point-limit refusals once in the fixed footer above Continue. Valid edits clear
+the message and autosave; active saves and failed/uncertain writes take priority.
+Earlier single actionable Magic choices and compact controls remain included.
+Android #732 merged normally with the reviewed tree; Core/UI inputs unchanged.
+Focused actual-Core/MAUI regressions,19 source checks and affected compile passed.
+Native210 overbudget refusal, two valid autosaves and new-process reopen passed:
+revision25/25 to27/27, original final skill allocations, all nine committed files
+byte-identical after navigation/restart, eight unrelated files unchanged throughout.
+Emulator SystemUI/system_server/observer failures are retained, not a speed claim.
+Local ARM64/Internal build, isolated original-key signing and independent keyless
+verification passed. One upload/confirmation produced actual Console availability.
+Physical Play210, startup/reload and complete Creation/Origin remain open.
+Version210 is consumed; do not rebuild or re-upload it.
+
+Preview 209's [historical Internal availability](../play/evidence/preview209-internal-observation.json) was
 released on 13 October at 00:12 Europe/Vienna. Confirming retained Skills
 re-review now opens editable Skills automatically. Back reloads usable Attribute
 sliders from current authority; Continue returns to Skills without another
