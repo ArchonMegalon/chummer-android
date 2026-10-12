@@ -74,6 +74,16 @@ class FinalizationOwnerNavigationSourceContractTests(unittest.TestCase):
         self.assertIn("new CharacterCreationStartingCashChoice(source.AuthorityDigest, dice)", source)
         self.assertIn("private string _roll = string.Empty;", source)
 
+    def test_editing_cash_retires_old_feedback_without_refresh_or_review(self):
+        handler = self.cash_page().split("input.TextChanged +=", 1)[1].split("preview.Clicked +=", 1)[0]
+        self.assertLess(handler.index("if (!Current()) return;"), handler.index("_blockers = [];"))
+        self.assertIn("feedback.IsVisible = false;", handler)
+        self.assertIn("_inputVersion++;", handler)
+        self.assertIn("preview.IsEnabled = TryRoll(out _);", handler)
+        self.assertNotIn("Refresh();", handler)
+        self.assertNotIn("ReviewCreationFinalizationAsync", handler)
+        self.assertNotIn("Navigation", handler)
+
     def test_stale_worker_failure_is_contained_before_shared_navigation_error_handler(self):
         source = self.cash_page()
         rejection = source.split("catch (Exception exception) when (exception is not OutOfMemoryException)", 1)[1]
