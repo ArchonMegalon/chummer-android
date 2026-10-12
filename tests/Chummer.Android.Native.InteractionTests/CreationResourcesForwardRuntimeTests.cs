@@ -141,21 +141,128 @@ internal static partial class AfterRunAuthorityHarness
                     IssuedPageLifecycle(review, "OnDisappearing");
                     Console.WriteLine("PASS Resources forward: " + scenario);
                 }
+                await RunSavedResourcesForwardAsync(contentRoot, ui);
             }
             finally { CultureInfo.CurrentUICulture = culture; }
         });
     }
 
+    private static async Task RunSavedResourcesForwardAsync(string contentRoot, IssuedPageUiContext ui)
+    {
+        foreach (string scenario in new[] { "local", "sum", "read-fault", "stale", "owner-aba", "departure", "return" })
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(scenario == "sum" ? "de-AT" : "en-GB");
+            var owners = new ControlledLinkedOwner();
+            ResourcesNextGearProbe? gear = null;
+            await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+                creationFinalization: true, productionCreationOverview: true,
+                gearDecorator: presenter => gear = new(presenter));
+            var before = PrepareActualFinalizationReadyContext(runtime, stopBeforeGear: true,
+                buildMethod: scenario == "sum" ? CharacterCreationBuildMethods.SumToTen : CharacterCreationBuildMethods.Priority);
+            var store = new FileWorkspaceStore(runtime.StateDirectory);
+            if (scenario == "owner-aba")
+            {
+                CloneFinalizationRecordFixture(runtime, ContactsOwnerA, before);
+                Require(store.Delete(runtime.Id, before.ContentRevision).Success, "SETUP: legacy fixture removal failed.");
+                owners.Set(ContactsOwnerA);
+            }
+            var coordinator = runtime.Coordinator;
+            await HydrateFinalizationOwnerAsync(runtime, owners, before);
+            await coordinator.InitializeAsync();
+            await HydrateFinalizationOwnerAsync(runtime, owners, before);
+            var resources = new ResourcesForwardProbe(new CharacterCreationResourcesInteractionPresenter(
+                runtime.Services.GetRequiredService<ICharacterCreationResourcesService>(),
+                runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationResourcesService>()));
+            var editor = new CreationResourcesPage(coordinator, resources, runtime.Presenter, gear);
+            var navigation = new NavigationPage(editor);
+            var window = new Window(navigation);
+            using var alerts = new IssuedPageAlerts(editor, window);
+            await alerts.PreflightAsync();
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(editor, "OnAppearing")));
+            var next = MinimalVisible(editor).OfType<Button>().Single(x => x.AutomationId == "creation-resources-open-gear");
+            var views = MinimalVisible(editor).ToArray();
+            Require(next.IsEnabled && !views.Any(x => x.AutomationId == "creation-resources-option-karma-0")
+                && Array.IndexOf(views, next) < Array.FindIndex(views, x => x.AutomationId == "creation-resources-option-karma-1"),
+                "Saved Resources must offer Continue before changes, without a redundant no-change preview.");
+            if (scenario == "read-fault") resources.FailLoad = true;
+            if (scenario == "stale") resources.StateOverride = state => state with { SnapshotDigest = "sha256:" + new string('1', 64) };
+            // The UI test dispatcher's Post does not flow the caller's culture.
+            // Capture the expected translated label in the page's context.
+            string openingText = CreationFlowStrings.Get("Resources.OpeningNext", "missing");
+            Exception? observationFailure = null;
+            gear!.BeforeLoad = () =>
+            {
+                Require(SynchronizationContext.Current != ui, "Saved Resources continuation blocked the UI.");
+                var observed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                ui.Post(_ =>
+                {
+                    try
+                    {
+                        Require(!next.IsEnabled && next.Text == openingText,
+                            "Saved Resources lacks immediate localized progress: " + scenario + " / " + next.Text);
+                        ((IButtonController)next).SendClicked();
+                        if (scenario == "owner-aba") { owners.Set(ContactsOwnerB); owners.Set(ContactsOwnerA); }
+                        if (scenario is "departure" or "return") IssuedPageLifecycle(editor, "OnDisappearing");
+                        if (scenario == "return") IssuedPageLifecycle(editor, "OnAppearing");
+                        observed.SetResult();
+                    }
+                    catch (Exception error) { observationFailure = error; observed.SetException(error); }
+                }, null);
+                Require(observed.Task.Wait(TimeSpan.FromSeconds(5)), "Continue blocked progress or cancellation.");
+                observed.Task.GetAwaiter().GetResult();
+            };
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)next).SendClicked()));
+            if (observationFailure is not null) throw observationFailure;
+            gear.BeforeLoad = null;
+            resources.FailLoad = false;
+            resources.StateOverride = null;
+            bool advanced = scenario is "local" or "sum";
+            Require(navigation.Navigation.NavigationStack.Last() is CreationGearPage == advanced,
+                "Saved Resources continuation admitted the wrong state: " + scenario);
+            if (scenario is "read-fault" or "stale")
+            {
+                Require(next.IsEnabled && MinimalVisible(editor).Any(x => x.AutomationId == "creation-resources-saved-next-unavailable")
+                    && gear.LoadCalls == 0, "Unavailable saved authority must retain a safe retry without loading Gear.");
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)next).SendClicked()));
+                advanced = true;
+            }
+            if (advanced)
+            {
+                var page = navigation.Navigation.NavigationStack.Last() as CreationGearPage;
+                Require(page is not null, "Saved Resources retry failed.");
+                int reads = gear.LoadCalls;
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page!, "OnAppearing")));
+                Require(gear.LoadCalls == reads && MinimalVisible(page!).Any(x => x.AutomationId == "creation-gear-preview"),
+                    "Prepared Gear read was discarded or its actual controls are missing.");
+                IssuedPageLifecycle(page!, "OnDisappearing");
+                await navigation.PopAsync(animated: false);
+            }
+            IssuedPageLifecycle(editor, "OnDisappearing");
+            ((IButtonController)next).SendClicked();
+            await ui.DrainDispatchedAsyncVoidAsync();
+            Require(navigation.Navigation.NavigationStack.Last() == editor && resources.PrepareCalls == 0
+                && resources.ConfirmCalls == 0 && gear.ConfirmCalls == 0 && alerts.Titles.Count == 0,
+                "Saved continuation replayed a mutation, exposed raw errors, or a departed control navigated.");
+            RequireSameRewardDocument(before, (scenario == "owner-aba" ? store.Get(ContactsOwnerA, runtime.Id) : store.Get(runtime.Id)).Value!);
+            Console.WriteLine("PASS saved Resources continue: " + scenario);
+        }
+    }
+
     private sealed class ResourcesForwardProbe(ICharacterCreationResourcesInteractionPresenter inner)
         : ICharacterCreationResourcesInteractionPresenter
     {
-        public int ConfirmCalls;
+        public int PrepareCalls, ConfirmCalls;
         public bool FailLoad;
         public Action? AfterConfirm;
+        public Func<CharacterCreationResourcesInteractionState, CharacterCreationResourcesInteractionState>? StateOverride;
         public CharacterCreationResourcesInteractionLoadResult Load(CharacterOverviewState display)
-        { if (FailLoad) throw new IOException("synthetic-resources-read"); return inner.Load(display); }
+        {
+            if (FailLoad) throw new IOException("synthetic-resources-read");
+            var result = inner.Load(display);
+            return StateOverride is not null && result.State is { } state ? result with { State = StateOverride(state) } : result;
+        }
         public CharacterCreationResourcesInteractionPrepareResult Prepare(CharacterOverviewState display, string optionId)
-            => inner.Prepare(display, optionId);
+        { PrepareCalls++; return inner.Prepare(display, optionId); }
         public CharacterCreationResourcesInteractionConfirmResult Confirm(CharacterOverviewState display, CharacterCreationResourcesConfirmation confirmation)
         { ConfirmCalls++; var result = inner.Confirm(display, confirmation); AfterConfirm?.Invoke(); return result; }
         public CharacterCreationResourcesInteractionReceiptLookupResult LookupReceipt(CharacterOverviewState display, string idempotencyKey)

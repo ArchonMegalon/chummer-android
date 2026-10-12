@@ -22,6 +22,7 @@ public sealed class CreationResourcesPage : NativePageBase
     private CharacterOverviewState? _loadedDisplay;
     private bool _ready;
     private bool _loading = true;
+    private CancellationTokenSource? _continueLifetime;
     private IReadOnlyList<string> _loadBlockers = [];
     private readonly VerticalStackLayout _technicalDetails = new() { Spacing = 10 };
     private readonly VerticalStackLayout _body = new()
@@ -29,6 +30,12 @@ public sealed class CreationResourcesPage : NativePageBase
         Padding = new Thickness(20, 18, 20, 40),
         Spacing = 14
     };
+
+    protected override void OnDisappearing()
+    {
+        _continueLifetime?.Cancel();
+        base.OnDisappearing();
+    }
 
     public CreationResourcesPage(
         RunnerSessionCoordinator coordinator,
@@ -87,6 +94,8 @@ public sealed class CreationResourcesPage : NativePageBase
 
     protected override void Refresh()
     {
+        if (_continueLifetime is not null && _loadedDisplay is { } continuing
+            && Coordinator.IsCreationCatalogDisplayCurrent(continuing)) return;
         _body.Clear();
         _technicalDetails.Clear();
         _technicalDetails.IsVisible = false;
@@ -134,6 +143,7 @@ public sealed class CreationResourcesPage : NativePageBase
             Border savedCard = NativeTheme.Card(saved);
             savedCard.AutomationId = "creation-resources-saved-draft";
             _body.Add(savedCard);
+            AddGearRoute(state);
         }
 
         AddTechnicalDetailsDisclosure();
@@ -141,6 +151,10 @@ public sealed class CreationResourcesPage : NativePageBase
         foreach (CharacterCreationResourceAllocationOption option in state.Options
                      .OrderBy(item => item.KarmaInvestment))
         {
+            // The saved choice above is the forward action, not a second
+            // preview of the same allocation (which Core correctly rejects).
+            if (string.Equals(option.OptionId, state.PendingDraft?.SelectedOptionId, StringComparison.Ordinal))
+                continue;
             bool enabled = option.IsEnabled && option.Blockers.Count == 0;
             string detail = enabled
                 ? _copy.Format(
@@ -159,7 +173,6 @@ public sealed class CreationResourcesPage : NativePageBase
                 $"creation-resources-option-{Token(option.OptionId)}"));
         }
 
-        AddGearRoute(state);
         AddAuthority(state);
 #if CHUMMER_API36_PROOF_INSTRUMENTATION
         Api36ProofStatePublisher.TryPublishCreationResources(
@@ -174,31 +187,64 @@ public sealed class CreationResourcesPage : NativePageBase
 
     private void AddGearRoute(CharacterCreationResourcesInteractionState state)
     {
-        _body.Add(NativeTheme.Eyebrow(_copy["Resources.Purchases"]));
-        bool enabled = state.PendingDraft is not null && _gear is not null;
-        string detail = state.PendingDraft is null
-            ? _copy["Resources.ConfirmBeforeGear"]
-            : _gear is null
-                ? _copy["Resources.GearUnavailable"]
-                : _copy.Format(
-                    "Resources.OpenGearDetail",
-                    state.Budget.RemainingNuyen.ToString("N0", _copy.DisplayCulture));
-        _body.Add(NativeTheme.NavigationRow(
-            _copy["Resources.ChooseGear"],
-            detail,
-            () => enabled && _loadedDisplay is { } original && ReferenceEquals(state, _authority)
-                && Coordinator.IsCreationCatalogDisplayCurrent(original)
-                ? Navigation.PushAsync(new CreationGearPage(Coordinator, _gear!, _overview))
-                : Task.CompletedTask,
-            enabled,
-            "creation-resources-open-gear"));
+        Button next = NativeTheme.PrimaryButton(CreationFlowStrings.Get("Resources.ContinueNext", "Continue to gear"));
+        next.AutomationId = "creation-resources-open-gear";
+        next.IsEnabled = state.PendingDraft is not null && _gear is not null;
+        long appearance = CaptureAppearanceGeneration();
+        next.Clicked += async (_, _) => await ContinueSavedAsync(state, next, appearance);
+        _body.Add(next);
+        if (_gear is null) _body.Add(NativeTheme.Body(_copy["Resources.GearUnavailable"], NativeTheme.Muted));
+    }
+
+    private async Task ContinueSavedAsync(CharacterCreationResourcesInteractionState state, Button next, long appearance)
+    {
+        if (_continueLifetime is not null || _loadedDisplay is not { } display || _gear is null) return;
+        var navigation = Navigation;
+        var stack = navigation.NavigationStack.ToArray();
+        bool Current() => _ready && IsCurrentAppearanceGeneration(appearance)
+            && ReferenceEquals(state, _authority) && state.PendingDraft is not null
+            && ReferenceEquals(next.Parent, _body) && Coordinator.IsCreationCatalogDisplayCurrent(display)
+            && ReferenceEquals(stack.LastOrDefault(), this) && navigation.NavigationStack.SequenceEqual(stack);
+        if (!Current()) return;
+        using var lifetime = new CancellationTokenSource();
+        _continueLifetime = lifetime;
+        next.IsEnabled = false;
+        next.Text = CreationFlowStrings.Get("Resources.OpeningNext", "Opening gear…");
+        bool unavailable = false;
+        try
+        {
+            var page = await Coordinator.PrepareSavedCreationResourcesNextPageAsync(
+                _resources, _gear, display, state, lifetime.Token);
+            if (!Current() || lifetime.IsCancellationRequested) return;
+            if (page is null || !page.IsPreparedDisplayCurrent) { unavailable = true; return; }
+            await navigation.PushAsync(page, animated: false);
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error) when (error is not OutOfMemoryException) { unavailable = true; }
+        finally
+        {
+            if (ReferenceEquals(_continueLifetime, lifetime)) _continueLifetime = null;
+            if (Current())
+            {
+                next.IsEnabled = true;
+                next.Text = CreationFlowStrings.Get("Resources.ContinueNext", "Continue to gear");
+                const string id = "creation-resources-saved-next-unavailable";
+                if (unavailable && !_body.Children.OfType<Label>().Any(x => x.AutomationId == id))
+                {
+                    var feedback = NativeTheme.Body(CreationFlowStrings.Get("Resources.NextUnavailable",
+                        "Your budget is saved. Gear could not be opened. Try Continue again; this will not save twice."), NativeTheme.Muted);
+                    feedback.AutomationId = id;
+                    _body.Insert(_body.Children.IndexOf(next) + 1, feedback);
+                }
+            }
+        }
     }
 
     private async Task OpenPreviewAsync(
         CharacterCreationResourcesInteractionState state,
         string optionId)
     {
-        if (_loadedDisplay is not { } original || !ReferenceEquals(state, _authority)
+        if (_continueLifetime is not null || _loadedDisplay is not { } original || !ReferenceEquals(state, _authority)
             || !Coordinator.IsCreationCatalogDisplayCurrent(original)) return;
         var review = await Task.Run(() => Coordinator.ReadCreationAuthority(original, () =>
         {
