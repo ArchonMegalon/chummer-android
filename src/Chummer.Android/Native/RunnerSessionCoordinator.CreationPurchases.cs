@@ -204,6 +204,31 @@ public sealed partial class RunnerSessionCoordinator
                 ? new CreationGearPage(this, _creationGearPresenter, _presenter, display, gear.Load, receipt) : null;
     }
 
+    internal async Task<CreationGearPage?> PrepareSavedCreationResourcesNextPageAsync(
+        ICharacterCreationResourcesInteractionPresenter resources, ICharacterCreationGearInteractionPresenter gear,
+        CharacterOverviewState display, CharacterCreationResourcesInteractionState issued, CancellationToken ct)
+    {
+        if (!IsCreationCatalogDisplayCurrent(display) || issued.PendingDraft is null) return null;
+        // Revalidate the displayed saved allocation, without preparing or
+        // confirming another transaction. Owner leases stay inside the read.
+        bool exact = await WithWorkspaceActivationGateAsync(() => Task.Run(() => ReadCreationAuthority(display, () =>
+        {
+            var load = resources.Load(display);
+            return load.Outcome == CharacterCreationResourcesOutcomes.Available
+                && load.State is { PendingDraft: not null } current
+                && CreationResourcesPhoneAuthority.IsReady(current, display)
+                && current.Binding == issued.Binding
+                && CharacterCreationResourcesRules.DigestsEqual(current.SnapshotDigest, issued.SnapshotDigest)
+                && CharacterCreationResourcesRules.DigestsEqual(current.PendingDraft.DraftDigest, issued.PendingDraft.DraftDigest);
+        }, ct), ct), ct);
+        if (!exact || !IsCreationCatalogDisplayCurrent(display)) return null;
+        var prepared = await LoadCreationGearForDisplayAsync(gear, display, ct);
+        ct.ThrowIfCancellationRequested();
+        return prepared.Ready && prepared.Load.Outcome == CharacterCreationGearOutcomes.Available
+            && IsCreationCatalogDisplayCurrent(display)
+                ? new CreationGearPage(this, gear, _presenter, display, prepared.Load) : null;
+    }
+
     internal sealed record CreationGearContinuation(Page Page, CharacterOverviewState Display);
 
     internal async Task<CreationGearContinuation?> PrepareCreationAfterGearPageAsync(
