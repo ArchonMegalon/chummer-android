@@ -483,10 +483,24 @@ public sealed class CreationAttributesPage : CreationAutosavePage
         var loaded = await Task.Run(() => Coordinator.ReadCreationAuthority(original,
             Coordinator.LoadCreationSkills, CancellationToken.None));
         if (!IsCurrentAppearanceGeneration(appearance)) return;
-        if (loaded.Value is not { } skills || !Coordinator.IsCreationSkillsStateCurrent(skills)
-            || !CreationSkillsPhoneAuthority.IsReady(skills, Coordinator.State))
-            throw new InvalidOperationException("Next Creation step unavailable.");
-        await Navigation.PushAsync(new CreationSkillsPage(Coordinator, skills), animated: false);
+        if (loaded.Value is { } skills && Coordinator.IsCreationSkillsStateCurrent(skills)
+            && CreationSkillsPhoneAuthority.IsReady(skills, Coordinator.State))
+        {
+            await Navigation.PushAsync(new CreationSkillsPage(Coordinator, skills), animated: false);
+            return;
+        }
+        // A later attribute allocation can invalidate an already saved Skills
+        // draft. Continue to the existing, Core-issued repair route rather than
+        // trapping the user here or silently discarding historical choices.
+        var repair = await Task.Run(() => Coordinator.ReadCreationAuthority(original,
+            Coordinator.LoadCreationSkillsReReview, CancellationToken.None));
+        if (!IsCurrentAppearanceGeneration(appearance)) return;
+        if (repair.Value is { } review && Coordinator.IsCreationSkillsReReviewStateCurrent(review))
+        {
+            await Navigation.PushAsync(new CreationSkillsReReviewPage(Coordinator, review), animated: false);
+            return;
+        }
+        throw new InvalidOperationException("Next Creation step unavailable.");
     }
 
     private void AddBudgetCard(CharacterCreationAttributesState state,

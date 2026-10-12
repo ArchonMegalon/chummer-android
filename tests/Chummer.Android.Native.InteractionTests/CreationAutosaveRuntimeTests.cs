@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Chummer.Android.Native;
 using Chummer.Contracts.Characters;
 using Chummer.Infrastructure.Workspaces;
@@ -54,14 +55,15 @@ internal static partial class AfterRunAuthorityHarness
             }
             finally { release.Set(); }
             Console.WriteLine("PASS background scale: responsive UI, immutable capture, stale rejection, cached result");
-            foreach (string scenario in new[] { "saved", "departure", "unknown", "owner-aba" })
+            foreach (string scenario in new[] { "saved", "departure", "unknown", "owner-aba", "dependent-skills" })
             {
                 var owners = new ControlledLinkedOwner();
                 AttributesCommitProbe? probe = null;
                 await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
                     creationFinalization: true, creationAttributes: true, creationSkills: true,
                     productionCreationOverview: true, attributesDecorator: actual => probe = new(actual));
-                var before = PrepareActualFinalizationReadyContext(runtime, stopBeforeAttributes: true);
+                var before = PrepareActualFinalizationReadyContext(runtime,
+                    stopBeforeAttributes: scenario != "dependent-skills", stopBeforeQualities: scenario == "dependent-skills");
                 await HydrateFinalizationOwnerAsync(runtime, owners, before);
                 var state = runtime.Coordinator.LoadCreationAttributes().Value!;
                 var page = new CreationAttributesPage(runtime.Coordinator, state);
@@ -93,7 +95,7 @@ internal static partial class AfterRunAuthorityHarness
                         "The automatic idle save never completed.");
                 }
                 bool saved = await page.FlushAutosaveAsync();
-                Require(saved == (scenario is "saved" or "departure"), "Autosave misreported " + scenario);
+                Require(saved == (scenario is "saved" or "departure" or "dependent-skills"), "Autosave misreported " + scenario);
                 int confirms = probe.ConfirmCalls;
                 Require(confirms == (scenario == "owner-aba" ? 0 : 1), "Autosave commit count is wrong.");
                 Require(await page.FlushAutosaveAsync() == saved && probe.ConfirmCalls == confirms,
@@ -102,7 +104,7 @@ internal static partial class AfterRunAuthorityHarness
                 if (scenario == "owner-aba") RequireSameRewardDocument(before, cold);
                 else Require(cold.Document.AuxiliaryState.CharacterCreationAttributesDraft!.Attributes
                     .Single(x => x.AttributeId == "BOD").Current == 3, "Autosave lost the final attribute value on cold read.");
-                if (scenario == "saved")
+                if (scenario is "saved" or "dependent-skills")
                 {
                     var next = MinimalVisible(page).OfType<Button>().Single(x => x.AutomationId == "creation-attributes-continue");
                     await JoinIssuedPageAsync(ui.BeginAsyncVoid(() =>
@@ -110,9 +112,17 @@ internal static partial class AfterRunAuthorityHarness
                         ((IButtonController)next).SendClicked();
                         ((IButtonController)next).SendClicked();
                     }));
-                    Require(navigation.Navigation.NavigationStack.Last() is CreationSkillsPage
-                        && navigation.Navigation.NavigationStack.Count == 2 && probe.ConfirmCalls == 1,
+                    bool expectedPage = scenario == "dependent-skills"
+                        ? navigation.Navigation.NavigationStack.Last() is CreationSkillsReReviewPage
+                        : navigation.Navigation.NavigationStack.Last() is CreationSkillsPage;
+                    Require(expectedPage && navigation.Navigation.NavigationStack.Count == 2 && probe.ConfirmCalls == 1,
                         "Continue did not advance directly, or saved twice.");
+                    if (scenario == "dependent-skills")
+                        Require(JsonSerializer.Serialize(before.Document.AuxiliaryState.CharacterCreationSkillsDraft)
+                            == JsonSerializer.Serialize(cold.Document.AuxiliaryState.CharacterCreationSkillsDraft)
+                            && new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!.ContentRevision
+                                == cold.ContentRevision,
+                            "Opening the Skills repair discarded or silently rewrote historical choices.");
                 }
                 IssuedPageLifecycle(page, "OnDisappearing");
                 Console.WriteLine("PASS attribute autosave: " + scenario);
