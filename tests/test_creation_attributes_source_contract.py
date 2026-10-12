@@ -176,7 +176,7 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
         for marker in ("_draft.PreviewPrepared(state, allocations)",
                        "Coordinator.IsCreationAttributesDraftDisplayCurrent(state)",
                        "_draft.HasPreparedState(state)", "_draft.TryAdopt(",
-                       "new CreationIntegerSlider(", "feedback.IsVisible"):
+                       "new CreationIntegerSlider(", "ShowAllocationFeedback(accepted ? null"):
             self.assertIn(marker, inline)
         self.assertNotIn("Task.Run", inline)
         self.assertNotIn("Coordinator.PreviewCreationAttributes", inline)

@@ -208,6 +208,52 @@ internal static partial class AfterRunAuthorityHarness
             await skillsPage.SearchRefresh.WaitAsync(TimeSpan.FromSeconds(5));
             Require(ReferenceEquals(retainedSlider, SkillSlider()), "A departed search rebuilt the old page.");
             Console.WriteLine("PASS coalesced searchable skill catalog, departure cancellation, immediate specialization, autosave and cold read");
+
+            foreach (string outcome in new[] { "saved", "failed", "unknown" })
+            {
+                var footerPage = new AllocationFeedbackProbe(skillsRuntime.Coordinator, outcome);
+                var status = AllocationFooter(footerPage, "feedback-probe-save-status");
+                footerPage.Edit();
+                footerPage.Refuse("Budget exceeded");
+                Require(status.Text == "Budget exceeded", "Pending edits hid the refused gesture.");
+                Task<bool> save = footerPage.FlushAutosaveAsync();
+                footerPage.Refuse("Budget exceeded");
+                Require(status.Text == PhoneStrings.Get("CreationAutosaveSaving", "Saving…"),
+                    "Allocation feedback hid an active save.");
+                footerPage.CompleteSave();
+                bool saved = await save;
+                Require(saved == (outcome == "saved"), "Footer changed the save result.");
+                string expected = outcome == "saved" ? "Budget exceeded"
+                    : outcome == "failed" ? "Focused save failure"
+                    : PhoneStrings.Get("CreationAutosaveReopen", "Save could not be verified. Reopen this runner before editing again.");
+                Require(status.Text == expected, "Save result hid the refusal or lost the critical failure.");
+                footerPage.Refuse(null);
+                Require(status.Text == (saved ? PhoneStrings.Get("CreationAutosaveSaved", "Saved") : expected),
+                    "Clearing local feedback altered the last save status.");
+            }
+            Console.WriteLine("PASS fixed allocation footer: refusal, saving precedence, saved draft, failure and uncertain write");
         });
+    }
+
+    private sealed class AllocationFeedbackProbe : CreationAutosavePage
+    {
+        private readonly string _outcome;
+        private readonly TaskCompletionSource _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal AllocationFeedbackProbe(RunnerSessionCoordinator coordinator, string outcome) : base(coordinator)
+        {
+            _outcome = outcome;
+            SetAutosaveContent(new VerticalStackLayout(), "feedback-probe");
+        }
+        internal void Edit() => DraftChanged();
+        internal void Refuse(string? message) => ShowAllocationFeedback(message);
+        internal void CompleteSave() => _completion.SetResult();
+        protected override bool HasSavedDraft => true;
+        protected override void Refresh() { }
+        protected override Task OpenNextStepAsync(long appearance) => Task.CompletedTask;
+        protected override async Task<SaveResult> SaveDraftAsync()
+        {
+            await _completion.Task;
+            return new(_outcome == "saved", "Focused save failure", _outcome == "unknown");
+        }
     }
 }

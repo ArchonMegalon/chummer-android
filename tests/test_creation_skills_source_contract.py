@@ -26,7 +26,7 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
         self.assertIn("index == currentIndex", page)
         self.assertIn("renderGeneration != _renderGeneration", page)
         self.assertIn("!IsCurrentAppearanceGeneration(appearanceGeneration)", page)
-        selection = page.split("private void AddSpecializationPicker(", 1)[1].split("private void AddRatingFeedback", 1)[0]
+        selection = page.split("private void AddSpecializationPicker(", 1)[1].split("private void ShowRatingFeedback", 1)[0]
         self.assertIn("_draft.TryPreviewPrepared", selection)
         self.assertIn("if (accepted) { currentIndex = index; DraftChanged(); }", selection)
         self.assertIn("picker.SelectedIndex = currentIndex", selection)

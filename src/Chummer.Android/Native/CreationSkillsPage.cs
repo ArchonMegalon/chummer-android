@@ -26,8 +26,6 @@ public sealed class CreationSkillsPage : CreationAutosavePage
     private readonly List<Action> _projectionUpdates = [];
     private readonly List<CreationIntegerSlider> _sliders = [];
     private readonly List<Func<bool>> _ratingShapeChecks = [];
-    private string? _ratingFeedbackKey;
-    private IReadOnlyList<string> _ratingFeedback = [];
     private readonly bool _afterSavedGear;
 
     public CreationSkillsPage(
@@ -72,6 +70,7 @@ public sealed class CreationSkillsPage : CreationAutosavePage
             if (cancellation.IsCancellationRequested || !IsCurrentAppearanceGeneration(appearance)
                 || !CanEditAllocation) return;
             _searchText = query;
+            ShowAllocationFeedback(null);
             _activeCatalogOffset = _knowledgeCatalogOffset = 0;
             // A settled query is a read, not a mutation to reject while
             // another action owns the gate. Drain its render on release.
@@ -320,7 +319,6 @@ public sealed class CreationSkillsPage : CreationAutosavePage
                     ? state.Authority.MaxActiveSkillRatingCreate : state.Authority.MaxKnowledgeSkillRatingCreate,
                     CurrentSelection()?.IsNativeLanguage != true),
                 target => _draft.WithSkill(source, target - (CurrentSelection()?.Rating ?? 0)), () => _draft.Groups);
-            AddRatingFeedback(card, feedbackKey);
             if (source.Specializations.Count > 0 && selected is { Rating: > 0, IsNativeLanguage: false })
                 AddSpecializationPicker(card, state, source, selected);
             Border border = NativeTheme.Card(card);
@@ -364,8 +362,6 @@ public sealed class CreationSkillsPage : CreationAutosavePage
             return;
 
         _catalogSnapshotDigest = state.SnapshotDigest;
-        _ratingFeedbackKey = null;
-        _ratingFeedback = [];
         _activeCatalogOffset = 0;
         _knowledgeCatalogOffset = 0;
     }
@@ -417,7 +413,6 @@ public sealed class CreationSkillsPage : CreationAutosavePage
                 () => _draft.Groups,
                 target => _draft.WithGroup(source,
                     target - (_draft.Groups.SingleOrDefault(item => item.GroupId == source.GroupId)?.Rating ?? 0)));
-            AddRatingFeedback(card, feedbackKey);
             _body.Add(NativeTheme.Card(card));
         }
     }
@@ -473,10 +468,9 @@ public sealed class CreationSkillsPage : CreationAutosavePage
             if (optionId is null) return;
             await RunWithConditionalRefreshAsync(() =>
             {
-                _ratingFeedbackKey = $"{source.Kind}-{Token(source.SourceSkillId)}";
                 bool accepted = _draft.TryPreviewPrepared(state, _draft.WithSpecialization(source, optionId),
                     _draft.Groups, out var blockers);
-                _ratingFeedback = _blockers = blockers;
+                ShowRatingFeedback(blockers);
                 if (accepted) { currentIndex = index; DraftChanged(); }
                 foreach (var update in _projectionUpdates) update();
                 if (!accepted)
@@ -491,20 +485,13 @@ public sealed class CreationSkillsPage : CreationAutosavePage
         card.Add(picker);
     }
 
-    private void AddRatingFeedback(VerticalStackLayout card, string key)
+    private void ShowRatingFeedback(IReadOnlyList<string> blockers)
     {
-        Label feedback = NativeTheme.Body(string.Empty, NativeTheme.Danger);
-        feedback.AutomationId = $"creation-skills-{key}-feedback";
-        void Update()
-        {
-            bool selected = _ratingFeedbackKey == key;
-            feedback.Text = selected ? string.Join("\n", _ratingFeedback.Select(CreationAllocationStrings.SkillBlocker)
-                    .Distinct(StringComparer.Ordinal)) : string.Empty;
-            feedback.IsVisible = !string.IsNullOrEmpty(feedback.Text);
-        }
-        Update();
-        _projectionUpdates.Add(Update);
-        card.Add(feedback);
+        // Do not repeat gesture refusals at the top of the scrolling catalog.
+        // Authority/load failures continue to use their existing page blockers.
+        _blockers = [];
+        ShowAllocationFeedback(string.Join("\n", blockers.Select(CreationAllocationStrings.SkillBlocker)
+            .Distinct(StringComparer.Ordinal)));
     }
 
     private void AddRatingSlider(VerticalStackLayout card, CharacterCreationSkillsState state,
@@ -524,10 +511,9 @@ public sealed class CreationSkillsPage : CreationAutosavePage
             target => RunWithConditionalRefreshAsync(() =>
             {
                 if (!Current()) return Task.FromResult(false);
-                _ratingFeedbackKey = feedbackKey;
                 bool accepted = _draft.TryPreviewPrepared(state, skills(target),
                     changedGroups?.Invoke(target) ?? groups(), out var blockers);
-                _ratingFeedback = _blockers = blockers;
+                ShowRatingFeedback(blockers);
                 if (accepted) DraftChanged();
                 foreach (var update in _projectionUpdates) update();
                 bool refresh = accepted && !_ratingShapeChecks.All(check => check());
@@ -567,7 +553,7 @@ public sealed class CreationSkillsPage : CreationAutosavePage
             if (!CanEditAllocation || !Coordinator.IsCreationSkillsDraftDisplayCurrent(state)
                 || !_draft.HasPreparedState(state)) return Task.FromResult(false);
             bool accepted = _draft.TryPreviewPrepared(state, skills, groups, out var blockers);
-            _blockers = blockers;
+            ShowRatingFeedback(blockers);
             if (accepted) DraftChanged();
             return Task.FromResult(true);
         });

@@ -387,10 +387,7 @@ public sealed class CreationAttributesPage : CreationAutosavePage
     {
         long appearance = CaptureAppearanceGeneration();
         long render = _renderGeneration;
-        var feedback = NativeTheme.Body(string.Empty, NativeTheme.Danger);
         string token = (karma ? "karma-" : string.Empty) + Token(attribute.AttributeId);
-        feedback.AutomationId = $"creation-attributes-slider-feedback-{token}";
-        feedback.IsVisible = false;
         CharacterCreationAttributeProjection Current() => _draft.Attribute(state, attribute.AttributeId)!;
         var slider = new CreationIntegerSlider($"creation-attributes-slider-{token}",
             AttributeLabel(attribute.AttributeId), () => Current().Current,
@@ -408,9 +405,9 @@ public sealed class CreationAttributesPage : CreationAutosavePage
                 if (allocations is null) return Task.FromResult(false);
                 var result = _draft.PreviewPrepared(state, allocations);
                 bool accepted = _draft.TryAdopt(state, Coordinator.State, result, allocations);
-                feedback.Text = accepted ? string.Empty
-                    : string.Join("\n", result.Blockers.Select(CreationAllocationStrings.AttributeBlocker));
-                feedback.IsVisible = !string.IsNullOrEmpty(feedback.Text);
+                ShowAllocationFeedback(accepted ? null
+                    : string.Join("\n", result.Blockers.Select(CreationAllocationStrings.AttributeBlocker)
+                        .Distinct(StringComparer.Ordinal)));
                 if (accepted) DraftChanged();
                 return Task.FromResult(accepted && !TryUpdateProjection(state));
             }), selectionVersion: () => _draft.ProjectionIdentity, prepareSelection: target =>
@@ -428,7 +425,6 @@ public sealed class CreationAttributesPage : CreationAutosavePage
         var controls = new VerticalStackLayout { Spacing = 2 };
         controls.Add(slider);
         controls.Add(slider.RatingScale);
-        controls.Add(feedback);
         grid.Add(controls, 0, 1);
         Grid.SetColumnSpan(controls, karma ? 1 : 2);
     }

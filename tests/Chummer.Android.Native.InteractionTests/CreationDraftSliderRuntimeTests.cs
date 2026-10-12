@@ -94,8 +94,16 @@ internal static partial class AfterRunAuthorityHarness
                 await agility.ScalePreparation;
                 Require(AgilityMax().TextDecorations == TextDecorations.Strikethrough,
                     "Spending the one metatype maximum did not grey the other attribute's maximum.");
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => agility.Value = agility.Maximum));
+                await ui.DrainDispatchedAsyncVoidAsync();
+                var attributeFeedback = AllocationFooter(page, "creation-attributes-save-status");
+                Require(agility.Value < agility.Maximum && attributeFeedback.TextColor == NativeTheme.Danger
+                    && !string.IsNullOrWhiteSpace(attributeFeedback.Text),
+                    "Rejected attribute allocation lacks a fixed, visible explanation.");
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => body.Value = 4));
                 await ui.DrainDispatchedAsyncVoidAsync();
+                Require(attributeFeedback.TextColor != NativeTheme.Danger,
+                    "An accepted attribute retained the old refusal.");
                 await agility.ScalePreparation;
                 Require(AgilityMax().TextDecorations == TextDecorations.None,
                     "Returning the metatype maximum did not re-enable the other attribute's maximum.");
@@ -219,15 +227,18 @@ internal static partial class AfterRunAuthorityHarness
                     "Spending the shared group pool did not grey another group's first point.");
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => slider.Value = 3));
                 await ui.DrainDispatchedAsyncVoidAsync();
-                var feedback = MinimalVisible(page).OfType<Label>().Single(x => x.AutomationId == $"creation-skills-{key}-feedback");
+                var feedback = AllocationFooter(page, "creation-skills-save-status");
                 Require(slider.Value == 2 && feedback.IsVisible
                     && feedback.Text == CreationAllocationStrings.SkillBlocker(CharacterCreationSkillsBlockers.GroupBudgetExceeded),
-                    "Over-budget slider did not reset with an adjacent explanation.");
+                    "Over-budget slider did not reset with a fixed, visible explanation.");
                 Require(Tick(2).TextDecorations == TextDecorations.None
                     && Tick(3).TextDecorations == TextDecorations.Strikethrough,
                     "Budget refusal changed the accepted scale.");
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => slider.Value = 1));
                 await ui.DrainDispatchedAsyncVoidAsync();
+                Require(feedback.Text == PhoneStrings.Get("CreationAutosavePending", "Not saved yet…")
+                    && feedback.TextColor != NativeTheme.Danger,
+                    "An accepted allocation retained the old budget refusal.");
                 await Task.WhenAll(ratingSlider.ScalePreparation, otherGroup.ScalePreparation);
                 Require(Tick(2).TextDecorations == TextDecorations.None,
                     "Returning a group point did not re-enable its affordable value.");
@@ -263,5 +274,13 @@ internal static partial class AfterRunAuthorityHarness
                 probe.BeforePreview = null;
             }
         });
+    }
+
+    private static Label AllocationFooter(ContentPage page, string id)
+    {
+        var feedback = MinimalVisible(page).OfType<Label>().Single(x => x.AutomationId == id);
+        for (Element? parent = feedback.Parent; parent is not null; parent = parent.Parent)
+            Require(parent is not ScrollView, "Allocation feedback can scroll behind the fixed footer.");
+        return feedback;
     }
 }
