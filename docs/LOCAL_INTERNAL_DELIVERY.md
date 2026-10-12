@@ -132,7 +132,22 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 208 is the latest [observed Internal availability](../play/evidence/preview208-internal-observation.json),
+Preview 209 is the latest [observed Internal availability](../play/evidence/preview209-internal-observation.json),
+released on 13 October at 00:12 Europe/Vienna. Confirming retained Skills
+re-review now opens editable Skills automatically. Back reloads usable Attribute
+sliders from current authority; Continue returns to Skills without another
+confirmation. Earlier single actionable Magic choices and compact controls remain.
+Android #730 merged normally with the reviewed tree; Core/UI inputs are unchanged.
+Focused actual-Core/MAUI checks, affected compile and native209 forward/Back/
+Continue/save/new-process reopen passed. The intended commit reached revision16/16;
+all nine workspace files remained byte-identical afterward through navigation and
+restart. Superseded failures and SystemUI/accessibility limitations are retained.
+Local ARM64/Internal build, isolated original-key signing and independent keyless
+verification passed. One upload/confirmation produced actual Console availability.
+Physical Play209, slow cold restoration, reload and complete Creation/Origin
+remain open. Version209 is consumed; do not rebuild or re-upload it.
+
+Preview 208's [historical Internal availability](../play/evidence/preview208-internal-observation.json) was
 released on 12 October at 22:37 Europe/Vienna. Correcting a rejected starting-cash
 dice total now clears obsolete feedback immediately while retaining input focus.
 Fresh Core review is still required; editing never saves or grants validity.
