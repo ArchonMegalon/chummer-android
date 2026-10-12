@@ -206,7 +206,7 @@
   <data name="Magic.Catalog.Empty" xml:space="preserve"><value>Core hat für diese Kategorie keine auswählbaren Identitäten bereitgestellt. Es gibt keine Beschriftungs- oder Custom-Ausweichlösung.</value></data>
   <data name="Magic.Catalog.Eyebrow" xml:space="preserve"><value>SR5 · Entwurf · Katalog</value></data>
   <data name="Magic.Catalog.OptionDetail" xml:space="preserve"><value>{0}{1} {2} · {3} {4}</value></data>
-  <data name="Magic.CatalogRouteDetail" xml:space="preserve"><value>{0} ausgewählt · {1} {2} verbleibend · {3} Core-Optionen</value></data>
+  <data name="Magic.CatalogRouteDetail" xml:space="preserve"><value>{0} ausgewählt · {1} von {2} {3} verbleibend</value></data>
   <data name="Magic.DraftEyebrow" xml:space="preserve"><value>SR5 · Entwurf</value></data>
   <data name="Magic.DraftIncomplete" xml:space="preserve"><value>Einige Angaben fehlen noch. Prüfe die übrigen Punkte und Hinweise vor dem Speichern.</value></data>
   <data name="Magic.ExactBudgets" xml:space="preserve"><value>Deine verfügbaren Punkte und Auswahlen</value></data>

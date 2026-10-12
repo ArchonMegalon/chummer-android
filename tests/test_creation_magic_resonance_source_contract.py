@@ -9,6 +9,20 @@ NATIVE = REPO / "src" / "Chummer.Android" / "Native"
 
 
 class CreationMagicResonanceSourceContractTests(unittest.TestCase):
+    def test_available_budgets_live_in_the_actionable_choices_not_a_second_ribbon(self) -> None:
+        page = (NATIVE / "CreationMagicResonancePage.cs").read_text(encoding="utf-8")
+        editor_page = page[:page.index("public sealed class CreationMagicResonanceCatalogPage")]
+        self.assertNotIn("AddBudgets(", editor_page)
+        self.assertNotIn('"Magic.TypedChoices"', editor_page)
+        self.assertEqual(editor_page.count('"Magic.ExactBudgets"'), 1)
+        route = page[page.index("private void AddCatalogRoute(") : page.index("private CharacterCreationMagicResonanceBudgetState CurrentBudget(")]
+        for marker in ("CurrentBudget(editor, kind)", "Decimal(budget.Remaining)",
+                       "Decimal(budget.Total)", "BudgetUnit(kind)",
+                       "enabled: allowed && !laneLocked", "foreach (string blocker in budget.Blockers)",
+                       "AddBlocker(_body, blocker, _technicalDetails, _shownBlockerMessages)"):
+            self.assertIn(marker, route)
+        self.assertNotIn("Core options", route)
+
     def test_authored_spell_effects_remain_short_in_every_locale(self) -> None:
         # Editorial guard only. Length does not establish original authorship
         # or copyright clearance; wording still needs human/editorial review.
@@ -164,7 +178,7 @@ class CreationMagicResonanceSourceContractTests(unittest.TestCase):
         self.assertIn('NativeTheme.TechnicalDetails(binding, "creation-magic-rereview-details")', rereview)
 
     def test_magic_primary_copy_is_plain_language_in_all_supported_locales(self) -> None:
-        keys = ("Magic.DraftIncomplete", "Magic.ExactBudgets", "Magic.FinalizationBoundary",
+        keys = ("Magic.DraftIncomplete", "Magic.ExactBudgets", "Magic.CatalogRouteDetail", "Magic.FinalizationBoundary",
                 "Magic.Receipt.Safe", "Magic.Review.Boundary", "Magic.Review.NoIdentities",
                 "Magic.Recovery.Confirmed", "Magic.Recovery.Confirming", "Magic.Recovery.Reviewed",
                 "Magic.Recovery.Stale")

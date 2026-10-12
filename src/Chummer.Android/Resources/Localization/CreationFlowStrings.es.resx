@@ -133,7 +133,7 @@
   <data name="Magic.Catalog.Empty" xml:space="preserve"><value>Core no proyectó identidades seleccionables para esta categoría. No existe una alternativa basada en etiquetas ni personalizada.</value></data>
   <data name="Magic.Catalog.Eyebrow" xml:space="preserve"><value>SR5 · Borrador · Catálogo</value></data>
   <data name="Magic.Catalog.OptionDetail" xml:space="preserve"><value>{0}{1} {2} · {3} {4}</value></data>
-  <data name="Magic.CatalogRouteDetail" xml:space="preserve"><value>{0} seleccionados · {1} {2} restantes · {3} opciones de Core</value></data>
+  <data name="Magic.CatalogRouteDetail" xml:space="preserve"><value>{0} seleccionados · {1} de {2} {3} restantes</value></data>
   <data name="Magic.DraftEyebrow" xml:space="preserve"><value>SR5 · Borrador</value></data>
   <data name="Magic.DraftIncomplete" xml:space="preserve"><value>Aún faltan algunas elecciones. Revisa los puntos restantes y los avisos antes de guardar.</value></data>
   <data name="Magic.ExactBudgets" xml:space="preserve"><value>Tus puntos y elecciones disponibles</value></data>

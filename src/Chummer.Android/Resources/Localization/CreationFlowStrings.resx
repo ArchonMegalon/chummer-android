@@ -135,7 +135,7 @@
   <data name="Magic.Catalog.Empty" xml:space="preserve"><value>Core projected no selectable identities for this category. No label-based or custom fallback is available.</value></data>
   <data name="Magic.Catalog.Eyebrow" xml:space="preserve"><value>SR5 · Draft · Catalog</value></data>
   <data name="Magic.Catalog.OptionDetail" xml:space="preserve"><value>{0}{1} {2} · {3} {4}</value></data>
-  <data name="Magic.CatalogRouteDetail" xml:space="preserve"><value>{0} selected · {1} {2} left · {3} Core options</value></data>
+  <data name="Magic.CatalogRouteDetail" xml:space="preserve"><value>{0} selected · {1} of {2} {3} left</value></data>
   <data name="Magic.DraftEyebrow" xml:space="preserve"><value>SR5 · Draft</value></data>
   <data name="Magic.DraftIncomplete" xml:space="preserve"><value>Some choices still need attention. Check the remaining points and messages before saving.</value></data>
   <data name="Magic.ExactBudgets" xml:space="preserve"><value>Your available choices</value></data>

@@ -210,7 +210,6 @@ public sealed class CreationMagicResonancePage : NativePageBase
         AddBinding(editor);
         AddTalent(editor.Talent);
         CharacterCreationMagicResonanceReview? review = _draft.Review;
-        AddBudgets(review?.Preview, editor.Budgets);
         CharacterCreationMagicResonanceCheckpoint? checkpoint = AddRecovery(editor, original);
         bool laneLocked = checkpoint is not null || HasMalformedCheckpoint();
         // Do not scroll past a recovery or unsupported-profile explanation.
@@ -338,55 +337,6 @@ public sealed class CreationMagicResonancePage : NativePageBase
         _body.Add(border);
     }
 
-    private void AddBudgets(
-        CharacterCreationMagicResonancePreview? preview,
-        IReadOnlyList<CharacterCreationMagicResonanceBudgetState> projected)
-    {
-        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.ExactBudgets", "Your available choices")));
-        CharacterCreationMagicResonanceBudgetState[] budgets = preview is null
-            ? projected.ToArray()
-            :
-            [
-                preview.TraditionBudget,
-                preview.StreamBudget,
-                preview.AdeptPowerPointBudget,
-                preview.SpellBudget,
-                preview.ComplexFormBudget
-            ];
-        FlexLayout ribbon = new()
-        {
-            Direction = Microsoft.Maui.Layouts.FlexDirection.Row,
-            Wrap = Microsoft.Maui.Layouts.FlexWrap.Wrap
-        };
-        foreach (CharacterCreationMagicResonanceBudgetState budget in budgets)
-        {
-            VerticalStackLayout card = new()
-            {
-                MinimumWidthRequest = 155,
-                Spacing = 5
-            };
-            card.Add(NativeTheme.Eyebrow(KindLabel(budget.Kind)));
-            card.Add(NativeTheme.Title(
-                CreationFlowStrings.Format("Magic.Left", "{0} left", Decimal(budget.Remaining)),
-                20));
-            card.Add(NativeTheme.Body(
-                CreationFlowStrings.Format(
-                    "Magic.BudgetSummary",
-                    "{0} / {1} {2}",
-                    Decimal(budget.Used),
-                    Decimal(budget.Total),
-                    BudgetUnit(budget.Kind)),
-                budget.Blockers.Count == 0 ? NativeTheme.Muted : NativeTheme.Danger));
-            foreach (string blocker in budget.Blockers)
-                AddBlocker(card, blocker, _technicalDetails, _shownBlockerMessages);
-            Border border = NativeTheme.Card(card, new Thickness(12));
-            border.Margin = new Thickness(0, 0, 8, 8);
-            border.AutomationId = $"creation-magic-resonance-budget-{Token(budget.Kind)}";
-            ribbon.Add(border);
-        }
-        _body.Add(ribbon);
-    }
-
     private CharacterCreationMagicResonanceCheckpoint? AddRecovery(
         CharacterCreationMagicResonanceEditorState editor, CharacterOverviewState original)
     {
@@ -496,7 +446,7 @@ public sealed class CreationMagicResonancePage : NativePageBase
         CharacterCreationMagicResonanceEditorState editor,
         bool laneLocked)
     {
-        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.TypedChoices", "Typed choices")));
+        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Magic.ExactBudgets", "Your available choices")));
         AddCatalogRoute(
             editor,
             CharacterCreationMagicResonanceKinds.Tradition,
@@ -560,11 +510,11 @@ public sealed class CreationMagicResonancePage : NativePageBase
         string detail = allowed
             ? CreationFlowStrings.Format(
                 "Magic.CatalogRouteDetail",
-                "{0} selected · {1} {2} left · {3} Core options",
+                "{0} selected · {1} of {2} {3} left",
                 selected.ToString(CultureInfo.InvariantCulture),
                 Decimal(budget.Remaining),
-                BudgetUnit(kind),
-                options.Count.ToString(CultureInfo.InvariantCulture))
+                Decimal(budget.Total),
+                BudgetUnit(kind))
             : CreationFlowStrings.Get(
                 "Magic.NotAllowed",
                 "Not allowed by the selected Talent");
@@ -581,6 +531,10 @@ public sealed class CreationMagicResonancePage : NativePageBase
             automationId: $"creation-magic-resonance-catalog-{Token(kind)}");
         row.AutomationId = $"creation-magic-resonance-section-{Token(kind)}";
         _body.Add(row);
+        // One actionable entry owns its budget and any explanation. Keep the
+        // exact review's blockers even for a disabled Talent choice.
+        foreach (string blocker in budget.Blockers)
+            AddBlocker(_body, blocker, _technicalDetails, _shownBlockerMessages);
         if (allowed && !laneLocked && _budgetFocusTarget is null && BudgetFocusKind(editor) == kind)
             SetBudgetFocusTarget(row);
     }
