@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text.Json;
 using Chummer.Android.Native;
 using Chummer.Contracts.Characters;
@@ -149,7 +150,16 @@ internal static partial class AfterRunAuthorityHarness
                 .First(x => x.Specializations.Count > 6);
             string token = new(source.SourceSkillId.ToLowerInvariant().Select(c => char.IsLetterOrDigit(c) ? c : '-').ToArray());
             var search = MinimalVisible(skillsPage).OfType<SearchBar>().Single();
-            search.Text = source.Name;
+            var initialSlider = MinimalVisible(skillsPage).OfType<Slider>().First();
+            // Real keyboard input delivers successive prefixes, not one full
+            // query assignment. None may synchronously rebuild native controls.
+            for (int length = 1; length <= source.Name.Length; length++)
+            {
+                search.Text = source.Name[..length];
+                Require(ReferenceEquals(initialSlider, MinimalVisible(skillsPage).OfType<Slider>().First()),
+                    "Typing a search prefix synchronously rebuilt the native catalog.");
+            }
+            await skillsPage.SearchRefresh.WaitAsync(TimeSpan.FromSeconds(5));
             Require(ReferenceEquals(search, MinimalVisible(skillsPage).OfType<SearchBar>().Single()),
                 "Filtering replaced the focused search control.");
             Slider SkillSlider() => MinimalVisible(skillsPage).OfType<Slider>().Single(x =>
@@ -171,16 +181,33 @@ internal static partial class AfterRunAuthorityHarness
             await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => picker.SelectedIndex = 1));
             Require(await skillsPage.FlushAutosaveAsync() && skillsProbe.ConfirmCalls == 1,
                 "A retired specialization picker dispatched another save.");
-            search.Text = "no-such-skill-12345";
+            var releaseSearchGate = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            Task gateOwner = (Task)typeof(NativePageBase).GetMethod("RunWithConditionalRefreshAsync",
+                BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(skillsPage,
+                    [new Func<Task<bool>>(() => releaseSearchGate.Task)])!;
+            try
+            {
+                search.Text = "no-such-skill-12345";
+                await skillsPage.SearchRefresh.WaitAsync(TimeSpan.FromSeconds(5));
+                Require(SkillSlider().Value == 2, "Search rebuilt the catalog while another action owned the gate.");
+            }
+            finally { releaseSearchGate.TrySetResult(false); }
+            await gateOwner.WaitAsync(TimeSpan.FromSeconds(5));
+            await ui.DrainDispatchedAsyncVoidAsync();
             Require(!MinimalVisible(skillsPage).OfType<Slider>().Any(), "Search does not filter the whole catalog.");
             search.Text = source.Name;
+            await skillsPage.SearchRefresh.WaitAsync(TimeSpan.FromSeconds(5));
             Require(SkillSlider().Value == 2, "Search erased a saved rating.");
             var coldSkills = new FileWorkspaceStore(skillsRuntime.StateDirectory).Get(skillsRuntime.Id).Value!
                 .Document.AuxiliaryState.CharacterCreationSkillsDraft!;
             Require(coldSkills.Skills.Single(x => x.SourceSkillId == source.SourceSkillId).SpecializationOptionId
                 == source.Specializations.Last().OptionId, "Cold reopen lost the full-catalog specialization selection.");
+            var retainedSlider = SkillSlider();
+            search.Text = "departed-search-must-not-render";
             IssuedPageLifecycle(skillsPage, "OnDisappearing");
-            Console.WriteLine("PASS searchable skill catalog, immediate specialization, coalesced autosave and cold read");
+            await skillsPage.SearchRefresh.WaitAsync(TimeSpan.FromSeconds(5));
+            Require(ReferenceEquals(retainedSlider, SkillSlider()), "A departed search rebuilt the old page.");
+            Console.WriteLine("PASS coalesced searchable skill catalog, departure cancellation, immediate specialization, autosave and cold read");
         });
     }
 }

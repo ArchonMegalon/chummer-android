@@ -8,6 +8,8 @@ public sealed class CreationSkillsPage : CreationAutosavePage
 {
     private const int CatalogPageSize = 20;
     private string _searchText = string.Empty;
+    private CancellationTokenSource? _searchCancellation;
+    internal Task SearchRefresh { get; private set; } = Task.CompletedTask;
     private readonly CreationSkillsPhoneDraft _draft = new();
     private readonly VerticalStackLayout _body = new()
     {
@@ -46,14 +48,41 @@ public sealed class CreationSkillsPage : CreationAutosavePage
         search.TextChanged += (_, args) =>
         {
             if (!CanEditAllocation) return;
-            _searchText = args.NewTextValue?.Trim() ?? string.Empty;
-            _activeCatalogOffset = _knowledgeCatalogOffset = 0;
-            Refresh();
+            _searchCancellation?.Cancel();
+            // Typing must not rebuild native cards or enqueue a complete set
+            // of speculative Core scale checks for every key. Retire obsolete
+            // checks immediately and render only the settled query.
+            foreach (var slider in _sliders) slider.RetireScale();
+            var cancellation = new CancellationTokenSource();
+            _searchCancellation = cancellation;
+            SearchRefresh = RefreshSearchAsync(args.NewTextValue?.Trim() ?? string.Empty,
+                CaptureAppearanceGeneration(), cancellation);
         };
         var editor = new Grid { RowDefinitions = new() { new(GridLength.Auto), new(GridLength.Star) } };
         editor.Add(search);
         editor.Add(new ScrollView { Content = _body }, 0, 1);
         SetAutosaveContent(editor, "creation-skills");
+    }
+
+    private async Task RefreshSearchAsync(string query, long appearance, CancellationTokenSource cancellation)
+    {
+        try
+        {
+            await Task.Delay(300, cancellation.Token);
+            if (cancellation.IsCancellationRequested || !IsCurrentAppearanceGeneration(appearance)
+                || !CanEditAllocation) return;
+            _searchText = query;
+            _activeCatalogOffset = _knowledgeCatalogOffset = 0;
+            // A settled query is a read, not a mutation to reject while
+            // another action owns the gate. Drain its render on release.
+            await RefreshAfterBackgroundReadAsync(appearance);
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+        finally
+        {
+            if (ReferenceEquals(_searchCancellation, cancellation)) _searchCancellation = null;
+            cancellation.Dispose();
+        }
     }
 
     protected override void Refresh()
@@ -128,6 +157,7 @@ public sealed class CreationSkillsPage : CreationAutosavePage
 
     protected override void OnDisappearing()
     {
+        _searchCancellation?.Cancel();
         _draft.RetireSession();
         foreach (var slider in _sliders) slider.RetireScale();
         base.OnDisappearing();
