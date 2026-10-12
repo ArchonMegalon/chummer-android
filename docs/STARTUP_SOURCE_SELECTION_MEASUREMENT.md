@@ -92,3 +92,34 @@ its ARM64 AAB, original-key signature and Play result require separate checks.
 Slow native startup/reload, physical installation, complete Creation/Career/Origin
 acceptance and broader parity remain open. This is not a live provider or
 physical Play test, a new save-operation test, or a full wizard qualification.
+
+## Follow-up: immutable Magic payload parsing
+
+Core runtime `d5a5f7e30b8157e8a9a6d02bf25233611974e637` reuses only the parsed
+canonical XML and digest for small immutable Magic source strings. Weak identity
+keys do not retain retired catalogs. Large payloads remain uncached; expected
+digest, root, typed values, source, owner and budget admission remain checked.
+Core recipe `b2e7b2ed0e6f72fd9db1277aff3f99b70942d0d7` is merged via Core #151.
+
+Presentation seal `e1fcdc8fa634f9aad6f2e4582753390c8b095e27` directly extends
+the protected preseal merge. The earlier seal's branch update introduced an
+invalid nested topology and was superseded by UI #431, without changing package
+bytes or relaxing a verifier. Its new exact local fresh-consumer receipt is
+`e2876b85048aef6f850233389890ff52abb7f28dc2e52eea96ce7b34a0f4e7b9`.
+All 882 main tests and the existing focused suites passed; test-project warnings
+remain. Android independently verified the 18 actual packages and 331 unchanged
+content files. This is local verification, not a hosted or publication result.
+
+The managed intake compiled successfully and restored the same nine-runner
+fixture in 2,774 ms with unchanged files and the same full overview hash above.
+The read-failure path remained fail-closed. This does not demonstrate faster
+native startup. Initial route checks exposed old test code expecting the removed
+budget tiles and the former continuation-method signature. The corrected tests
+use the existing flat-row helper and preserve actual clicks, inexact budgets,
+owner/stale rejection, one-save and cold-reopen/no-replay assertions. Magic,
+Skills, Priority/Sum-to-Ten Contacts and the flat budget routes passed. Failed
+earlier invocations are retained; they are not described as successful runs.
+
+Native Android validation and any subsequent signed release remain separate.
+Preview 199 remains the recorded Play availability; this package intake alone
+does not change that release truth or close startup, reload or complete Creation.
