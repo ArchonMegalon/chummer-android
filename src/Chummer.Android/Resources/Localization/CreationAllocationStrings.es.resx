@@ -991,4 +991,14 @@ Valor de ataque (Muy cerca / Cerca / Media / Lejos / Muy lejos): {3}</value></da
   <data name="Skills.Message.Unknown" xml:space="preserve"><value>No se puede confirmar esta selección. Revísala; los detalles técnicos contienen el motivo exacto.</value></data>
   <data name="Skills.CheckChoices" xml:space="preserve"><value>Revisa tus selecciones</value></data>
   <data name="SkillsReReview.UnavailableSpecialization" xml:space="preserve"><value>Especialización anterior (no está en el catálogo actual)</value></data>
+  <data name="QualitiesReReview.Title" xml:space="preserve"><value>¿Conservar las cualidades guardadas?</value></data>
+  <data name="QualitiesReReview.Body" xml:space="preserve"><value>Tus atributos han cambiado. Estas cualidades guardadas siguen siendo válidas y no cambiarán:
+
+{0}
+
+Karma restante: {1}</value></data>
+  <data name="QualitiesReReview.None" xml:space="preserve"><value>Sin cualidades compradas</value></data>
+  <data name="QualitiesReReview.Keep" xml:space="preserve"><value>Conservar y continuar</value></data>
+  <data name="QualitiesReReview.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="QualitiesReReview.Reopen" xml:space="preserve"><value>Vuelve a abrir el personaje y comprueba las cualidades guardadas antes de continuar.</value></data>
 </root>

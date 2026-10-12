@@ -44,6 +44,7 @@
     <Compile Include="CreationMagicForwardRuntimeTests.cs" />
     <Compile Include="CreationDraftSliderRuntimeTests.cs" />
     <Compile Include="CreationAutosaveRuntimeTests.cs" />
+    <Compile Include="QualitiesAfterAttributesRuntimeTests.cs" />
     <Compile Include="GearSaveFeedbackRuntimeTests.cs" />
     <Compile Include="ResourcesSaveFeedbackRuntimeTests.cs" />
     <Compile Include="CreationResourcesForwardRuntimeTests.cs" />

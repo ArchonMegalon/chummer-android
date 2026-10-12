@@ -623,8 +623,41 @@ public sealed class CreationSkillsPage : CreationAutosavePage
             { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } state }
             && CreationQualitiesPhoneAuthority.IsReady(state, original));
         if (!IsCurrentAppearanceGeneration(appearance)) return;
-        if (!ready || !Coordinator.IsCreationSkillsStateCurrent(_authority!))
+        if (!Coordinator.IsCreationSkillsStateCurrent(_authority!))
             throw new InvalidOperationException("Next Creation step unavailable.");
+        if (!ready)
+        {
+            var review = await Coordinator.LoadCreationQualitiesReReviewAsync(original);
+            if (!IsCurrentAppearanceGeneration(appearance)) return;
+            if (review is null || !Coordinator.IsCreationQualitiesReReviewCurrent(review))
+                throw new InvalidOperationException("Next Creation step unavailable.");
+            string choices = review.Current.Preview.Selections.Count == 0
+                ? CreationAllocationStrings.Get("QualitiesReReview.None", "No purchased qualities")
+                : string.Join("\n", review.Current.Preview.Selections.Select(row => QualityCatalogStrings.Name(row.SourceId, row.Name)));
+            bool keep = await DisplayAlertAsync(
+                CreationAllocationStrings.Get("QualitiesReReview.Title", "Keep saved qualities?"),
+                CreationAllocationStrings.Format("QualitiesReReview.Body",
+                    "Your attributes changed. These saved qualities still fit and will stay unchanged:\n\n{0}\n\nKarma remaining: {1}",
+                    choices, review.Current.Preview.KarmaRemaining),
+                CreationAllocationStrings.Get("QualitiesReReview.Keep", "Keep and continue"),
+                CreationAllocationStrings.Get("QualitiesReReview.Cancel", "Cancel"));
+            if (!keep || !IsCurrentAppearanceGeneration(appearance)
+                || !Coordinator.IsCreationQualitiesReReviewCurrent(review)) return;
+            var saved = await Coordinator.ConfirmCreationQualitiesReReviewAsync(review, explicitlyReviewed: true,
+                isCurrentPage: () => IsCurrentAppearanceGeneration(appearance));
+            if (!IsCurrentAppearanceGeneration(appearance)) return;
+            if (saved is not { Outcome: CreationQualitiesPhoneOutcomes.Applied, Blockers.Count: 0,
+                    RefreshedState: { } fresh })
+            {
+                // Do not advertise a blind retry after a potentially completed save.
+                RequireReopenForContinuation(CreationAllocationStrings.Get("QualitiesReReview.Reopen",
+                    "Reopen the runner to check the saved qualities before continuing."));
+                return;
+            }
+            original = Coordinator.State;
+            loaded = new(CharacterCreationFoundationOutcomes.Success, fresh, []);
+        }
+        if (!Coordinator.IsCreationCatalogDisplayCurrent(original)) return;
         await Navigation.PushAsync(new CreationQualitiesPage(Coordinator, original, loaded), animated: false);
     }
 

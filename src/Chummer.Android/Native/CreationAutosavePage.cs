@@ -16,6 +16,14 @@ public abstract class CreationAutosavePage : NativePageBase
     protected bool IsSaving => _saving is { IsCompleted: false };
     protected bool CanEditAllocation => !IsSaving && !_requiresReopen && !_navigating;
 
+    protected void RequireReopenForContinuation(string message)
+    {
+        _requiresReopen = true;
+        if (_editor is not null) _editor.IsEnabled = false;
+        if (_next is not null) _next.IsEnabled = false;
+        ShowStatus(message, true);
+    }
+
     protected CreationAutosavePage(RunnerSessionCoordinator coordinator) : base(coordinator) { }
     protected abstract Task<SaveResult> SaveDraftAsync();
     protected abstract Task OpenNextStepAsync(long appearance);
