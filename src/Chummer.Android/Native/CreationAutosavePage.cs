@@ -16,6 +16,9 @@ public abstract class CreationAutosavePage : NativePageBase
     private Button? _next;
     protected bool IsSaving => _saving is { IsCompleted: false };
     protected bool CanEditAllocation => !IsSaving && !_requiresReopen && !_navigating;
+    // Re-entry may refresh a saved page, never discard a pending edit or turn
+    // an uncertain write into a fresh editing session.
+    protected bool CanReloadSavedAllocation => !_dirty && CanEditAllocation;
 
     protected void RequireReopenForContinuation(string message)
     {

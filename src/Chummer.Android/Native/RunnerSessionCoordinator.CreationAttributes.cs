@@ -75,6 +75,22 @@ public sealed partial class RunnerSessionCoordinator
         => _attributeLoads.TryGetValue(issued.Binding, out var load) && ReferenceEquals(load.State, issued)
             ? LoadCreationAttributesForDisplay(load.Display) : AttributesUnavailable<CharacterCreationAttributesState>();
 
+    // Read-only page re-entry after another wizard step saved. This issues a
+    // NEW Core snapshot; it does not revive any old preview or confirmation.
+    internal CharacterCreationFoundationResult<CharacterCreationAttributesState> ReloadCreationAttributesForPage(
+        CharacterCreationAttributesState issued, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var current = State;
+        if (!_attributeLoads.TryGetValue(issued.Binding, out var load) || !ReferenceEquals(load.State, issued)
+            || load.Display.WorkspaceId != current.WorkspaceId
+            || load.Display.DisplayOwnerContext != current.DisplayOwnerContext
+            || !IsNativePersistenceOwnerCurrent(load.Display.DisplayOwnerContext)
+            || !AttributesDisplayCurrent(current))
+            return AttributesUnavailable<CharacterCreationAttributesState>();
+        return ReadCreationAuthority(current, () => LoadCreationAttributesForDisplay(current), cancellationToken);
+    }
+
     internal CharacterCreationFoundationResult<CharacterCreationAttributesPreview> PreviewCreationAttributes(
         CharacterCreationAttributesBinding binding, IReadOnlyList<CharacterCreationAttributeAllocation> allocations)
     {
