@@ -120,6 +120,29 @@ owner/stale rejection, one-save and cold-reopen/no-replay assertions. Magic,
 Skills, Priority/Sum-to-Ten Contacts and the flat budget routes passed. Failed
 earlier invocations are retained; they are not described as successful runs.
 
-Native Android validation and any subsequent signed release remain separate.
-Preview 199 remains the recorded Play availability; this package intake alone
-does not change that release truth or close startup, reload or complete Creation.
+The follow-up native x64 Release/Internal SDK-test APK is
+`d43c3341ead4f6b5969d02ccc4caee784815b832f94880d58d207a2d33d1dfdb`.
+It built with zero warnings/errors; all 331 embedded content files verified.
+One update retained all nine synthetic runners. A verified force-stop and new
+process restored the same selected Adept. A single Continue tap reached Resources
+with 6,000 starting/remaining nuyen, zero converted karma and zero known purchases.
+No new save or provider operation was performed; UID-only IPv4/IPv6 egress was
+blocked. All nine workspace hashes matched before update, after update and after
+cold navigation. The hash-list SHA-256 is
+`597c77af610c1366ced552c4f7e931f3765f1a7cf322962029567f51dc70f23b`;
+the cold Resources hierarchy is
+`70c3dd79a997aa76b6465be6b3b1dcec7151cf74ea095955189471a179404326`.
+
+The first startup again encountered a SystemUI ANR; Wait allowed it to continue.
+Its shell/selected-restore observations were 26,309/49,711 ms. The later cold
+process observed 20,132/24,600 ms, with additional dashboard projection delay.
+These are not a controlled before/after comparison or a startup-fix claim.
+Immediate post-navigation hierarchy reads returned null; later observations
+verified Resources without repeating the tap. Failed observations remain retained.
+
+The SDK-test APK uses version metadata 199, a separate application ID, x64 and a
+development certificate. Preview 200 changes version metadata only after that
+smoke; its ARM64 AAB, isolated original-key signature and Play result are separate.
+Preview 199 remains the recorded Play availability until actual later readback.
+Physical current-version installation, startup/reload improvement and complete
+Creation/Career/Origin acceptance remain unverified.
