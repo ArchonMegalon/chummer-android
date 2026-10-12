@@ -250,7 +250,7 @@ internal static partial class AfterRunAuthorityHarness
                 var renderBudget = typeof(BuildPage).GetMethod("AddBudgetRibbon", BindingFlags.Instance | BindingFlags.NonPublic)!;
                 renderBudget.Invoke(page, [snapshot, null, null, readiness, routes, projection, null]);
                 var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
-                var contactCard = body.Children.OfType<FlexLayout>().Single().Children.OfType<Border>()
+                var contactCard = CreationBudgetRows(body)
                     .Single(card => card.AutomationId == "creation-budget-contacts");
                 var button = ((Grid)contactCard.Content!).Children.OfType<Button>().Single();
                 await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());

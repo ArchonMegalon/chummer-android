@@ -299,7 +299,7 @@ internal static partial class AfterRunAuthorityHarness
                     new CreationDashboardRenderReadiness(() => false, () => false, () => false,
                         () => false, () => false, () => false),
                     new Dictionary<string, CreationBudgetRoute>(),
-                    new CreationBudgetRoute("Method", "Blocked", false, () => Task.CompletedTask, [])]);
+                    new CreationBudgetRoute("Method", "Blocked", false, () => Task.CompletedTask, []), 0]);
             var body = (VerticalStackLayout)((ScrollView)build.Content!).Content;
             var recovery = body.Children.OfType<Border>().SelectMany(border => border.Content is Grid grid
                     ? grid.Children.OfType<Button>() : Enumerable.Empty<Button>())
@@ -393,7 +393,7 @@ internal static partial class AfterRunAuthorityHarness
                 Require(routes[CharacterCreationWizardStepIds.Skills].CanOpen && !readiness.Skills,
                     "Blocked Skills did not expose a separate re-review route or falsely became ready.");
                 typeof(BuildPage).GetMethod("AddLegalNextSteps", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page,
-                    [snapshot, readiness, routes, new CreationBudgetRoute("Method", "Blocked", false, () => Task.CompletedTask, [])]);
+                    [snapshot, readiness, routes, new CreationBudgetRoute("Method", "Blocked", false, () => Task.CompletedTask, []), 0]);
                 typeof(BuildPage).GetMethod("AddBudgetRibbon", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page,
                     [snapshot, null, null, readiness, routes, null, null]);
                 var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
@@ -401,7 +401,9 @@ internal static partial class AfterRunAuthorityHarness
                     ? grid.Children.OfType<Button>() : Enumerable.Empty<Button>())
                     .Any(button => button.AutomationId == "creation-skills-rereview-open"),
                     "Dashboard duplicated the recovery action despite its canonical Skills route.");
-                foreach (var card in body.Children.OfType<FlexLayout>().Single().Children.OfType<Border>())
+                var budgetRows = CreationBudgetRows(body).ToArray();
+                Require(budgetRows.Length == 3, "Historical Skills lost an inexact budget recovery row.");
+                foreach (var card in budgetRows)
                 {
                     var grid = (Grid)card.Content!;
                     var label = grid.Children.OfType<VerticalStackLayout>().Single().Children.OfType<Label>().First();

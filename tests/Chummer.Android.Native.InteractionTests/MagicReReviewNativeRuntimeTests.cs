@@ -324,7 +324,7 @@ internal static partial class AfterRunAuthorityHarness
                 typeof(BuildPage).GetMethod("AddBudgetRibbon", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page,
                     [snapshot, null, null, readiness, routes, null, null]);
                 var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
-                var card = body.Children.OfType<FlexLayout>().Single().Children.OfType<Border>().Single();
+                var card = CreationBudgetRows(body).Single();
                 var grid = (Grid)card.Content!;
                 Require(grid.Children.OfType<VerticalStackLayout>().Single().Children.OfType<Label>().First()
                     .Text.EndsWith("Not exact", StringComparison.Ordinal), "Review link fabricated an exact Magic budget.");
