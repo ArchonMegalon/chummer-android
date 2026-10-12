@@ -4,9 +4,10 @@ using Chummer.Contracts.Characters;
 namespace Chummer.Android.Native;
 
 /// <summary>Core-owned local draft calculation; fresh store/source review before saving.</summary>
-public sealed class CreationSkillsPage : NativePageBase
+public sealed class CreationSkillsPage : CreationAutosavePage
 {
     private const int CatalogPageSize = 20;
+    private string _searchText = string.Empty;
     private readonly CreationSkillsPhoneDraft _draft = new();
     private readonly VerticalStackLayout _body = new()
     {
@@ -21,6 +22,7 @@ public sealed class CreationSkillsPage : NativePageBase
     private int _knowledgeCatalogOffset;
     private long _renderGeneration;
     private readonly List<Action> _projectionUpdates = [];
+    private readonly List<CreationIntegerSlider> _sliders = [];
     private readonly List<Func<bool>> _ratingShapeChecks = [];
     private string? _ratingFeedbackKey;
     private IReadOnlyList<string> _ratingFeedback = [];
@@ -35,26 +37,34 @@ public sealed class CreationSkillsPage : NativePageBase
         _afterSavedGear = afterSavedGear;
         Title = CreationAllocationStrings.Get("Skills.PageTitle", "Skills");
         AutomationId = "creation-skills-page";
-        Content = new ScrollView { Content = _body };
+        var search = new SearchBar
+        {
+            Placeholder = PhoneStrings.Get("CreationSkillsSearch", "Search skills and groups"),
+            TextColor = NativeTheme.Text, PlaceholderColor = NativeTheme.Muted,
+            BackgroundColor = NativeTheme.Paper, AutomationId = "creation-skills-search"
+        };
+        search.TextChanged += (_, args) =>
+        {
+            if (!CanEditAllocation) return;
+            _searchText = args.NewTextValue?.Trim() ?? string.Empty;
+            _activeCatalogOffset = _knowledgeCatalogOffset = 0;
+            Refresh();
+        };
+        var editor = new Grid { RowDefinitions = new() { new(GridLength.Auto), new(GridLength.Star) } };
+        editor.Add(search);
+        editor.Add(new ScrollView { Content = _body }, 0, 1);
+        SetAutosaveContent(editor, "creation-skills");
     }
 
     protected override void Refresh()
     {
+        if (IsSaving) return;
+        foreach (var slider in _sliders) slider.RetireScale();
+        _sliders.Clear();
         _renderGeneration++;
         _projectionUpdates.Clear();
         _ratingShapeChecks.Clear();
         _body.Clear();
-        _body.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get(
-            "Common.CharacterCreation",
-            "Character creation")));
-        _body.Add(NativeTheme.Title(CreationAllocationStrings.Get(
-            "Skills.Heading",
-            "Choose Skills")));
-        _body.Add(NativeTheme.Body(
-            CreationAllocationStrings.Get(
-                "Skills.Intro",
-                "Ratings, groups, specializations, native languages, and all three ledgers come from Core."),
-            NativeTheme.Muted));
         CharacterCreationFoundationResult<CharacterCreationSkillsState>? load = null;
         CharacterCreationSkillsState? state = CreationPageAuthorityCache.Resolve(
             _authority,
@@ -89,7 +99,6 @@ public sealed class CreationSkillsPage : NativePageBase
             }
             AddNativeLanguage(state);
             if (_blockers.Count > 0) AddBlockers(_blockers, "creation-skills-review-top-blockers");
-            _body.Add(CreateReviewButton(state, "creation-skills-review-top"));
         }
         AddBinding(state);
         VerticalStackLayout budgets = new() { Spacing = 12 };
@@ -106,21 +115,21 @@ public sealed class CreationSkillsPage : NativePageBase
         }
         AddCatalog(
             state,
-            CreationSkillsPhoneAuthority.AvailableActiveSkills(state),
+            CreationSkillsPhoneAuthority.AvailableActiveSkills(state).Where(MatchesSearch).ToArray(),
             CreationAllocationStrings.Get("Skills.ActiveSkills", "Active skills"),
             "active");
         AddGroups(state);
         AddCatalog(
             state,
-            state.Authority.KnowledgeSkills,
+            state.Authority.KnowledgeSkills.Where(MatchesSearch).ToArray(),
             CreationAllocationStrings.Get("Skills.KnowledgeLanguages", "Knowledge & languages"),
             "knowledge");
-        AddReview(state);
     }
 
     protected override void OnDisappearing()
     {
         _draft.RetireSession();
+        foreach (var slider in _sliders) slider.RetireScale();
         base.OnDisappearing();
     }
 
@@ -349,7 +358,8 @@ public sealed class CreationSkillsPage : NativePageBase
         AddBudget(budget, () => _draft.Preview?.SkillGroupPointBudget ?? state.SkillGroupPointBudget,
             "groups-inline", CharacterCreationBudgetIds.SkillGroups);
         _body.Add(budget);
-        foreach (CharacterCreationSkillGroupCatalogEntry source in CreationSkillsPhoneAuthority.AvailableGroups(state))
+        foreach (CharacterCreationSkillGroupCatalogEntry source in CreationSkillsPhoneAuthority.AvailableGroups(state)
+                     .Where(group => MatchesSearch(group.Name) || MatchesSearch(SkillCatalogStrings.GroupName(group.Name))))
         {
             CharacterCreationSkillGroupAllocation? selected = _draft.Groups.SingleOrDefault(item => item.GroupId == source.GroupId);
             VerticalStackLayout card = new() { Spacing = 6 };
@@ -416,36 +426,39 @@ public sealed class CreationSkillsPage : NativePageBase
             FontSize = 16,
             AutomationId = $"creation-skill-specialization-{Token(source.SourceSkillId)}"
         };
-        Button choose = NativeTheme.SecondaryButton(CreationAllocationStrings.Get(
-            "SkillsReReview.SetSpecialization", "Preview specialization"));
-        choose.AutomationId = $"creation-skill-specialization-preview-{Token(source.SourceSkillId)}";
-        choose.IsEnabled = false;
-        picker.SelectedIndexChanged += (_, _) => choose.IsEnabled = picker.SelectedIndex >= 0
-            && picker.SelectedIndex <= options.Length && picker.SelectedIndex != currentIndex;
         long renderGeneration = _renderGeneration;
         long appearanceGeneration = CaptureAppearanceGeneration();
-        // Rating-only previews retain this picker and any unsubmitted selection.
-        // Refresh only its accepted allocation, never its pending SelectedIndex.
+        bool updating = false;
         _projectionUpdates.Add(() => selected = _draft.Skills.SingleOrDefault(item =>
             item.Kind == source.Kind && item.SourceSkillId == source.SourceSkillId) ?? selected);
-        choose.Clicked += async (_, _) =>
+        picker.SelectedIndexChanged += async (_, _) =>
         {
             int index = picker.SelectedIndex;
-            if (index < 0 || index > options.Length || index == currentIndex
-                || renderGeneration != _renderGeneration
+            if (updating || index < 0 || index > options.Length || index == currentIndex
+                || !CanEditAllocation || renderGeneration != _renderGeneration
                 || !IsCurrentAppearanceGeneration(appearanceGeneration)
-                || !_draft.Matches(state, Coordinator.State)
-                || _draft.Skills.SingleOrDefault(item => item.Kind == source.Kind
-                    && item.SourceSkillId == source.SourceSkillId) != selected)
-                return;
-            // WithSpecialization toggles an existing ID off. Use that path only
-            // for the explicit "No specialization" choice, never for a no-op.
+                || !Coordinator.IsCreationSkillsDraftDisplayCurrent(state)
+                || !_draft.HasPreparedState(state)) return;
             string? optionId = index == 0 ? selected.SpecializationOptionId : options[index - 1].OptionId;
             if (optionId is null) return;
-            await PreviewAsync(state, _draft.WithSpecialization(source, optionId), _draft.Groups);
+            await RunWithConditionalRefreshAsync(() =>
+            {
+                _ratingFeedbackKey = $"{source.Kind}-{Token(source.SourceSkillId)}";
+                bool accepted = _draft.TryPreviewPrepared(state, _draft.WithSpecialization(source, optionId),
+                    _draft.Groups, out var blockers);
+                _ratingFeedback = _blockers = blockers;
+                if (accepted) { currentIndex = index; DraftChanged(); }
+                foreach (var update in _projectionUpdates) update();
+                if (!accepted)
+                {
+                    updating = true;
+                    picker.SelectedIndex = currentIndex;
+                    updating = false;
+                }
+                return Task.FromResult(false);
+            });
         };
         card.Add(picker);
-        card.Add(choose);
     }
 
     private void AddRatingFeedback(VerticalStackLayout card, string key)
@@ -475,7 +488,7 @@ public sealed class CreationSkillsPage : NativePageBase
         long appearance = CaptureAppearanceGeneration();
         bool dragging = false;
         bool refreshAfterDrag = false;
-        bool Current() => render == _renderGeneration && IsCurrentAppearanceGeneration(appearance)
+        bool Current() => CanEditAllocation && render == _renderGeneration && IsCurrentAppearanceGeneration(appearance)
             && Coordinator.IsCreationSkillsDraftDisplayCurrent(state) && _draft.HasPreparedState(state);
         var slider = new CreationIntegerSlider($"creation-skills-slider-{feedbackKey}", label, current, range,
             target => RunWithConditionalRefreshAsync(() =>
@@ -485,6 +498,7 @@ public sealed class CreationSkillsPage : NativePageBase
                 bool accepted = _draft.TryPreviewPrepared(state, skills(target),
                     changedGroups?.Invoke(target) ?? groups(), out var blockers);
                 _ratingFeedback = _blockers = blockers;
+                if (accepted) DraftChanged();
                 foreach (var update in _projectionUpdates) update();
                 bool refresh = accepted && !_ratingShapeChecks.All(check => check());
                 // Rating 0→1 adds the specialization picker. Keep the current
@@ -496,98 +510,92 @@ public sealed class CreationSkillsPage : NativePageBase
                     return Task.FromResult(false);
                 }
                 return Task.FromResult(refresh);
-            }), target => target == current() || _draft.CanSelectPrepared(state, skills(target),
-                changedGroups?.Invoke(target) ?? groups()), () => _draft.Preview ?? (object)state);
-        slider.DragStarted += (_, _) => dragging = Current();
+            }), selectionVersion: () => _draft.Preview ?? (object)state,
+            prepareSelection: target => target == current() ? () => true : _draft.PrepareSelection(state, skills(target),
+                changedGroups?.Invoke(target) ?? groups()));
+        slider.DragStarted += (_, _) => { dragging = Current(); if (dragging) BeginAllocationGesture(); };
         slider.DragCompleted += async (_, _) =>
         {
             dragging = false;
+            EndAllocationGesture();
             if (!refreshAfterDrag) return;
             refreshAfterDrag = false;
             await RunWithConditionalRefreshAsync(() => Task.FromResult(
                 Current() && !_ratingShapeChecks.All(check => check())));
         };
         _projectionUpdates.Add(slider.UpdateProjection);
+        _sliders.Add(slider);
         card.Add(slider);
         card.Add(slider.RatingScale);
     }
 
-    private async Task PreviewAsync(
-        CharacterCreationSkillsState state,
+    private Task PreviewAsync(CharacterCreationSkillsState state,
         IReadOnlyList<CharacterCreationSkillAllocation> skills,
         IReadOnlyList<CharacterCreationSkillGroupAllocation> groups)
-    {
-        CharacterCreationSkillAllocation[] requestedSkills = skills.ToArray();
-        CharacterCreationSkillGroupAllocation[] requestedGroups = groups.ToArray();
-        await RunAsync(async () =>
+        => RunWithConditionalRefreshAsync(() =>
         {
-            if (!Coordinator.IsCreationSkillsStateCurrent(state)) return;
-            CharacterCreationFoundationResult<CharacterCreationSkillsPreview> result =
-                await Task.Run(() => Coordinator.PreviewCreationSkills(
-                    state.Binding,
-                    requestedSkills,
-                    requestedGroups));
-            _blockers = result.Blockers;
-            _draft.TryAdopt(
-                state,
-                Coordinator.State,
-                result,
-                requestedSkills,
-                requestedGroups);
+            if (!CanEditAllocation || !Coordinator.IsCreationSkillsDraftDisplayCurrent(state)
+                || !_draft.HasPreparedState(state)) return Task.FromResult(false);
+            bool accepted = _draft.TryPreviewPrepared(state, skills, groups, out var blockers);
+            _blockers = blockers;
+            if (accepted) DraftChanged();
+            return Task.FromResult(true);
         });
+
+    private bool MatchesSearch(string value) => CultureInfo.CurrentUICulture.CompareInfo.IndexOf(
+        value, _searchText, CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace) >= 0;
+
+    private bool MatchesSearch(CharacterCreationSkillCatalogEntry skill)
+        => MatchesSearch(skill.Name) || MatchesSearch(SkillCatalogStrings.SkillName(
+            skill.Kind, skill.SourceSkillId, skill.Name)) || MatchesSearch(SkillCatalogStrings.CategoryName(skill.Category));
+
+    protected override bool HasSavedDraft => _authority?.PendingDraft is not null;
+
+    protected override async Task<SaveResult> SaveDraftAsync()
+    {
+        if (_authority is not { } state || !Coordinator.IsCreationSkillsStateCurrent(state)
+            || !_draft.Matches(state, Coordinator.State)) return new(false, RequiresReopen: true);
+        var skills = _draft.Skills.ToArray();
+        var groups = _draft.Groups.ToArray();
+        var original = Coordinator.State;
+        var result = await Task.Run(() => Coordinator.ReadCreationAuthority(original,
+            () => Coordinator.PreviewCreationSkills(state.Binding, skills, groups), CancellationToken.None));
+        if (result.Value is not { } preview
+            || !CreationSkillsPhoneAuthority.CanAdoptPreview(state, Coordinator.State, result, skills, groups))
+        {
+            if (state.PendingDraft is not null && Coordinator.IsCreationSkillsStateCurrent(state)
+                && result.Blockers.SequenceEqual(new[] { CharacterCreationSkillsBlockers.DraftDuplicate }))
+                return new(true);
+            return new(false, string.Join("\n", result.Blockers.Select(CreationAllocationStrings.SkillBlocker)));
+        }
+        var confirmed = await Coordinator.ConfirmCreationSkillsAsync(preview, skills, groups,
+            CreationSkillsPhoneAuthority.ComputeIdempotencyKey(preview, skills, groups));
+        if (confirmed is { Outcome: CharacterCreationFoundationOutcomes.Success, Blockers.Count: 0,
+                Receipt: { } receipt, RefreshedState: { } fresh }
+            && Coordinator.IsCreationSkillsReceiptCurrent(receipt) && Coordinator.IsCreationSkillsStateCurrent(fresh))
+        {
+            _authority = _revalidationAuthority = fresh;
+            _draft.Bind(fresh, Coordinator.State);
+            // Our own save must not jump to catalog page one or erase an adjacent refusal.
+            _catalogSnapshotDigest = fresh.SnapshotDigest;
+            _blockers = [];
+            return new(true);
+        }
+        return new(false, string.Join("\n", confirmed.Blockers.Select(CreationAllocationStrings.SkillBlocker)),
+            confirmed.Receipt is not null || confirmed.Outcome == "outcome-unknown");
     }
 
-    private void AddReview(CharacterCreationSkillsState state)
+    protected override async Task OpenNextStepAsync(long appearance)
     {
-        // The catalogs can span many screens. Keep the reason a review cannot
-        // proceed beside its action as well as beside the allocation ledgers.
-        if (_blockers.Count > 0)
-            AddBlockers(_blockers, "creation-skills-review-blockers");
-        _body.Add(CreateReviewButton(state, "creation-skills-review"));
-    }
-
-    private Button CreateReviewButton(CharacterCreationSkillsState state, string automationId)
-    {
-        Button review = NativeTheme.PrimaryButton(CreationAllocationStrings.Get(
-            "Skills.ReviewDraft",
-            "Review Skills draft"));
-        review.AutomationId = automationId;
-        review.Clicked += async (_, _) => await RunAsync(async () =>
-        {
-            if (!Coordinator.IsCreationSkillsStateCurrent(state)) return;
-            CharacterCreationSkillAllocation[] requestedSkills = _draft.Skills.ToArray();
-            CharacterCreationSkillGroupAllocation[] requestedGroups = _draft.Groups.ToArray();
-            CharacterCreationFoundationResult<CharacterCreationSkillsPreview> result =
-                await Task.Run(() => Coordinator.PreviewCreationSkills(
-                    state.Binding,
-                    requestedSkills,
-                    requestedGroups));
-            if (!CreationSkillsPhoneAuthority.CanAdoptPreview(
-                    state, Coordinator.State, result, requestedSkills, requestedGroups)
-                || result.Value is not { } preview)
-            {
-                _blockers = result.Blockers;
-                return;
-            }
-            await Navigation.PushAsync(new CreationSkillsPreviewPage(
-                Coordinator,
-                preview,
-                requestedSkills,
-                requestedGroups,
-                result =>
-                {
-                    if (result is { Outcome: CharacterCreationFoundationOutcomes.Success,
-                            Receipt: { } receipt, RefreshedState: { } fresh, Blockers.Count: 0 }
-                        && Coordinator.IsCreationSkillsReceiptCurrent(receipt)
-                        && Coordinator.IsCreationSkillsStateCurrent(fresh))
-                    {
-                        _authority = fresh;
-                        _revalidationAuthority = fresh;
-                        _blockers = [];
-                    }
-                }));
-        });
-        return review;
+        var original = Coordinator.State;
+        var loaded = await Coordinator.LoadCreationQualitiesForDisplayAsync(original, CancellationToken.None);
+        bool ready = await Task.Run(() => loaded is
+            { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } state }
+            && CreationQualitiesPhoneAuthority.IsReady(state, original));
+        if (!IsCurrentAppearanceGeneration(appearance)) return;
+        if (!ready || !Coordinator.IsCreationSkillsStateCurrent(_authority!))
+            throw new InvalidOperationException("Next Creation step unavailable.");
+        await Navigation.PushAsync(new CreationQualitiesPage(Coordinator, original, loaded), animated: false);
     }
 
     private void AddBlockers(IReadOnlyList<string> blockers, string? automationId = null)

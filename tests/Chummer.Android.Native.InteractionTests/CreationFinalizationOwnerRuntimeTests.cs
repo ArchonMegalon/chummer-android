@@ -1121,8 +1121,9 @@ internal static partial class AfterRunAuthorityHarness
     {
         public int LoadCalls, PreviewCalls, ConfirmCalls;
         public Action? BeforePreview;
+        public Action? BeforeLoad;
         public CharacterCreationFoundationResult<CharacterCreationSkillsState> Load(OwnerContextStamp owner, CharacterCreationSkillsLoadRequest request)
-        { Interlocked.Increment(ref LoadCalls); return inner.Load(owner, request); }
+        { Interlocked.Increment(ref LoadCalls); BeforeLoad?.Invoke(); return inner.Load(owner, request); }
         public CharacterCreationFoundationResult<CharacterCreationSkillsPreview> Preview(OwnerContextStamp owner, CharacterCreationSkillsPreviewRequest request)
         { Interlocked.Increment(ref PreviewCalls); BeforePreview?.Invoke(); return inner.Preview(owner, request); }
         public CharacterCreationFoundationResult<CharacterCreationSkillsReceipt> Confirm(OwnerContextStamp owner, CharacterCreationSkillsConfirmRequest request)

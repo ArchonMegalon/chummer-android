@@ -424,4 +424,13 @@ Todavía no se ha guardado ningún cambio.</value></data>
   <data name="CreationAttributesInlineHelp" xml:space="preserve"><value>Arrastra el control. Los valores grises no están disponibles. Toca un atributo para ver las opciones de Karma.</value></data>
   <data name="CreationRatingUnavailable" xml:space="preserve"><value>No disponible con la asignación actual</value></data>
   <data name="CreationKarmaOptions" xml:space="preserve"><value>Opciones de Karma</value></data>
+  <data name="CreationAutosaveHelp" xml:space="preserve"><value>Los cambios se guardan automáticamente.</value></data>
+  <data name="CreationAutosaveContinue" xml:space="preserve"><value>Continuar</value></data>
+  <data name="CreationAutosaveNextFailed" xml:space="preserve"><value>Guardado. No se pudo abrir el siguiente paso. Pulsa Continuar de nuevo.</value></data>
+  <data name="CreationAutosavePending" xml:space="preserve"><value>Aún sin guardar…</value></data>
+  <data name="CreationAutosaveSaving" xml:space="preserve"><value>Guardando…</value></data>
+  <data name="CreationAutosaveSaved" xml:space="preserve"><value>Guardado</value></data>
+  <data name="CreationAutosaveReopen" xml:space="preserve"><value>No se pudo verificar el guardado. Vuelve a abrir este runner antes de editar.</value></data>
+  <data name="CreationAutosaveFailed" xml:space="preserve"><value>No guardado. Revisa tus opciones e inténtalo de nuevo.</value></data>
+  <data name="CreationSkillsSearch" xml:space="preserve"><value>Buscar habilidades y grupos</value></data>
 </root>

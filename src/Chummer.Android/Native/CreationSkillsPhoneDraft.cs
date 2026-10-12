@@ -46,6 +46,16 @@ internal sealed class CreationSkillsPhoneDraft
         IReadOnlyList<CharacterCreationSkillGroupAllocation> groups)
         => HasPreparedState(state) && CanStagePrepared(_session!.Preview(skills, groups));
 
+    public Func<bool> PrepareSelection(CharacterCreationSkillsState state,
+        IReadOnlyList<CharacterCreationSkillAllocation> skills,
+        IReadOnlyList<CharacterCreationSkillGroupAllocation> groups)
+    {
+        var session = HasPreparedState(state) ? _session : null;
+        var copiedSkills = skills.ToArray();
+        var copiedGroups = groups.ToArray();
+        return () => session is not null && CanStagePrepared(session.Preview(copiedSkills, copiedGroups));
+    }
+
     private static bool CanStagePrepared(CharacterCreationFoundationResult<CharacterCreationSkillsPreview> result)
         => result.Value is { } preview
             && (result.Outcome == CharacterCreationFoundationOutcomes.Success && preview.CanConfirm && result.Blockers.Count == 0

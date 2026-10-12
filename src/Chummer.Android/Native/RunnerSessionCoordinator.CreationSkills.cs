@@ -172,7 +172,9 @@ public sealed partial class RunnerSessionCoordinator
             if (!IsCreationSkillsReceiptCurrent(receipt)) return NeedsReopen();
             await SyncShellAsync(ct);
             if (!IsCreationSkillsReceiptCurrent(receipt)) return NeedsReopen();
-            var refreshed = LoadCreationSkills();
+            var currentDisplay = State;
+            var refreshed = await Task.Run(() => ReadCreationAuthority(currentDisplay,
+                LoadCreationSkills, ct), ct);
             if (refreshed.Value is not { } fresh || !IsCreationSkillsStateCurrent(fresh)
                 || !CreationSkillsPhoneAuthority.ReceiptMatches(receipt, canonical, fresh, State, idempotencyKey))
                 return NeedsReopen();
