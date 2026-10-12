@@ -19,7 +19,9 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
         self.assertIn("(karma && _expandedAttributeId != attribute.AttributeId)", entry)
         refresh = entry.split("protected override void Refresh()", 1)[1].split("protected override", 1)[0]
         self.assertLess(refresh.index("AddAttributeGroup("), refresh.index("AddLimits(state)"))
-        self.assertLess(refresh.index("AddReviewAction(state)"), refresh.index("AddPendingDraft(state.PendingDraft)"))
+        self.assertNotIn("AddReviewAction(state)", refresh)
+        self.assertNotIn("AddPendingDraft(state.PendingDraft)", refresh)
+        self.assertIn("SetAutosaveContent(_scroll", entry)
         budget = entry.split("private void AddBudgetCard(", 1)[1].split("private void", 1)[0]
         self.assertIn('automationId + "-remaining"', budget)
         self.assertNotIn("NativeTheme.Metric(", budget)
@@ -38,7 +40,7 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
 
     def test_accepted_inline_points_update_existing_controls_only_after_core(self) -> None:
         page = (NATIVE / "CreationAttributesPage.cs").read_text(encoding="utf-8")
-        inline = page.split("private void AddAttributeSlider(", 1)[1].split("private void AddReviewAction(", 1)[0]
+        inline = page.split("private void AddAttributeSlider(", 1)[1].split("protected override bool HasSavedDraft", 1)[0]
         self.assertIn("RunWithConditionalRefreshAsync", inline)
         self.assertLess(inline.index("_draft.TryAdopt("), inline.index("!TryUpdateProjection(state)"))
         self.assertIn("accepted && !TryUpdateProjection(state)", inline)
@@ -67,7 +69,7 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
             "_draft.NormalBudget(state)",
             "_draft.SpecialBudget(state)",
             "_draft.KarmaBudget(state)",
-            'AutomationId = "creation-attributes-prepare-preview"',
+            "protected override async Task<SaveResult> SaveDraftAsync()",
             'AutomationId = "creation-attributes-preview-page"',
             'AutomationId = "creation-attributes-confirm"',
             "Coordinator.ConfirmCreationAttributesAsync(",

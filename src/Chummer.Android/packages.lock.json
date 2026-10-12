@@ -184,10 +184,10 @@
       },
       "Chummer.Application": {
         "type": "Transitive",
-        "resolved": "0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa",
-        "contentHash": "7rbXE2my5+H2EMOnyJ7+9FFJcvmt7kecQFusQcyOP5bm3hmufhKQTGrjJDcUVzqnWxjlT87TaW5H+2dmbHe3Dg==",
+        "resolved": "0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518",
+        "contentHash": "S6//uYPdLyC7Gtscs2gUQp6+Fu+dvTiUexbqRCtCN0iNOshkAgivo1KtHZwePLQHezDPklHTCuJ+4XSPTv+T3g==",
         "dependencies": {
-          "Chummer.Engine.Contracts": "0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa",
+          "Chummer.Engine.Contracts": "0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518",
           "Chummer.Hub.Registry.Contracts": "0.0.0-packageplane.20260721.1",
           "Chummer.Run.Contracts": "0.0.0-packageplane.20260721.1"
         }
@@ -195,15 +195,15 @@
       "Chummer.Campaign.Contracts": {
         "type": "Transitive",
         "resolved": "0.1.0-preview",
-        "contentHash": "bgRi39O+zAElhoBJReBV7fqZiklvXYXe8maaycdmqJH74WUgck7wstjfcgJLc/xXtSc3UsN6Yl6KHnCHlUGEMQ==",
+        "contentHash": "N3/z/cLvnd6/YQy6qqnpYdKfuOMfLNHo5b8gfopOHYFSLz7jUgrXY/mIkvE6NHBfmTM/Z5mBY7a5ItmSUGPiog==",
         "dependencies": {
-          "Chummer.Engine.Contracts": "0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa"
+          "Chummer.Engine.Contracts": "0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518"
         }
       },
       "Chummer.Engine.Contracts": {
         "type": "Transitive",
-        "resolved": "0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa",
-        "contentHash": "ffn7m1O9rQBt2XoPryPJkgak/Sx8xHDkGM0N8qfo5BSETJ3rOoZ+eFGF4T0B/adWiVg1wo4vxaJNzw776BXESA=="
+        "resolved": "0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518",
+        "contentHash": "bXK2qVzNqXRSE2vO8ThAaWbxPbK7eSGg82cjxGeGZ7ELk0G7kRlDGqR01ggjC6OrAPPM4lgCB34g4C055OV9Iw=="
       },
       "Chummer.Hub.Registry.Contracts": {
         "type": "Transitive",
@@ -212,15 +212,15 @@
       },
       "Chummer.Infrastructure": {
         "type": "Transitive",
-        "resolved": "0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa",
-        "contentHash": "XyWDeJzHUO4ZDlaVY7PzkzVzPelJb5foBOzwZ6uFLglgtf3WCsrruIoe8LcE54nGs8OEZXdqUDdFFE9GoPZRFQ==",
+        "resolved": "0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518",
+        "contentHash": "XGywvSnqomnVe1vKt9OxdulBqrrPi3ieWlZcv6HLx27cKE/9uDZK40B2qxE+zak0GgPAq5UEYjL/BrNypu8LQg==",
         "dependencies": {
-          "Chummer.Application": "0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa",
-          "Chummer.Engine.Contracts": "0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa",
+          "Chummer.Application": "0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518",
+          "Chummer.Engine.Contracts": "0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518",
           "Chummer.Hub.Registry.Contracts": "0.0.0-packageplane.20260721.1",
-          "Chummer.Rulesets.Hosting": "0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa",
-          "Chummer.Rulesets.Sr5": "0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa",
-          "Chummer.Rulesets.Sr6": "0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa",
+          "Chummer.Rulesets.Hosting": "0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518",
+          "Chummer.Rulesets.Sr5": "0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518",
+          "Chummer.Rulesets.Sr6": "0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518",
           "Chummer.Run.Contracts": "0.0.0-packageplane.20260721.1",
           "Microsoft.Extensions.DependencyInjection": "10.0.0",
           "SharpCompress": "0.50.1"
@@ -233,45 +233,45 @@
       },
       "Chummer.Rulesets.Hosting": {
         "type": "Transitive",
-        "resolved": "0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa",
-        "contentHash": "H8uyNpQZQVqHt/AbWSVNNmz/iGA6M+nqjQeZJXw2e4j+aeovrdhRu+kIIKb+4yQXfRzUQiT0n6ClR2hcDQvGSg==",
+        "resolved": "0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518",
+        "contentHash": "ySy404Uw8mDpDT7YBggauVKkHz948ymOubcTaJH2acI1qYyl+EvzeKV32g2DksWba/MPFY1P7OcbuUHlwhCnPg==",
         "dependencies": {
-          "Chummer.Application": "0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa",
-          "Chummer.Engine.Contracts": "0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa",
+          "Chummer.Application": "0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518",
+          "Chummer.Engine.Contracts": "0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518",
           "Chummer.Run.Contracts": "0.0.0-packageplane.20260721.1",
           "Microsoft.Extensions.DependencyInjection": "10.0.0"
         }
       },
       "Chummer.Rulesets.Sr4": {
         "type": "Transitive",
-        "resolved": "0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa",
-        "contentHash": "9TdAuD4XW0YMd1WG9uSB/6CGd87lt+rJUxUDQqvM1lEQISeF6regFFGVHPvHJm7wEv1Rwi1uIrWKep72vwZ07w==",
+        "resolved": "0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518",
+        "contentHash": "ukmn89CXmX54irveULe5pOnZhN1zGdGME1yU221i5hkqBSmligAxlRUcZzprmFKfvp1qKugePr86Hn4TXU907g==",
         "dependencies": {
-          "Chummer.Application": "0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa",
-          "Chummer.Engine.Contracts": "0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa",
-          "Chummer.Infrastructure": "0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa",
+          "Chummer.Application": "0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518",
+          "Chummer.Engine.Contracts": "0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518",
+          "Chummer.Infrastructure": "0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518",
           "Chummer.Run.Contracts": "0.0.0-packageplane.20260721.1",
           "Microsoft.Extensions.DependencyInjection": "10.0.0"
         }
       },
       "Chummer.Rulesets.Sr5": {
         "type": "Transitive",
-        "resolved": "0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa",
-        "contentHash": "oj37ajHrs0i1rzOyYv5/DldQmBM+uH2uYvIegf72PfbYgTtEijyrYPKA+oRd/8TD9WydhAY+1oryYL9R8/VLoA==",
+        "resolved": "0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518",
+        "contentHash": "lP+G3rCwKgTfwdbhyxzOlifsM813GMPrT9VUH9fsXNHyoQKzRCEPm00IY15CPs6YnTUJI2vdpZRd8XgiFSEm/A==",
         "dependencies": {
-          "Chummer.Application": "0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa",
-          "Chummer.Engine.Contracts": "0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa",
+          "Chummer.Application": "0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518",
+          "Chummer.Engine.Contracts": "0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518",
           "Chummer.Run.Contracts": "0.0.0-packageplane.20260721.1",
           "Microsoft.Extensions.DependencyInjection": "10.0.0"
         }
       },
       "Chummer.Rulesets.Sr6": {
         "type": "Transitive",
-        "resolved": "0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa",
-        "contentHash": "uAFnc5HDXnulqDE0arGD807Q+5VjkOYRj/Om//spat9gINtcFVH3X61iqQztxRu062ly84sZnaROoGWtw8/mQw==",
+        "resolved": "0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518",
+        "contentHash": "6vFmHls0xWDy0bVQKhftVOp7ZoxOyWoOS1EtFw3FLCTZuxrxx1L9B+sbxAy/vvLK/jYXYy3UHX4ZNNodhqMVdQ==",
         "dependencies": {
-          "Chummer.Application": "0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa",
-          "Chummer.Engine.Contracts": "0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa",
+          "Chummer.Application": "0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518",
+          "Chummer.Engine.Contracts": "0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518",
           "Chummer.Run.Contracts": "0.0.0-packageplane.20260721.1",
           "Microsoft.Extensions.DependencyInjection": "10.0.0"
         }
@@ -1504,16 +1504,16 @@
       "chummer.desktop.runtime": {
         "type": "Project",
         "dependencies": {
-          "Chummer.Application": "[0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa, )",
+          "Chummer.Application": "[0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518, )",
           "Chummer.Campaign.Contracts": "[0.1.0-preview, )",
-          "Chummer.Engine.Contracts": "[0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa, )",
+          "Chummer.Engine.Contracts": "[0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518, )",
           "Chummer.Hub.Registry.Contracts": "[0.1.1-packageplane.20260927.1, )",
-          "Chummer.Infrastructure": "[0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa, )",
+          "Chummer.Infrastructure": "[0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518, )",
           "Chummer.Presentation": "[1.0.0, )",
-          "Chummer.Rulesets.Hosting": "[0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa, )",
-          "Chummer.Rulesets.Sr4": "[0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa, )",
-          "Chummer.Rulesets.Sr5": "[0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa, )",
-          "Chummer.Rulesets.Sr6": "[0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa, )",
+          "Chummer.Rulesets.Hosting": "[0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518, )",
+          "Chummer.Rulesets.Sr4": "[0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518, )",
+          "Chummer.Rulesets.Sr5": "[0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518, )",
+          "Chummer.Rulesets.Sr6": "[0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518, )",
           "Chummer.Run.Contracts": "[0.1.1-packageplane.20260927.1, )",
           "Microsoft.Extensions.DependencyInjection": "[10.0.0, )",
           "System.Security.Cryptography.ProtectedData": "[10.0.0, )"
@@ -1522,14 +1522,14 @@
       "chummer.presentation": {
         "type": "Project",
         "dependencies": {
-          "Chummer.Application": "[0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa, )",
+          "Chummer.Application": "[0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518, )",
           "Chummer.Campaign.Contracts": "[0.1.0-preview, )",
-          "Chummer.Engine.Contracts": "[0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa, )",
-          "Chummer.Infrastructure": "[0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa, )",
-          "Chummer.Rulesets.Hosting": "[0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa, )",
-          "Chummer.Rulesets.Sr4": "[0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa, )",
-          "Chummer.Rulesets.Sr5": "[0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa, )",
-          "Chummer.Rulesets.Sr6": "[0.0.0-packageplane.candidate.v20261012.4.sh15a27ecfc0dfa, )",
+          "Chummer.Engine.Contracts": "[0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518, )",
+          "Chummer.Infrastructure": "[0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518, )",
+          "Chummer.Rulesets.Hosting": "[0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518, )",
+          "Chummer.Rulesets.Sr4": "[0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518, )",
+          "Chummer.Rulesets.Sr5": "[0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518, )",
+          "Chummer.Rulesets.Sr6": "[0.0.0-packageplane.candidate.v20261012.5.shf773b0a8ee518, )",
           "Chummer.Run.Contracts": "[0.1.1-packageplane.20260927.1, )",
           "Chummer.Ui.Kit": "[0.1.0-preview, )"
         }

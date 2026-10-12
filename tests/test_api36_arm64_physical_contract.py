@@ -39,9 +39,9 @@ class Api36PinnedContentAuthorityTests(unittest.TestCase):
         # Full Core repository tree observed at the admitted recipe commit,
         # not a content digest or the mocked tree used by driver fixtures.
         self.assertEqual(contract.TRUSTED_CORE_CONTENT_COMMIT,
-                         "6e1e6297b3106ec7ba784ecb0b4d9072ebec30b5")
+                         "c2b6c8d3fe7715ca2eef195b04b2881d24399ec6")
         self.assertEqual(contract.TRUSTED_CORE_CONTENT_TREE,
-                         "127e6d42cde9999473aa7d07d75321207793900b")
+                         "c1436356f8484cee5a49186743de2a06097ac468")
         self.assertEqual(contract.TRUSTED_CORE_CONTENT_COMMIT,
                          authority["sourceGraph"]["corePackageRecipeCommit"])
         self.assertEqual(contract.TRUSTED_CORE_CONTENT_COMMIT, content["coreRevision"])

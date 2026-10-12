@@ -6,7 +6,7 @@ namespace Chummer.Android.Native;
 /// <summary>
 /// Phone deep-navigation entry for Core's draft-only SR5 priority-table Attributes authority.
 /// </summary>
-public sealed class CreationAttributesPage : NativePageBase
+public sealed class CreationAttributesPage : CreationAutosavePage
 {
     private VerticalStackLayout _technicalDetails = new() { Spacing = 6 };
     private readonly CreationAttributesPhoneDraft _draft = new();
@@ -21,8 +21,6 @@ public sealed class CreationAttributesPage : NativePageBase
     private readonly ScrollView _scroll;
     private Label? _normalAttributesHeading;
     private Label? _specialAttributesHeading;
-    private Button? _reviewButton;
-    private CancellationTokenSource? _reviewPreparation;
     private readonly List<Action> _projectionUpdates = [];
     private IReadOnlyList<CharacterCreationAttributeProjection> _renderedAttributes = [];
     private string? _expandedAttributeId;
@@ -45,7 +43,8 @@ public sealed class CreationAttributesPage : NativePageBase
             or CharacterCreationBudgetIds.SpecialAttributes ? budgetId : null;
         Title = CreationAllocationStrings.Get("Attributes.PageTitle", "Attributes");
         AutomationId = "creation-attributes-page";
-        Content = _scroll = new ScrollView { Content = _body };
+        _scroll = new ScrollView { Content = _body };
+        SetAutosaveContent(_scroll, "creation-attributes");
         _scroll.SizeChanged += (_, _) => QueueBudgetFocus();
         _scroll.PropertyChanged += (_, args) =>
         {
@@ -84,13 +83,10 @@ public sealed class CreationAttributesPage : NativePageBase
 
     protected override void Refresh()
     {
-        // Keep the pressed review control visible while its read runs off-thread.
-        // The action gate excludes other mutations; leaving cancels this read.
-        if (_reviewPreparation is not null) return;
+        if (IsSaving) return;
         ++_renderGeneration;
         _budgetFocusTarget = null;
         _queuedFocusTarget = null;
-        _reviewButton = null;
         _projectionUpdates.Clear();
         _renderedAttributes = [];
         _expandedKarmaOptions = null;
@@ -161,8 +157,7 @@ public sealed class CreationAttributesPage : NativePageBase
             CreationAllocationStrings.Get("Attributes.Special", "Special Attributes"));
         if (_previewBlockers.Count > 0)
             AddBlockers(_previewBlockers, "creation-attributes-preview-blockers");
-        AddReviewAction(state);
-        AddPendingDraft(state.PendingDraft);
+        // Allocations save automatically; no review or duplicate saved-summary card.
         AddLimits(state);
         _body.Add(NativeTheme.TechnicalDetails(_technicalDetails, "creation-attributes-details"));
         QueueBudgetFocus();
@@ -176,10 +171,6 @@ public sealed class CreationAttributesPage : NativePageBase
         _budgetFocusTarget = null;
         _queuedFocusTarget = null;
         _draft.RetireSession();
-        var pending = _reviewPreparation;
-        _reviewPreparation = null;
-        _reviewButton = null;
-        pending?.Cancel();
         base.OnDisappearing();
     }
 
@@ -385,7 +376,7 @@ public sealed class CreationAttributesPage : NativePageBase
                 Current().Maximum, attribute.IsEnabled),
             target => RunWithConditionalRefreshAsync(() =>
             {
-                if (render != _renderGeneration || !IsCurrentAppearanceGeneration(appearance)
+                if (!CanEditAllocation || render != _renderGeneration || !IsCurrentAppearanceGeneration(appearance)
                     || (karma && _expandedAttributeId != attribute.AttributeId)
                     || !ReferenceEquals(row.Parent, _body)
                     || !Coordinator.IsCreationAttributesDraftDisplayCurrent(state)
@@ -398,6 +389,7 @@ public sealed class CreationAttributesPage : NativePageBase
                 feedback.Text = accepted ? string.Empty
                     : string.Join("\n", result.Blockers.Select(CreationAllocationStrings.AttributeBlocker));
                 feedback.IsVisible = !string.IsNullOrEmpty(feedback.Text);
+                if (accepted) DraftChanged();
                 return Task.FromResult(accepted && !TryUpdateProjection(state));
             }), target =>
             {
@@ -408,6 +400,8 @@ public sealed class CreationAttributesPage : NativePageBase
                 return allocations is not null && CreationAttributesPhoneAuthority.CanAdoptPreview(
                     state, Coordinator.State, _draft.PreviewPrepared(state, allocations), allocations);
             }, () => _draft.ProjectionIdentity);
+        slider.DragStarted += (_, _) => BeginAllocationGesture();
+        slider.DragCompleted += (_, _) => EndAllocationGesture();
         _projectionUpdates.Add(slider.UpdateProjection);
         var controls = new VerticalStackLayout { Spacing = 2 };
         controls.Add(slider);
@@ -429,7 +423,6 @@ public sealed class CreationAttributesPage : NativePageBase
                 && pair.First.DisableReasons.SequenceEqual(pair.Second.DisableReasons)))
             return false;
         foreach (var update in _projectionUpdates) update();
-        if (_reviewButton is not null) _reviewButton.IsEnabled = true;
         return true;
     }
 
@@ -445,79 +438,51 @@ public sealed class CreationAttributesPage : NativePageBase
             : string.Join(" · ", attribute.DisableReasons.Select(CreationAllocationStrings.AttributeBlocker)
                 .DefaultIfEmpty(CreationAllocationStrings.Get("Attributes.NotEnabledByTalent", "Not enabled by this Talent")));
 
-    private void AddReviewAction(CharacterCreationAttributesState state)
-    {
-        Button review = NativeTheme.PrimaryButton(CreationAllocationStrings.Get(
-            "Attributes.ReviewExact",
-            "Review allocation"));
-        review.AutomationId = "creation-attributes-prepare-preview";
-        review.IsEnabled = Coordinator.IsCreationAttributesStateCurrent(state) && _draft.Matches(state, Coordinator.State);
-        _reviewButton = review;
-        long appearance = CaptureAppearanceGeneration();
-        review.Clicked += async (_, _) => await RunAsync(async () =>
-        {
-            if (!ReferenceEquals(_reviewButton, review) || !IsCurrentAppearanceGeneration(appearance)
-                || !Coordinator.IsCreationAttributesStateCurrent(state) || !_draft.Matches(state, Coordinator.State)) return;
-            var original = Coordinator.State;
-            var allocations = _draft.Allocations(state).ToArray();
-            using var lifetime = new CancellationTokenSource();
-            _reviewPreparation = lifetime;
-            string label = review.Text;
-            review.IsEnabled = false;
-            review.Text = CreationAllocationStrings.Get("Attributes.ReviewPreparing", "Checking your choices…");
-            try
-            {
-                var result = await Task.Run(() => Coordinator.ReadCreationAuthority(original,
-                    () => Coordinator.PreviewCreationAttributes(state.Binding, allocations), lifetime.Token), lifetime.Token);
-                lifetime.Token.ThrowIfCancellationRequested();
-                if (!IsCurrentAppearanceGeneration(appearance) || !ReferenceEquals(_reviewButton, review)
-                    || !Coordinator.IsCreationAttributesStateCurrent(state) || !_draft.Matches(state, Coordinator.State)
-                    || !_draft.Allocations(state).SequenceEqual(allocations)) return;
-                if (result.Value is { } preview
-                    && Coordinator.CanOfferCreationAttributesReview(preview, allocations))
-                {
-                    _previewBlockers = [];
-                    await Navigation.PushAsync(new CreationAttributesPreviewPage(
-                        Coordinator, preview, allocations,
-                        confirmed =>
-                        {
-                            if (confirmed is { Outcome: CharacterCreationFoundationOutcomes.Success,
-                                    Receipt: { } receipt, RefreshedState: { } fresh, Blockers.Count: 0 }
-                                && Coordinator.IsCreationAttributesReceiptCurrent(receipt)
-                                && Coordinator.IsCreationAttributesStateCurrent(fresh))
-                                _authority = _revalidationAuthority = fresh;
-                        }));
-                    return;
-                }
-                _previewBlockers = result.Value?.Blockers.Count > 0
-                    ? result.Value.Blockers
-                    : result.Blockers.Count > 0 ? result.Blockers
-                        : [CharacterCreationAttributesBlockers.AuthorityUnavailable];
-            }
-            catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
-            catch (Exception error) when (error is not OutOfMemoryException)
-            {
-                if (IsCurrentAppearanceGeneration(appearance) && ReferenceEquals(_reviewButton, review))
-                    _previewBlockers = [Coordinator.IsCreationAttributesStateCurrent(state)
-                        ? CharacterCreationAttributesBlockers.AuthorityUnavailable
-                        : CharacterCreationAttributesBlockers.StaleWorkspaceRevision];
-            }
-            finally
-            {
-                // Never enable a retained button. A fresh render owns any retry.
-                review.Text = label;
-                if (ReferenceEquals(_reviewPreparation, lifetime)) _reviewPreparation = null;
-            }
-        });
-        _body.Add(review);
+    protected override bool HasSavedDraft => _authority?.PendingDraft is not null;
 
-        Label note = NativeTheme.Body(
-            CreationAllocationStrings.Get(
-                "Attributes.ReviewBoundary",
-                "Review your choices, then confirm to save this creation draft."),
-            NativeTheme.Muted);
-        note.AutomationId = "creation-attributes-draft-only-notice";
-        _body.Add(note);
+    protected override async Task<SaveResult> SaveDraftAsync()
+    {
+        if (_authority is not { } state || !Coordinator.IsCreationAttributesStateCurrent(state)
+            || !_draft.Matches(state, Coordinator.State))
+            return new(false, RequiresReopen: true);
+        var allocations = _draft.Allocations(state).ToArray();
+        var original = Coordinator.State;
+        var result = await Task.Run(() => Coordinator.ReadCreationAuthority(original,
+            () => Coordinator.PreviewCreationAttributes(state.Binding, allocations), CancellationToken.None));
+        if (result.Value is not { } preview
+            || !Coordinator.CanOfferCreationAttributesConfirmation(preview, allocations))
+        {
+            // Returning to the exact saved allocation needs no second write.
+            if (result.Value is { } same && Coordinator.CanOfferCreationAttributesReview(same, allocations)
+                && result.Blockers.SequenceEqual(new[] { CharacterCreationAttributesBlockers.DraftDuplicate }))
+                return new(true);
+            return new(false, string.Join("\n", result.Blockers.Select(CreationAllocationStrings.AttributeBlocker)));
+        }
+        var confirmed = await Coordinator.ConfirmCreationAttributesAsync(preview, allocations);
+        if (confirmed is { Outcome: CharacterCreationFoundationOutcomes.Success, Blockers.Count: 0,
+                Receipt: { } receipt, RefreshedState: { } fresh }
+            && Coordinator.IsCreationAttributesReceiptCurrent(receipt)
+            && Coordinator.IsCreationAttributesStateCurrent(fresh))
+        {
+            _authority = _revalidationAuthority = fresh;
+            _draft.Bind(fresh, Coordinator.State);
+            _previewBlockers = [];
+            return new(true);
+        }
+        return new(false, string.Join("\n", confirmed.Blockers.Select(CreationAllocationStrings.AttributeBlocker)),
+            confirmed.Receipt is not null || confirmed.Outcome == "outcome-unknown");
+    }
+
+    protected override async Task OpenNextStepAsync(long appearance)
+    {
+        var original = Coordinator.State;
+        var loaded = await Task.Run(() => Coordinator.ReadCreationAuthority(original,
+            Coordinator.LoadCreationSkills, CancellationToken.None));
+        if (!IsCurrentAppearanceGeneration(appearance)) return;
+        if (loaded.Value is not { } skills || !Coordinator.IsCreationSkillsStateCurrent(skills)
+            || !CreationSkillsPhoneAuthority.IsReady(skills, Coordinator.State))
+            throw new InvalidOperationException("Next Creation step unavailable.");
+        await Navigation.PushAsync(new CreationSkillsPage(Coordinator, skills), animated: false);
     }
 
     private void AddBudgetCard(CharacterCreationAttributesState state,

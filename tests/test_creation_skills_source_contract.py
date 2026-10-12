@@ -17,7 +17,7 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
         self.assertIn("current.Total", page)
         self.assertIn("current.Remaining < 0 ? NativeTheme.Danger : NativeTheme.Text", page)
 
-    def test_specializations_use_complete_catalog_and_explicit_preview(self) -> None:
+    def test_specializations_use_complete_catalog_and_guarded_direct_selection(self) -> None:
         page = (NATIVE / "CreationSkillsPage.cs").read_text(encoding="utf-8")
         self.assertNotIn("source.Specializations.Take(", page)
         self.assertIn("source.Specializations.ToArray()", page)
@@ -26,9 +26,11 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
         self.assertIn("index == currentIndex", page)
         self.assertIn("renderGeneration != _renderGeneration", page)
         self.assertIn("!IsCurrentAppearanceGeneration(appearanceGeneration)", page)
-        selection = page[page.index("picker.SelectedIndexChanged +="):page.index("long renderGeneration =")]
-        self.assertNotIn("PreviewAsync", selection)
-        self.assertNotIn("WithSpecialization", selection)
+        selection = page.split("private void AddSpecializationPicker(", 1)[1].split("private void AddRatingFeedback", 1)[0]
+        self.assertIn("_draft.TryPreviewPrepared", selection)
+        self.assertIn("if (accepted) { currentIndex = index; DraftChanged(); }", selection)
+        self.assertIn("picker.SelectedIndex = currentIndex", selection)
+        self.assertNotIn("creation-skill-specialization-preview-", selection)
 
     def test_dashboard_reads_wait_for_original_owner_only_on_background_worker(self) -> None:
         page = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
@@ -66,8 +68,8 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
             "_draft.Preview?.ActiveSkillPointBudget ?? state.ActiveSkillPointBudget",
             "_draft.Preview?.SkillGroupPointBudget ?? state.SkillGroupPointBudget",
             "_draft.Preview?.KnowledgeSkillPointBudget ?? state.KnowledgeSkillPointBudget",
-            "await Task.Run(() => Coordinator.PreviewCreationSkills(",
-            "new CreationSkillsPreviewPage(",
+            "Coordinator.PreviewCreationSkills(state.Binding, skills, groups)",
+            "protected override async Task<SaveResult> SaveDraftAsync()",
             'AutomationId = "creation-skills-preview-page"',
             'AutomationId = "creation-skills-confirm"',
             "Coordinator.ConfirmCreationSkillsAsync(",
@@ -149,23 +151,23 @@ class CreationSkillsSourceContractTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, combined)
 
-    def test_explicit_review_retains_fresh_core_preview(self) -> None:
+    def test_autosave_retains_fresh_core_preview_and_receipt_admission(self) -> None:
         page = (NATIVE / "CreationSkillsPage.cs").read_text(encoding="utf-8")
         for mutation in ("_draft.WithSkill(", "_draft.WithGroup(", "_draft.WithSpecialization("):
             self.assertIn(mutation, page)
-        self.assertIn("await Task.Run(() => Coordinator.PreviewCreationSkills(", page)
-        self.assertIn("requestedSkills", page)
-        self.assertIn("requestedGroups", page)
-        self.assertIn("_draft.TryAdopt(", page)
-        self.assertIn("requestedSkills,", page)
-        self.assertIn("requestedGroups);", page)
+        self.assertIn("await Task.Run(() => Coordinator.ReadCreationAuthority(original,", page)
+        self.assertIn("Coordinator.PreviewCreationSkills(state.Binding, skills, groups)", page)
+        self.assertIn("var skills = _draft.Skills.ToArray();", page)
+        self.assertIn("var groups = _draft.Groups.ToArray();", page)
+        self.assertIn("Coordinator.IsCreationSkillsReceiptCurrent(receipt)", page)
+        self.assertIn('confirmed.Outcome == "outcome-unknown"', page)
         self.assertNotIn("ActivePointTotal =", page)
         self.assertNotIn("KnowledgePointTotal =", page)
 
     def test_rating_preview_uses_detached_core_rules_without_store_reads(self) -> None:
         page = (NATIVE / "CreationSkillsPage.cs").read_text(encoding="utf-8")
         rating = page[page.index("    private void AddRatingSlider("):
-                      page.index("    private async Task PreviewAsync(")]
+                      page.index("    private Task PreviewAsync(")]
         for marker in ("RunWithConditionalRefreshAsync", "render == _renderGeneration",
                        "IsCurrentAppearanceGeneration(appearance)",
                        "Coordinator.IsCreationSkillsDraftDisplayCurrent(state)",

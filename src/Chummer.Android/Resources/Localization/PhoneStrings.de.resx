@@ -424,4 +424,13 @@ Noch wurde nichts gespeichert.</value></data>
   <data name="CreationAttributesInlineHelp" xml:space="preserve"><value>Ziehe den Regler. Graue Werte sind nicht verfügbar. Tippe auf ein Attribut für Karma-Optionen.</value></data>
   <data name="CreationRatingUnavailable" xml:space="preserve"><value>Mit der aktuellen Verteilung nicht verfügbar</value></data>
   <data name="CreationKarmaOptions" xml:space="preserve"><value>Karma-Optionen</value></data>
+  <data name="CreationAutosaveHelp" xml:space="preserve"><value>Änderungen werden automatisch gespeichert.</value></data>
+  <data name="CreationAutosaveContinue" xml:space="preserve"><value>Weiter</value></data>
+  <data name="CreationAutosaveNextFailed" xml:space="preserve"><value>Gespeichert. Der nächste Schritt konnte nicht geöffnet werden. Tippe erneut auf Weiter.</value></data>
+  <data name="CreationAutosavePending" xml:space="preserve"><value>Noch nicht gespeichert…</value></data>
+  <data name="CreationAutosaveSaving" xml:space="preserve"><value>Wird gespeichert…</value></data>
+  <data name="CreationAutosaveSaved" xml:space="preserve"><value>Gespeichert</value></data>
+  <data name="CreationAutosaveReopen" xml:space="preserve"><value>Speichern konnte nicht bestätigt werden. Öffne diesen Runner vor weiteren Änderungen erneut.</value></data>
+  <data name="CreationAutosaveFailed" xml:space="preserve"><value>Nicht gespeichert. Prüfe deine Auswahl und versuche es erneut.</value></data>
+  <data name="CreationSkillsSearch" xml:space="preserve"><value>Fertigkeiten und Gruppen suchen</value></data>
 </root>
