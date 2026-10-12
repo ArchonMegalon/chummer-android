@@ -132,21 +132,22 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 199 is the latest [observed Internal availability](../play/evidence/preview199-internal-observation.json),
-released on 12 October at 04:11 Europe/Vienna. Core150 avoids unselected custom
-source discovery while retaining enabled-source, settings, byte and owner checks.
-UI428 and Android710 admit the exact sealed graph. Affected managed checks and
-compilation passed; the API36 SDK-test update/cold route restores all nine saved
-synthetic runners and read-only Continue opens Resources6000nuyen. All nine
-workspace files remain unchanged. The native APK has metadata198; the release
-delta is version199 plus documentation, with separate ARM64 build/signature checks.
+Preview 200 is the latest [observed Internal availability](../play/evidence/preview200-internal-observation.json),
+released on 12 October at 06:12 Europe/Vienna. Core151 reuses the parsed canonical
+XML/digest of small immutable Magic payload identities, retaining expected-digest,
+root, typed-value, source, owner and budget checks. UI431 and Android712 admit
+the exact sealed graph. Affected managed checks and compilation passed; the
+API36 SDK-test update/cold route restores all nine saved synthetic runners and
+read-only Continue opens Resources6000nuyen. All nine workspace files remain
+unchanged. The native APK has metadata199; the release delta is version200 plus
+documentation, with separate ARM64 build/signature checks.
 Local locked ARM64/Internal build, content/proof/hygiene checks, isolated
 original-key signing, independent keyless signature/payload verification and
 one scoped upload/readback passed. Slider-only controls and forward wizard remain.
-Fewer source validations are demonstrated, not a controlled startup speedup:
-native timing is confounded and restoration remains slow. Physical199,
+Reduced repeated parsing is not a controlled startup-speedup claim: native
+timing includes a SystemUI ANR and restoration remains slow. Physical200,
 startup/reload closure, full Creation/Career/Origin, original FirstBook uncertainty
-and local diagnostic-contract portability remain open.199 is consumed; this
+and local diagnostic-contract portability remain open.200 is consumed; this
 evidence update needs no rebuild or re-upload.
 
 Preview 198's [observed Internal availability](../play/evidence/preview198-internal-observation.json) was
