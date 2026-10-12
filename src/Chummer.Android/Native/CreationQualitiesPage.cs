@@ -41,6 +41,12 @@ public sealed class CreationQualitiesPage : NativePageBase
     private bool _loading = true;
     private bool _checkpointOwnsLane;
     private readonly ScrollView _scroll = new();
+    private readonly VerticalStackLayout _actions = new()
+    {
+        Padding = new Thickness(20, 8, 20, 12),
+        BackgroundColor = NativeTheme.Paper,
+        IsVisible = false
+    };
     private HelpReturnPosition? _helpReturn;
     private bool _returnedFromHelp;
     private long _renderGeneration;
@@ -74,7 +80,10 @@ public sealed class CreationQualitiesPage : NativePageBase
         {
             if (args.PropertyName == nameof(ScrollView.ContentSize)) QueueHelpScrollRestore();
         };
-        Content = _scroll;
+        Grid layout = new() { RowDefinitions = [new(GridLength.Star), new(GridLength.Auto)] };
+        layout.Add(_scroll, 0, 0);
+        layout.Add(_actions, 0, 1);
+        Content = layout;
         Refresh();
     }
 
@@ -215,15 +224,10 @@ public sealed class CreationQualitiesPage : NativePageBase
         _renderGeneration++;
         _catalog.Clear();
         _body.Clear();
+        _actions.Clear();
+        _actions.IsVisible = false;
         _technicalDetails.Clear();
         _technicalDetails.IsVisible = false;
-        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Qualities.Step1", "SR5 · 1 of 4")));
-        _body.Add(NativeTheme.Title(CreationFlowStrings.Get("Qualities.Choose", "Choose qualities")));
-        _body.Add(NativeTheme.Body(
-            CreationFlowStrings.Get(
-                "Qualities.Intro",
-                "Only available qualities within your budget are shown. Tap ! to learn about their effects. Selected qualities remain available to remove."),
-            NativeTheme.Muted));
 
         if (_loading)
         {
@@ -253,11 +257,11 @@ public sealed class CreationQualitiesPage : NativePageBase
         AddBudgets(_draft.Preview ?? state.Preview);
         CharacterCreationQualitiesCheckpoint? checkpoint = AddRecovery(state);
         bool checkpointOwnsLane = checkpoint is not null || HasMalformedCheckpoint();
-        AddReview(state, checkpointOwnsLane);
         AddBlockers(_localBlockers);
-        AddTechnicalDetailsDisclosure();
-        AddGranted(state);
         AddOptions(state, editor, checkpointOwnsLane);
+        AddGranted(state);
+        AddReview(state, checkpointOwnsLane);
+        AddTechnicalDetailsDisclosure();
         QueueHelpScrollRestore();
     }
 
@@ -279,33 +283,23 @@ public sealed class CreationQualitiesPage : NativePageBase
 
     private void AddBudgets(CharacterCreationQualitiesPreview preview)
     {
-        _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Qualities.CoreLedgers", "Quality budgets")));
-        FlexLayout ribbon = new()
-        {
-            Wrap = Microsoft.Maui.Layouts.FlexWrap.Wrap,
-            Direction = Microsoft.Maui.Layouts.FlexDirection.Row
-        };
-        ribbon.Add(BudgetCard(
+        VerticalStackLayout budgets = new() { Spacing = 6 };
+        budgets.Add(BudgetRow(
             CreationFlowStrings.Get("Qualities.Positive", "Positive qualities"),
             preview.PositiveQualityBudget,
             "creation-qualities-budget-positive"));
-        ribbon.Add(BudgetCard(
+        budgets.Add(BudgetRow(
             CreationFlowStrings.Get("Qualities.Negative", "Negative qualities"),
             preview.NegativeQualityBudget,
             "creation-qualities-budget-negative"));
-        VerticalStackLayout karma = new() { Spacing = 5, MinimumWidthRequest = 155 };
-        karma.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Common.CreationKarma", "Creation Karma")));
-        karma.Add(NativeTheme.Title(
+        Grid karma = NativeTheme.Metric(
+            CreationFlowStrings.Get("Common.CreationKarma", "Creation Karma"),
             CreationFlowStrings.Format(
                 "Qualities.KarmaRemainingInline",
                 "{0} remaining",
-                Signed(preview.KarmaRemaining)),
-            20));
-        Border karmaCard = NativeTheme.Card(karma, new Thickness(12));
-        karmaCard.Margin = new Thickness(0, 0, 8, 8);
-        karmaCard.AutomationId = "creation-qualities-budget-karma";
-        ribbon.Add(karmaCard);
-        _body.Add(ribbon);
+                Signed(preview.KarmaRemaining)));
+        karma.AutomationId = "creation-qualities-budget-karma";
+        budgets.Add(karma);
         if (preview.MetagenicPositiveKarma != 0 || preview.MetagenicNegativeKarma != 0)
         {
             Label metagenic = NativeTheme.Body(
@@ -316,34 +310,34 @@ public sealed class CreationQualitiesPage : NativePageBase
                     preview.MetagenicNegativeKarma.ToString(CultureInfo.InvariantCulture)),
                 NativeTheme.Muted);
             metagenic.AutomationId = "creation-qualities-budget-metagenic";
-            _body.Add(metagenic);
+            budgets.Add(metagenic);
         }
+        Border card = NativeTheme.Card(budgets, new Thickness(12));
+        card.AutomationId = "creation-qualities-budgets";
+        _body.Add(card);
     }
 
-    private static Border BudgetCard(
+    internal static Grid BudgetRow(
         string label,
         CharacterCreationQualitiesBudget budget,
         string automationId)
     {
-        VerticalStackLayout card = new() { Spacing = 5, MinimumWidthRequest = 155 };
-        card.Add(NativeTheme.Eyebrow(label));
-        card.Add(NativeTheme.Title(
-            CreationFlowStrings.Format(
+        Grid row = NativeTheme.Metric(label,
+            CreationFlowStrings.Format("Qualities.BudgetCompact", "{0} · {1}",
+                CreationFlowStrings.Format(
                 "Qualities.Left",
                 "{0} left",
                 budget.Remaining.ToString(CultureInfo.InvariantCulture)),
-            20));
-        card.Add(NativeTheme.Body(
-            CreationFlowStrings.Format(
+                CreationFlowStrings.Format(
                 "Qualities.BudgetKarma",
                 "{0} / {1} Karma",
                 budget.Used.ToString(CultureInfo.InvariantCulture),
-                budget.Total.ToString(CultureInfo.InvariantCulture)),
-            budget.Blockers.Count == 0 ? NativeTheme.Muted : NativeTheme.Danger));
-        Border border = NativeTheme.Card(card, new Thickness(12));
-        border.Margin = new Thickness(0, 0, 8, 8);
-        border.AutomationId = automationId;
-        return border;
+                budget.Total.ToString(CultureInfo.InvariantCulture))));
+        Label value = (Label)row.Children[1];
+        value.LineBreakMode = LineBreakMode.WordWrap;
+        value.TextColor = budget.Blockers.Count == 0 ? NativeTheme.Text : NativeTheme.Danger;
+        row.AutomationId = automationId;
+        return row;
     }
 
     private CharacterCreationQualitiesCheckpoint? AddRecovery(
@@ -541,7 +535,7 @@ public sealed class CreationQualitiesPage : NativePageBase
             [CreationFlowStrings.Get("Qualities.Filter.Name", "Name"),
              CreationFlowStrings.Get("Qualities.Filter.CostUp", "Karma ↑"),
              CreationFlowStrings.Get("Qualities.Filter.CostDown", "Karma ↓"),
-             CreationFlowStrings.Get("Qualities.Filter.Fit", "Fits my character")], _filters.Sort);
+             CreationFlowStrings.Get("Qualities.Filter.Fit", "Matches my skills")], _filters.Sort);
         filters.Add(polarity, 0, 0);
         filters.Add(cost, 1, 0);
         filters.Add(sort, 0, 1);
@@ -743,8 +737,14 @@ public sealed class CreationQualitiesPage : NativePageBase
                 _draft.SelectedOptionIds.Count.ToString(CultureInfo.InvariantCulture)));
         review.AutomationId = "creation-qualities-open-review";
         review.IsEnabled = !checkpointOwnsLane && _canReview;
-        review.Clicked += async (_, _) => await RunAsync(() => OpenReviewAsync(state));
-        _body.Add(review);
+        review.Clicked += async (_, _) =>
+        {
+            if (!ReferenceEquals(review.Parent, _actions) || !IsCatalogCurrent()
+                || checkpointOwnsLane || !_canReview) return;
+            await RunAsync(() => OpenReviewAsync(state));
+        };
+        _actions.Add(review);
+        _actions.IsVisible = true;
         Label finalization = NativeTheme.Body(
             CreationFlowStrings.Get(
                 "Qualities.FinalizationBoundary",

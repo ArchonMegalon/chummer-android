@@ -10,7 +10,7 @@
   <data name="Qualities.Filter.Name" xml:space="preserve"><value>Name</value></data>
   <data name="Qualities.Filter.CostUp" xml:space="preserve"><value>Karma ↑</value></data>
   <data name="Qualities.Filter.CostDown" xml:space="preserve"><value>Karma ↓</value></data>
-  <data name="Qualities.Filter.Fit" xml:space="preserve"><value>Fits my character</value></data>
+  <data name="Qualities.Filter.Fit" xml:space="preserve"><value>Matches my skills</value></data>
   <data name="Qualities.Filter.FitLoading" xml:space="preserve"><value>Finding matches…</value></data>
   <data name="Qualities.Filter.FitEmpty" xml:space="preserve"><value>No clear matches yet. All available choices remain shown.</value></data>
   <data name="Qualities.Filter.FitHint" xml:space="preserve"><value>Suggestions based on your trained skills, not a best-build guarantee.</value></data>
@@ -215,6 +215,7 @@
   <data name="Qualities.Abandon.Title" xml:space="preserve"><value>Abandon reviewed qualities?</value></data>
   <data name="Qualities.Binding" xml:space="preserve"><value>Revision {0} · prerequisite {1} · attributes {2}</value></data>
   <data name="Qualities.BudgetKarma" xml:space="preserve"><value>{0} / {1} Karma</value></data>
+  <data name="Qualities.BudgetCompact" xml:space="preserve"><value>{0} · {1}</value></data>
   <data name="Qualities.Choose" xml:space="preserve"><value>Choose qualities</value></data>
   <data name="Qualities.Configure.Add" xml:space="preserve"><value>Add to draft</value></data>
   <data name="Qualities.Configure.Back" xml:space="preserve"><value>Back to qualities</value></data>

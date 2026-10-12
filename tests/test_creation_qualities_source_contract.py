@@ -8,6 +8,27 @@ NATIVE = REPO / "src" / "Chummer.Android" / "Native"
 
 
 class CreationQualitiesSourceContractTests(unittest.TestCase):
+    def test_chooser_precedes_background_details_with_separate_forward_action(self) -> None:
+        page = (NATIVE / "CreationQualitiesPage.cs").read_text(encoding="utf-8")
+        refresh = page[page.index("protected override void Refresh()"):page.index("private void AddBinding(")]
+        self.assertNotIn('"Qualities.Step1"', refresh)
+        self.assertNotIn('"Qualities.Intro"', refresh)
+        self.assertIn("_actions.Clear();", refresh)
+        self.assertIn("_actions.IsVisible = false;", refresh)
+        for detail in ("AddGranted(state);", "AddTechnicalDetailsDisclosure();"):
+            self.assertLess(refresh.index("AddOptions(state, editor, checkpointOwnsLane);"), refresh.index(detail))
+        self.assertIn("layout.Add(_scroll, 0, 0);", page)
+        self.assertIn("layout.Add(_actions, 0, 1);", page)
+        budget = page[page.index("private void AddBudgets("):page.index("private CharacterCreationQualitiesCheckpoint? AddRecovery(")]
+        self.assertNotIn("FlexLayout", budget)
+        self.assertNotIn("MinimumWidthRequest", budget)
+        for fact in ("budget.Remaining", "budget.Used", "budget.Total", "budget.Blockers", "preview.KarmaRemaining", "preview.MetagenicPositiveKarma", "preview.MetagenicNegativeKarma"):
+            self.assertIn(fact, budget)
+        review = page[page.index("private void AddReview("):page.index("private async Task OpenReviewAsync(")]
+        self.assertIn("_actions.Add(review);", review)
+        self.assertIn("!ReferenceEquals(review.Parent, _actions)", review)
+        self.assertIn("checkpointOwnsLane || !_canReview", review)
+
     def test_help_keeps_summary_and_warnings_visible_with_folded_effects(self) -> None:
         page = (NATIVE / "CreationQualitiesPage.cs").read_text(encoding="utf-8")
         help_page = page[page.index("public sealed class CreationQualityInfoPage"):
@@ -174,11 +195,11 @@ class CreationQualitiesSourceContractTests(unittest.TestCase):
         for guard in ("ProjectEditor(state, original)", "CanConfirmPreview(", "draft.AvailableOptions("):
             self.assertIn(guard, prepare)
 
-    def test_catalog_is_bounded_and_review_precedes_it(self) -> None:
+    def test_catalog_is_bounded_and_review_stays_outside_scrolling_content(self) -> None:
         page = (NATIVE / "CreationQualitiesPage.cs").read_text(encoding="utf-8")
         self.assertIn("matches.Skip(_catalogOffset).Take(CatalogPageSize)", page)
-        self.assertLess(page.index("AddReview(state, checkpointOwnsLane);"),
-                        page.index("AddOptions(state, editor, checkpointOwnsLane);"))
+        self.assertIn("_actions.Add(review);", page)
+        self.assertNotIn("_body.Add(review);", page)
         self.assertIn("search.SearchButtonPressed +=", page)
         self.assertIn("ApplyFilter(search.Text)", page)
         for locale in ("", ".de", ".es"):

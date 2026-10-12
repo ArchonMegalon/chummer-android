@@ -81,7 +81,7 @@
   <data name="Qualities.Filter.Name" xml:space="preserve"><value>Name</value></data>
   <data name="Qualities.Filter.CostUp" xml:space="preserve"><value>Karma ↑</value></data>
   <data name="Qualities.Filter.CostDown" xml:space="preserve"><value>Karma ↓</value></data>
-  <data name="Qualities.Filter.Fit" xml:space="preserve"><value>Passend zu meinem Charakter</value></data>
+  <data name="Qualities.Filter.Fit" xml:space="preserve"><value>Passend zu meinen Fertigkeiten</value></data>
   <data name="Qualities.Filter.FitLoading" xml:space="preserve"><value>Passende Vorschläge werden gesucht…</value></data>
   <data name="Qualities.Filter.FitEmpty" xml:space="preserve"><value>Noch keine eindeutigen Vorschläge. Alle verfügbaren Möglichkeiten bleiben sichtbar.</value></data>
   <data name="Qualities.Filter.FitHint" xml:space="preserve"><value>Vorschläge anhand deiner Fertigkeiten, keine Garantie für einen optimalen Charakter.</value></data>
@@ -286,6 +286,7 @@
   <data name="Qualities.Abandon.Title" xml:space="preserve"><value>Geprüfte Vor- und Nachteile verwerfen?</value></data>
   <data name="Qualities.Binding" xml:space="preserve"><value>Revision {0} · Voraussetzung {1} · Attribute {2}</value></data>
   <data name="Qualities.BudgetKarma" xml:space="preserve"><value>{0} / {1} Karma</value></data>
+  <data name="Qualities.BudgetCompact" xml:space="preserve"><value>{0} · {1}</value></data>
   <data name="Qualities.Choose" xml:space="preserve"><value>Vor- und Nachteile auswählen</value></data>
   <data name="Qualities.Configure.Add" xml:space="preserve"><value>Zum Entwurf hinzufügen</value></data>
   <data name="Qualities.Configure.Back" xml:space="preserve"><value>Zurück zu Vor- und Nachteilen</value></data>
