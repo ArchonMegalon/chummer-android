@@ -23,6 +23,18 @@ def source(path: Path) -> str:
 
 
 class CreationGearSourceContractTests(unittest.TestCase):
+    def test_type_picker_returns_before_bounded_native_catalog_render(self) -> None:
+        page = source(PAGE)
+        selected = page.split("type.SelectedIndexChanged +=", 1)[1].split("};", 1)[0]
+        self.assertNotIn("RenderCatalog(state)", selected)
+        self.assertIn("RefreshCatalogAfterPickerAsync", selected)
+        deferred = page.split("private async Task RefreshCatalogAfterPickerAsync", 1)[1].split("private bool IsCatalogCurrent", 1)[0]
+        for guard in ("await Task.Yield()", "request != _catalogRefreshGeneration",
+                      "IsCurrentAppearanceGeneration(appearance)", "ReferenceEquals(type.Parent, _body)",
+                      "ReferenceEquals(state, _loaded?.State)", "IsCatalogCurrent()"):
+            self.assertIn(guard, deferred)
+        self.assertIn("CatalogPageSize = 12", page)
+
     def test_unchanged_saved_basket_continuation_does_not_purchase(self) -> None:
         coordinator = source(ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPurchases.cs")
         continuation = coordinator.split("PrepareSavedCreationGearNextPageAsync(", 1)[1]

@@ -10,7 +10,11 @@ namespace Chummer.Android.Native;
 /// </summary>
 public sealed class CreationGearPage : NativePageBase
 {
-    private const int CatalogPageSize = 40;
+    // Keep native view creation bounded on small phones; the full admitted
+    // catalogue remains searchable and reachable through the existing pager.
+    private const int CatalogPageSize = 12;
+    private long _catalogRefreshGeneration;
+    internal Task CatalogRefresh { get; private set; } = Task.CompletedTask;
     private readonly ICharacterCreationGearInteractionPresenter _gear;
     private readonly ICharacterOverviewPresenter _overview;
     private readonly AndroidSurfaceCopy _copy;
@@ -41,6 +45,7 @@ public sealed class CreationGearPage : NativePageBase
 
     protected override void OnDisappearing()
     {
+        _catalogRefreshGeneration++;
         _continueLifetime?.Cancel();
         base.OnDisappearing();
     }
@@ -110,6 +115,7 @@ public sealed class CreationGearPage : NativePageBase
     {
         if (_continueLifetime is not null && _loadedDisplay is { } continuing
             && Coordinator.IsCreationCatalogDisplayCurrent(continuing)) return;
+        _catalogRefreshGeneration++;
         _catalogRows.Clear();
         _basketBody = new() { Spacing = 14 };
         _basketDetails = new() { Spacing = 6 };
@@ -380,7 +386,10 @@ public sealed class CreationGearPage : NativePageBase
                 || type.SelectedIndex < 0 || type.SelectedIndex > categories.Length) return;
             _category = type.SelectedIndex == 0 ? null : categories[type.SelectedIndex - 1];
             _catalogOffset = 0;
-            RenderCatalog(state);
+            // The native Picker dismisses its dialog only after this callback
+            // returns. Do not rebuild dozens of native controls inside it.
+            CatalogRefresh = RefreshCatalogAfterPickerAsync(state, type,
+                CaptureAppearanceGeneration(), ++_catalogRefreshGeneration);
         };
         _body.Add(type);
         _technicalDetails.Add(_catalogDetails);
@@ -391,12 +400,23 @@ public sealed class CreationGearPage : NativePageBase
     private static string CategoryName(string category)
         => CreationFlowStrings.Get("Gear.Type." + category, category);
 
+    private async Task RefreshCatalogAfterPickerAsync(CharacterCreationGearInteractionState state,
+        Picker type, long appearance, long request)
+    {
+        await Task.Yield();
+        if (request != _catalogRefreshGeneration || !IsCurrentAppearanceGeneration(appearance)
+            || !ReferenceEquals(type.Parent, _body) || !ReferenceEquals(state, _loaded?.State)
+            || !IsCatalogCurrent()) return;
+        RenderCatalog(state);
+    }
+
     private bool IsCatalogCurrent() => ReferenceEquals(_catalog.Parent, _body)
         && IsCurrentAppearanceGeneration(CaptureAppearanceGeneration())
         && _loadedDisplay is { } original && Coordinator.IsCreationCatalogDisplayCurrent(original);
 
     private void RenderCatalog(CharacterCreationGearInteractionState state)
     {
+        _catalogRefreshGeneration++;
         _catalog.Clear();
         _catalogDetails.Clear();
         _catalogRows.Clear();

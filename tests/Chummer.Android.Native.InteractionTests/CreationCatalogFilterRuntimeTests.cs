@@ -55,6 +55,9 @@ internal static partial class AfterRunAuthorityHarness
                 int categoryIndex = 2;
                 string selectedType = type.Items[categoryIndex];
                 type.SelectedIndex = categoryIndex;
+                Require(Rows().SequenceEqual(originalRows),
+                    "Type selection rebuilt native rows before the Picker callback returned.");
+                await page.CatalogRefresh;
                 var filtered = Rows();
                 Require(filtered.Length > 0 && filtered.All(row => MinimalVisible((Grid)row.Parent)
                     .OfType<Label>().Any(x => x.Text?.Contains(selectedType) == true)), "Wrong type escaped the filter.");
@@ -67,6 +70,13 @@ internal static partial class AfterRunAuthorityHarness
                 search.Text = "";
                 Require(type.SelectedIndex == categoryIndex, "Clearing search reset the type.");
                 type.SelectedIndex = 0;
+                var obsoleteRefresh = page.CatalogRefresh;
+                type.SelectedIndex = categoryIndex;
+                await obsoleteRefresh;
+                await page.CatalogRefresh;
+                Require(Rows().All(row => MinimalVisible((Grid)row.Parent)
+                    .OfType<Label>().Any(x => x.Text?.Contains(selectedType) == true)),
+                    "A superseded Picker callback replaced the latest category.");
                 Require(gear.LoadCalls == loads && gear.ConfirmCalls == 0, "Browsing reread or mutated Core.");
                 ((IButtonController)remove).SendClicked();
                 Require(!MinimalVisible(page).OfType<Button>().Any(x => x.AutomationId == remove.AutomationId),
@@ -74,8 +84,13 @@ internal static partial class AfterRunAuthorityHarness
                 var saved = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
                 Require(saved.ContentRevision == before.ContentRevision && saved.SavedRevision == before.SavedRevision,
                     "Filters changed the durable runner.");
+                type.SelectedIndex = 0;
+                var leavingRows = Rows();
                 IssuedPageLifecycle(page, "OnDisappearing");
+                await page.CatalogRefresh;
+                Require(Rows().SequenceEqual(leavingRows), "Queued category rendering survived departure.");
                 type.SelectedIndex = categoryIndex;
+                await page.CatalogRefresh;
                 Require(gear.LoadCalls == loads && gear.ConfirmCalls == 0, "Departed type control dispatched Core.");
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
                 Require(Control<Picker>("creation-gear-type").Items.Count > 2, "Re-entry lost equipment types.");
