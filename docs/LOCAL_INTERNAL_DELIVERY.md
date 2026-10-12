@@ -132,7 +132,21 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 207 is the latest [observed Internal availability](../play/evidence/preview207-internal-observation.json),
+Preview 208 is the latest [observed Internal availability](../play/evidence/preview208-internal-observation.json),
+released on 12 October at 22:37 Europe/Vienna. Correcting a rejected starting-cash
+dice total now clears obsolete feedback immediately while retaining input focus.
+Fresh Core review is still required; editing never saves or grants validity.
+Android #728 merged normally with the reviewed tree; Core/UI inputs are unchanged.
+Focused source and actual-Core/MAUI checks, affected compile and native208
+rejection/correction/review passed; all eight baseline workspace files remained
+byte-identical. No new native finalization or persistence claim is made.
+Local ARM64/Internal build, isolated original-key signing and independent keyless
+verification passed. One upload/confirmation produced actual Console availability.
+Earlier single actionable Magic choices and compact Qualities/Resources remain.
+Physical Play208, slow cold restoration, reload and complete Creation/Origin
+remain open. Version208 is consumed; do not rebuild or re-upload it.
+
+Preview 207's [historical Internal availability](../play/evidence/preview207-internal-observation.json) was
 released on 12 October at 21:19 Europe/Vienna. Saved Resources now offers an
 immediately visible Continue to gear and omits the duplicate saved option.
 Continuation validates current owner/display/snapshot without preparing or
