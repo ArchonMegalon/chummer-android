@@ -10,7 +10,7 @@
   <data name="Qualities.Filter.Name" xml:space="preserve"><value>Nombre</value></data>
   <data name="Qualities.Filter.CostUp" xml:space="preserve"><value>Karma ↑</value></data>
   <data name="Qualities.Filter.CostDown" xml:space="preserve"><value>Karma ↓</value></data>
-  <data name="Qualities.Filter.Fit" xml:space="preserve"><value>Para mi personaje</value></data>
+  <data name="Qualities.Filter.Fit" xml:space="preserve"><value>Según mis habilidades</value></data>
   <data name="Qualities.Filter.FitLoading" xml:space="preserve"><value>Buscando sugerencias…</value></data>
   <data name="Qualities.Filter.FitEmpty" xml:space="preserve"><value>Aún no hay coincidencias claras. Se muestran todas las opciones disponibles.</value></data>
   <data name="Qualities.Filter.FitHint" xml:space="preserve"><value>Sugerencias según tus habilidades, no una garantía de personaje óptimo.</value></data>
@@ -213,6 +213,7 @@
   <data name="Qualities.Abandon.Title" xml:space="preserve"><value>¿Descartar las cualidades revisadas?</value></data>
   <data name="Qualities.Binding" xml:space="preserve"><value>Revisión {0} · requisito {1} · atributos {2}</value></data>
   <data name="Qualities.BudgetKarma" xml:space="preserve"><value>{0} / {1} Karma</value></data>
+  <data name="Qualities.BudgetCompact" xml:space="preserve"><value>{0} · {1}</value></data>
   <data name="Qualities.Choose" xml:space="preserve"><value>Elegir cualidades</value></data>
   <data name="Qualities.Configure.Add" xml:space="preserve"><value>Añadir al borrador</value></data>
   <data name="Qualities.Configure.Back" xml:space="preserve"><value>Volver a cualidades</value></data>

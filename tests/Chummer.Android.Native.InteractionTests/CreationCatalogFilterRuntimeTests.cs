@@ -12,6 +12,7 @@ internal static partial class AfterRunAuthorityHarness
     internal static async Task RunCatalogFiltersAsync(string contentRoot)
     {
         QualityFilterBoundaries();
+        CompactQualityBudgetFacts();
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
         {
@@ -106,6 +107,22 @@ internal static partial class AfterRunAuthorityHarness
                 var polarity = QualityControl<Picker>("creation-qualities-polarity");
                 var cost = QualityControl<Picker>("creation-qualities-cost");
                 var qualitySearch = QualityControl<SearchBar>("creation-qualities-search");
+                var layout = (Grid)qualities.Content;
+                var scroller = layout.Children.OfType<ScrollView>().Single();
+                var footer = layout.Children.OfType<VerticalStackLayout>().Single();
+                var body = (VerticalStackLayout)scroller.Content;
+                var review = QualityControl<Button>("creation-qualities-open-review");
+                Require(Grid.GetRow(scroller) == 0 && Grid.GetRow(footer) == 1
+                    && layout.RowDefinitions[0].Height.IsStar && layout.RowDefinitions[1].Height.IsAuto
+                    && ReferenceEquals(review.Parent, footer), "Forward action scrolls away with the catalogue.");
+                Require(body.Children[0] is Border { AutomationId: "creation-qualities-budgets" }
+                    && body.Children.IndexOf(qualitySearch) < body.Children.IndexOf(
+                        QualityControl<Button>("creation-qualities-technical-details-toggle")),
+                    "Quality chooser is hidden behind background details.");
+                Require(MinimalVisible(qualities).OfType<Grid>().Count(x => x.AutomationId is
+                    "creation-qualities-budget-positive" or "creation-qualities-budget-negative"
+                    or "creation-qualities-budget-karma") == 3,
+                    "Compact summary lost an admitted budget.");
                 polarity.SelectedIndex = 1;
                 cost.SelectedIndex = 2;
                 Require(ReferenceEquals(qualitySearch, QualityControl<SearchBar>("creation-qualities-search")),
@@ -122,12 +139,48 @@ internal static partial class AfterRunAuthorityHarness
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(qualities, "OnAppearing")));
                 Require(QualityControl<Picker>("creation-qualities-sort").SelectedIndex == 3,
                     "Re-entry discarded relevance sorting.");
+                int depth = navigation.Navigation.NavigationStack.Count;
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)review).SendClicked()));
+                Require(navigation.Navigation.NavigationStack.Count == depth,
+                    "Detached footer from the previous appearance opened a review.");
+                var currentReview = QualityControl<Button>("creation-qualities-open-review");
+                Require(currentReview.IsEnabled, "Compact footer lost the admitted review action.");
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)currentReview).SendClicked()));
+                Require(navigation.Navigation.NavigationStack.Last() is CreationQualitiesReviewPage,
+                    "Compact footer did not open the actual checkpointed review.");
+                Require(new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!.ContentRevision
+                    == before.ContentRevision, "Opening compact review saved the runner without confirmation.");
                 IssuedPageLifecycle(qualities, "OnDisappearing");
                 Console.WriteLine("PASS actual MAUI quality combined filters, async recommendations, readonly re-entry");
                 GC.KeepAlive(window);
             }
             finally { CultureInfo.CurrentUICulture = culture; }
         });
+    }
+
+    private static void CompactQualityBudgetFacts()
+    {
+        var originalCulture = CultureInfo.CurrentUICulture;
+        try
+        {
+            foreach (string locale in new[] { "en-GB", "de-AT", "es-MX" })
+            {
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(locale);
+                var budget = new CharacterCreationQualitiesBudget(25, 28, -3, false, ["over-budget"]);
+                var row = CreationQualitiesPage.BudgetRow("Positive", budget, "budget-test");
+                var value = row.Children.OfType<Label>().Last();
+                Require(value.Text.Contains("-3") && value.Text.Contains("28 / 25 Karma")
+                    && value.FontAttributes.HasFlag(FontAttributes.Bold)
+                    && value.LineBreakMode == LineBreakMode.WordWrap
+                    && value.TextColor == NativeTheme.Danger,
+                    "Compact budget hid exact usage, a negative remainder or the blocker colour: " + locale);
+                var allowed = CreationQualitiesPage.BudgetRow("Positive", budget with { Blockers = [] }, "allowed");
+                Require(allowed.Children.OfType<Label>().Last().TextColor == NativeTheme.Text,
+                    "Compact budget inferred admission instead of displaying Core blockers.");
+            }
+        }
+        finally { CultureInfo.CurrentUICulture = originalCulture; }
+        Console.WriteLine("PASS compact quality budget exact facts, wrapping, emphasis and admitted blocker colours");
     }
 
     private static void QualityFilterBoundaries()
