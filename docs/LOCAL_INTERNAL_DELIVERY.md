@@ -132,7 +132,24 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 198 is the latest [observed Internal availability](../play/evidence/preview198-internal-observation.json),
+Preview 199 is the latest [observed Internal availability](../play/evidence/preview199-internal-observation.json),
+released on 12 October at 04:11 Europe/Vienna. Core150 avoids unselected custom
+source discovery while retaining enabled-source, settings, byte and owner checks.
+UI428 and Android710 admit the exact sealed graph. Affected managed checks and
+compilation passed; the API36 SDK-test update/cold route restores all nine saved
+synthetic runners and read-only Continue opens Resources6000nuyen. All nine
+workspace files remain unchanged. The native APK has metadata198; the release
+delta is version199 plus documentation, with separate ARM64 build/signature checks.
+Local locked ARM64/Internal build, content/proof/hygiene checks, isolated
+original-key signing, independent keyless signature/payload verification and
+one scoped upload/readback passed. Slider-only controls and forward wizard remain.
+Fewer source validations are demonstrated, not a controlled startup speedup:
+native timing is confounded and restoration remains slow. Physical199,
+startup/reload closure, full Creation/Career/Origin, original FirstBook uncertainty
+and local diagnostic-contract portability remain open.199 is consumed; this
+evidence update needs no rebuild or re-upload.
+
+Preview 198's [observed Internal availability](../play/evidence/preview198-internal-observation.json) was
 released on 12 October at 01:57 Europe/Vienna. Magic/Resonance confirmation now
 opens Resources directly; saved recovery can Continue without saving again and
 Back skips the consumed review. Android708 merged with the reviewed tree.
