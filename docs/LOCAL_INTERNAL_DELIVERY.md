@@ -132,7 +132,22 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 206 is the latest [observed Internal availability](../play/evidence/preview206-internal-observation.json),
+Preview 207 is the latest [observed Internal availability](../play/evidence/preview207-internal-observation.json),
+released on 12 October at 21:19 Europe/Vienna. Saved Resources now offers an
+immediately visible Continue to gear and omits the duplicate saved option.
+Continuation validates current owner/display/snapshot without preparing or
+replaying a mutation, shows progress and handles return, departure and retry.
+Changed allocations retain their explicit review/save path. Android #726 merged
+normally with the reviewed tree; Core/UI inputs remain unchanged. Focused
+actual-Core/MAUI checks, affected compile and native207 saved Resources/Gear,
+Back, changed-option preview and process-restart reopen passed; the synthetic
+record remains byte-identical. No new save/finalization acceptance is claimed.
+Local ARM64/Internal build, isolated original-key signing and independent keyless
+verification passed. One upload/confirmation produced actual Console availability.
+Physical Play207, slow cold restoration, reload and complete Creation/Origin
+remain open. Version207 is consumed; do not rebuild or re-upload it.
+
+Preview 206's [historical Internal availability](../play/evidence/preview206-internal-observation.json) was
 released on 12 October at 20:30 Europe/Vienna. Qualities replaces oversized budget
 cards and repeated headings with a compact readable budget block; actual choices
 and filters appear before background details. Review remains reachable outside
