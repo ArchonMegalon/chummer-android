@@ -58,7 +58,37 @@ workspace files unchanged and the same complete overview hash above. This is
 a managed harness measurement, not a native startup benchmark. All 18 actual
 package bytes and the 331 unchanged content files passed the Android verifiers.
 
-The next native measurement must consume this actual sealed dependency graph.
-Slow native startup/reload, physical Preview 198 installation, complete
-Creation/Career/Origin acceptance and broader parity remain open. No release
-artifact, signed bundle or Play upload is produced by this harness change.
+## Native saved-runner update and cold reopen
+
+The local API-36 x64 Release/Internal SDK-test build consumed that exact graph
+and completed with zero warnings or errors. APK SHA-256:
+`ed74569a881ddc25061822693ab8e7bb67dea80ff1322b980c24ec0863d5959d`.
+All 331 embedded content files passed verification. The separate SDK-test app
+was updated once without clearing its existing nine synthetic runner records;
+its temporary UID-only IPv4/IPv6 egress block prevented live provider work.
+
+The selected saved Adept restored into Creation, with the enabled read-only
+Continue action leading to Resources and the expected 6,000 starting/remaining
+nuyen, zero converted karma and zero known purchases. A verified force-stop
+and different process restored the same selection and repeated that navigation
+without saving again. All nine files were byte-identical before the update,
+after the update and after cold navigation. The state-inventory SHA-256 is
+`c02b79c641e4ccb21709d546767f1a336806191e57c93938ea8cc8308dd5a14f`;
+the final Resources hierarchy SHA-256 is
+`70c3dd79a997aa76b6465be6b3b1dcec7151cf74ea095955189471a179404326`.
+
+The old baseline encountered a SystemUI ANR, recovered after Wait, and competed
+with host transcoding. Its shell/selected-restore stages were 36,919/84,118 ms;
+the updated app observed 18,598/32,695 ms and the later cold process observed
+16,024/40,685 ms. These are confounded observations, **not a controlled speedup**.
+Activity launch completion was not treated as runner readiness. Background
+projections still delayed the usable next action. Initial hierarchy reads during
+navigation returned null; later observations established the real Resources page
+without a repeated tap. The original failed observations are retained.
+
+The tested APK has version metadata 198 and a separate app ID, x64 architecture
+and SDK test certificate. Preview 199 changes the release version metadata;
+its ARM64 AAB, original-key signature and Play result require separate checks.
+Slow native startup/reload, physical installation, complete Creation/Career/Origin
+acceptance and broader parity remain open. This is not a live provider or
+physical Play test, a new save-operation test, or a full wizard qualification.
