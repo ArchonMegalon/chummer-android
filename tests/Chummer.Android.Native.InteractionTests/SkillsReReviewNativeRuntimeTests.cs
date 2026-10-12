@@ -39,6 +39,7 @@ internal static partial class AfterRunAuthorityHarness
                 skillsDecorator: inner => failCommittedRead || uncertain ? failedSave = new FailedCommittedSkillsRead(inner, uncertain)
                     : entryProbe = new SkillsReReviewReadProbe(inner), linkedOwners: owners);
             runtime.Id = id;
+            await runtime.Coordinator.InitializeAsync();
             await runtime.Presenter.LoadAsync(id, default);
             Require(runtime.Coordinator.State.Profile?.Created == false && runtime.Coordinator.State.WorkspaceId == id,
                 "Real Presentation did not load the historical Creation runner.");
@@ -165,7 +166,8 @@ internal static partial class AfterRunAuthorityHarness
                 .Invoke(page, [Array.Empty<CharacterCreationSkillAllocation>(), groups])!;
             Require(nativeDraft.Preview!.PreviewDigest == preview.PreviewDigest,
                 "A queued action changed the proposal after page departure.");
-            var confirmed = await runtime.Coordinator.ConfirmCreationSkillsReReviewAsync(preview, skills, groups, true);
+            var confirmed = await ConfirmSkillsReReviewThroughPageAsync(runtime, page,
+                expectForward: !failCommittedRead && !uncertain, departAfterCommit: !linked ? entryProbe : null);
             if (uncertain)
             {
                 Require(confirmed.Outcome == "outcome-unknown" && confirmed.Receipt is null && failedSave!.ConfirmCalls == 1,
@@ -249,6 +251,78 @@ internal static partial class AfterRunAuthorityHarness
                 + (failCommittedRead ? " → failed committed read retains receipt → explicit reopen" : " → real presenter/shell")
                 + " → cold reopen/replay (managed; no Activity proof)");
         }
+    }
+
+    private static async Task<CreationSkillsPhoneConfirmResult> ConfirmSkillsReReviewThroughPageAsync(
+        NativeRewardRuntime runtime, CreationSkillsReReviewPage page, bool expectForward,
+        SkillsReReviewReadProbe? departAfterCommit)
+    {
+        using var ui = new IssuedPageUiContext();
+        CreationSkillsPhoneConfirmResult? result = null;
+        await ui.RunAsync(async () =>
+        {
+            var prior = new ContentPage();
+            var nav = new NavigationPage(prior);
+            await nav.PushAsync(page, animated: false);
+            var window = new Window(nav);
+            using var alerts = new IssuedPageAlerts(page, window, args => args.SetResult(true));
+            await alerts.PreflightAsync();
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+            var confirm = SkillsReviewButton(page);
+            Require(confirm.IsEnabled, "SETUP: current reviewed Skills cannot be confirmed through the actual page.");
+            if (departAfterCommit is not null)
+                departAfterCommit.AfterConfirm = () =>
+                {
+                    var departed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    ui.Post(_ =>
+                    {
+                        try { IssuedPageLifecycle(page, "OnDisappearing"); departed.SetResult(); }
+                        catch (Exception error) { departed.SetException(error); }
+                    }, null);
+                    departed.Task.WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
+                };
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)confirm).SendClicked()));
+            result = (CreationSkillsPhoneConfirmResult?)typeof(CreationSkillsReReviewPage)
+                .GetField("_confirmation", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page);
+            Require(result is not null && alerts.Titles.Count == 1,
+                "Skills review did not obtain one explicit confirmation and retain its outcome.");
+            if (departAfterCommit is not null)
+            {
+                departAfterCommit.AfterConfirm = null;
+                Require(ReferenceEquals(nav.Navigation.NavigationStack.Last(), page),
+                    "A completed save stole navigation after the review departed.");
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+                var next = MinimalVisible(page).OfType<Button>()
+                    .Single(x => x.AutomationId == "creation-skills-rereview-continue");
+                Require(next.IsEnabled, "A fresh appearance cannot continue the already-saved exact review.");
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)next).SendClicked()));
+            }
+            if (expectForward)
+            {
+                Require(nav.Navigation.NavigationStack.Last() is CreationSkillsPage
+                    && !nav.Navigation.NavigationStack.Contains(page),
+                    "Saved Skills re-review stranded the user on its receipt instead of the editable Skills page.");
+                var next = (CreationSkillsPage)nav.Navigation.NavigationStack.Last();
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(next, "OnAppearing")));
+                Require(MinimalVisible(next).OfType<SearchBar>().Any(x => x.AutomationId == "creation-skills-search")
+                    && runtime.Coordinator.IsCreationSkillsStateCurrent(result!.RefreshedState!),
+                    "Forward navigation discarded the exact fresh Skills state or did not render the editor.");
+                IssuedPageLifecycle(next, "OnDisappearing");
+                await nav.PopAsync(animated: false);
+                Require(ReferenceEquals(nav.Navigation.NavigationStack.Last(), prior),
+                    "Back returned to a consumed historical review.");
+            }
+            else
+                Require(ReferenceEquals(nav.Navigation.NavigationStack.Last(), page)
+                    && !MinimalVisible(page).OfType<Button>().Any(x =>
+                        x.AutomationId == "creation-skills-rereview-continue" && x.IsEnabled),
+                    "An uncertain or unrefreshed save allowed forward editing.");
+            ((IButtonController)confirm).SendClicked();
+            await ui.DrainDispatchedAsyncVoidAsync();
+            Require(alerts.Titles.Count == 1, "A retired confirmation invited another mutation.");
+            IssuedPageLifecycle(page, "OnDisappearing");
+        });
+        return result!;
     }
 
     private static VerticalStackLayout SkillsReviewTechnicalContent(CreationSkillsReReviewPage page) =>
@@ -427,6 +501,7 @@ internal static partial class AfterRunAuthorityHarness
         private readonly IOwnerBoundCharacterCreationSkillsReReviewService _review = (IOwnerBoundCharacterCreationSkillsReReviewService)inner;
         private int _pause, _reads;
         public int ReadCount => Volatile.Read(ref _reads);
+        public Action? AfterConfirm;
         public TaskCompletionSource ReadEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource ReleaseRead { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public void PauseNextRead() => Interlocked.Exchange(ref _pause, 1);
@@ -445,7 +520,12 @@ internal static partial class AfterRunAuthorityHarness
             return result;
         }
         public CharacterCreationFoundationResult<CharacterCreationSkillsReReviewPreview> PreviewReReview(OwnerContextStamp owner, CharacterCreationSkillsReReviewPreviewRequest request) => _review.PreviewReReview(owner, request);
-        public CharacterCreationFoundationResult<CharacterCreationSkillsReceipt> ConfirmReReview(OwnerContextStamp owner, CharacterCreationSkillsReReviewConfirmRequest request) => _review.ConfirmReReview(owner, request);
+        public CharacterCreationFoundationResult<CharacterCreationSkillsReceipt> ConfirmReReview(OwnerContextStamp owner, CharacterCreationSkillsReReviewConfirmRequest request)
+        {
+            var result = _review.ConfirmReReview(owner, request);
+            AfterConfirm?.Invoke();
+            return result;
+        }
     }
 
     private sealed class FailedCommittedSkillsRead(IOwnerBoundCharacterCreationSkillsService inner, bool uncertain = false)

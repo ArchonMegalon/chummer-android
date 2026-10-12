@@ -14,6 +14,8 @@ public sealed class CreationSkillsReReviewPage : NativePageBase
     private CreationSkillsPhoneConfirmResult? _confirmation;
     private long _generation;
     private bool _attached;
+    private bool _openingEditor;
+    private bool _nextStepUnavailable;
 
     internal CreationSkillsReReviewPage(RunnerSessionCoordinator coordinator,
         CharacterCreationSkillsReReviewState state) : base(coordinator)
@@ -56,6 +58,19 @@ public sealed class CreationSkillsReReviewPage : NativePageBase
             var receiptLabel = NativeTheme.Body(receipt.ReceiptDigest, NativeTheme.Muted);
             receiptLabel.AutomationId = "creation-skills-rereview-receipt";
             _technicalDetails.Add(receiptLabel);
+            if (CanContinue(_confirmation))
+            {
+                var confirmation = _confirmation;
+                long appearance = CaptureAppearanceGeneration();
+                if (_nextStepUnavailable)
+                    _body.Add(NativeTheme.Body(PhoneStrings.Get("CreationAutosaveNextFailed",
+                        "Saved. Could not open the next step. Try Continue again."), NativeTheme.Danger));
+                var next = NativeTheme.PrimaryButton(PhoneStrings.Get("CreationAutosaveContinue", "Continue"));
+                next.AutomationId = "creation-skills-rereview-continue";
+                next.IsEnabled = _attached && !_openingEditor && IsCurrentAppearanceGeneration(appearance);
+                next.Clicked += async (_, _) => await RunAsync(() => ContinueToSkillsAsync(confirmation, appearance));
+                _body.Add(next);
+            }
             AddTechnicalDetails();
             AddExit();
             return;
@@ -97,10 +112,16 @@ public sealed class CreationSkillsReReviewPage : NativePageBase
         var confirm = NativeTheme.PrimaryButton(Text("Confirm", "Review and confirm these changes"));
         confirm.AutomationId = "creation-skills-rereview-confirm";
         confirm.IsEnabled = _attached && _confirmation is null && _requestBlockers.Count == 0 && _draft.CanConfirm(Coordinator.State);
+        long confirmationAppearance = CaptureAppearanceGeneration();
         confirm.Clicked += async (_, _) => await RunAsync(async () =>
         {
             long generation = Volatile.Read(ref _generation);
-            if (!_attached || _confirmation is not null || !Coordinator.IsCreationSkillsReReviewStateCurrent(state)
+            Page[] stack = Navigation.NavigationStack.ToArray();
+            bool CurrentPage() => _attached && generation == Volatile.Read(ref _generation)
+                && IsCurrentAppearanceGeneration(confirmationAppearance)
+                && ReferenceEquals(stack.LastOrDefault(), this)
+                && Navigation.NavigationStack.SequenceEqual(stack);
+            if (!CurrentPage() || _confirmation is not null || !Coordinator.IsCreationSkillsReReviewStateCurrent(state)
                 || !_draft.CanConfirm(Coordinator.State)) return;
             var reviewed = _draft.Preview!;
             var skills = _draft.Skills.ToArray();
@@ -108,16 +129,57 @@ public sealed class CreationSkillsReReviewPage : NativePageBase
             bool accepted = await DisplayAlertAsync(Text("Title", "Review older Skills choices"),
                 Text("ConfirmBody", "Apply exactly the comparison shown? Removed choices will leave the new draft, but previous decisions and receipts remain in history."),
                 Text("Apply", "Apply reviewed choices"), Text("Cancel", "Cancel"));
-            if (!accepted || !_attached || generation != Volatile.Read(ref _generation)
+            if (!accepted || !CurrentPage() || generation != Volatile.Read(ref _generation)
                 || !Coordinator.IsCreationSkillsReReviewStateCurrent(state) || !_draft.CanConfirm(Coordinator.State)) return;
             // The coordinator reprojects against the current store before CAS.
             // Preserve an observed receipt even if the page leaves while saving.
             _confirmation = await Coordinator.ConfirmCreationSkillsReReviewAsync(reviewed, skills, groups, explicitlyReviewed: true);
             _requestBlockers = _confirmation.Blockers;
+            if (CurrentPage()) await ContinueToSkillsAsync(_confirmation, confirmationAppearance);
         });
         _body.Add(confirm);
         AddTechnicalDetails();
         AddExit();
+    }
+
+    private bool CanContinue(CreationSkillsPhoneConfirmResult confirmation)
+        => ReferenceEquals(_confirmation, confirmation)
+            && confirmation is { Outcome: CharacterCreationFoundationOutcomes.Success,
+                Receipt: { } receipt, RefreshedState: { CanEdit: true, PendingDraft.CharacterEffectsApplied: false } state }
+            && confirmation.Blockers.Count == 0 && state.Blockers.Count == 0
+            && Coordinator.IsCreationSkillsReceiptCurrent(receipt)
+            && Coordinator.IsCreationSkillsStateCurrent(state);
+
+    private async Task ContinueToSkillsAsync(CreationSkillsPhoneConfirmResult confirmation, long appearance)
+    {
+        INavigation navigation = Navigation;
+        Page[] stack = navigation.NavigationStack.ToArray();
+        bool Current() => _attached && IsCurrentAppearanceGeneration(appearance)
+            && ReferenceEquals(stack.LastOrDefault(), this)
+            && navigation.NavigationStack.SequenceEqual(stack) && CanContinue(confirmation);
+        if (_openingEditor || !Current()) return;
+        _openingEditor = true;
+        _nextStepUnavailable = false;
+        try
+        {
+            Refresh();
+            var state = confirmation.RefreshedState!;
+            var original = Coordinator.State;
+            bool ready = await Task.Run(() => CreationSkillsPhoneAuthority.IsReady(state, original));
+            if (!Current()) return;
+            if (!ready) { _nextStepUnavailable = true; return; }
+            // This is navigation only: reuse the exact post-save state. Never
+            // confirm again, skip the user's remaining Skills, or rebind owners.
+            var next = new CreationSkillsPage(Coordinator, state);
+            await navigation.PushAsync(next, animated: false);
+            if (navigation.NavigationStack.SequenceEqual(stack.Append(next)))
+                navigation.RemovePage(this);
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            if (Current()) _nextStepUnavailable = true;
+        }
+        finally { _openingEditor = false; }
     }
 
     private void AddChange(CharacterCreationSkillsReReviewState state, CharacterCreationSkillsReReviewChange change)
