@@ -88,11 +88,16 @@ internal sealed class CreationStartingCashPage : NativePageBase
         var preview = NativeTheme.PrimaryButton(CreationKarmaCopy.PreviewCompletion);
         preview.AutomationId = "creation-starting-cash-preview";
         preview.IsEnabled = TryRoll(out _);
+        List<Label> reviewFeedback = [];
         input.TextChanged += (_, _) =>
         {
             if (!Current()) return;
             _roll = input.Text ?? string.Empty;
             _inputVersion++;
+            // The last rejection describes the old input. Retire only that
+            // feedback: keep focus and require a fresh Core review to proceed.
+            _blockers = [];
+            foreach (Label feedback in reviewFeedback) feedback.IsVisible = false;
             preview.IsEnabled = TryRoll(out _);
         };
         preview.Clicked += async (_, _) => await RunAsync(async () =>
@@ -138,13 +143,15 @@ internal sealed class CreationStartingCashPage : NativePageBase
             if (blocker == CharacterCreationFinalizationBlockers.StartingCashChoiceRequired
                 && _blockers.Contains(CharacterCreationFinalizationBlockers.StartingCashChoiceInvalid))
                 continue;
-            _body.Add(NativeTheme.Body(
+            Label feedback = NativeTheme.Body(
                 blocker == CharacterCreationFinalizationBlockers.StartingCashChoiceInvalid
                     ? CreationAllocationStrings.Get("Finalization.InvalidDiceTotal",
                         "That total does not match these dice. Check your roll and try again.")
                     : blocker == CharacterCreationFinalizationBlockers.StartingCashChoiceRequired
                         ? CreationKarmaCopy.DiceTotal : blocker,
-                NativeTheme.Danger));
+                NativeTheme.Danger);
+            reviewFeedback.Add(feedback);
+            _body.Add(feedback);
         }
 
         bool Current() => render == _render && IsCurrentAppearanceGeneration(appearance)

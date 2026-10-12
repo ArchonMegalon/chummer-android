@@ -2992,8 +2992,25 @@ internal static partial class AfterRunAuthorityHarness
                 rejectedInput.Text = "1";
                 Require(input.Text == int.MaxValue.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     "A detached pre-rejection Entry changed the current input.");
+                bool HasInvalidTotalFeedback() => IssuedElements(page).OfType<Label>().Any(label => label.IsVisible
+                    && label.Text == CreationAllocationStrings.Get("Finalization.InvalidDiceTotal",
+                        "That total does not match these dice. Check your roll and try again."));
+                Require(HasInvalidTotalFeedback(), "A detached Entry cleared the current review feedback.");
                 RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+                input.Text = "not a roll";
+                Require(!HasInvalidTotalFeedback() && !Element<Button>("creation-starting-cash-preview").IsEnabled,
+                    "Editing a rejected roll kept obsolete feedback or admitted invalid text.");
+                Require(ReferenceEquals(input, Element<Entry>("creation-starting-cash-roll"))
+                    && ReferenceEquals(Current(), page), "Clearing feedback rebuilt the focused Entry or navigated.");
+                input.Text = (int.MaxValue - 1).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                await Click("creation-starting-cash-preview");
+                Require(ReferenceEquals(Current(), page) && HasInvalidTotalFeedback(),
+                    "Clearing old feedback bypassed the next fresh Core rejection.");
+                input = Element<Entry>("creation-starting-cash-roll");
                 input.Text = source.Dice.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                Require(!HasInvalidTotalFeedback() && ReferenceEquals(input, Element<Entry>("creation-starting-cash-roll"))
+                    && ReferenceEquals(Current(), page), "Correcting a roll retained old feedback or auto-reviewed.");
+                RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
                 await Click("creation-starting-cash-preview");
                 Require(Current() is CreationFinalizationPage, "Explicit legal roll did not reach the actual review.");
                 var review = (CharacterCreationFinalizationReview)typeof(CreationFinalizationPage)
