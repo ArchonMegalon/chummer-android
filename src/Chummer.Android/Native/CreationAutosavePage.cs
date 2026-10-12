@@ -10,6 +10,7 @@ public abstract class CreationAutosavePage : NativePageBase
     private bool _requiresReopen;
     private bool _dragging;
     private bool _navigating;
+    private bool _navigationRefreshPending;
     private View? _editor;
     private Label? _status;
     private Button? _next;
@@ -45,14 +46,19 @@ public abstract class CreationAutosavePage : NativePageBase
             try
             {
                 if (await FlushAutosaveAsync(ensureSaved: true) && IsCurrentAppearanceGeneration(appearance))
+                {
+                    _next.Text = CreationFlowStrings.Get("Qualities.Review.OpeningNext", "Opening the next step…");
+                    _next.IsEnabled = false;
+                    if (_editor is not null) _editor.IsEnabled = false;
                     await OpenNextStepAsync(appearance);
+                }
             }
             catch (Exception error) when (error is not OutOfMemoryException)
             {
                 if (IsCurrentAppearanceGeneration(appearance))
                     ShowStatus(PhoneStrings.Get("CreationAutosaveNextFailed", "Saved. Could not open the next step. Try Continue again."), true);
             }
-            finally { _navigating = false; _next.IsEnabled = !_requiresReopen; }
+            finally { FinishNavigation(appearance); }
         };
         var footer = new VerticalStackLayout { Padding = new Thickness(20, 6, 20, 12), Spacing = 4 };
         footer.Add(_status);
@@ -151,7 +157,29 @@ public abstract class CreationAutosavePage : NativePageBase
         _status.TextColor = error ? NativeTheme.Danger : NativeTheme.Muted;
     }
 
-    protected override bool TryDeferCoordinatorRefresh() => IsSaving;
+    protected override bool TryDeferCoordinatorRefresh()
+    {
+        // A next-step recovery can commit a new revision before navigation.
+        // Do not render the old editor as invalid in that short interval.
+        // If navigation stays here (cancel/error/owner change), refresh once
+        // after the operation; admission checks still run on every action.
+        if (_navigating) _navigationRefreshPending = true;
+        return IsSaving || _navigating;
+    }
+
+    private void FinishNavigation(long appearance)
+    {
+        _navigating = false;
+        bool refresh = _navigationRefreshPending;
+        _navigationRefreshPending = false;
+        if (_editor is not null) _editor.IsEnabled = !_requiresReopen;
+        if (_next is not null)
+        {
+            _next.Text = PhoneStrings.Get("CreationAutosaveContinue", "Continue");
+            _next.IsEnabled = !_requiresReopen;
+        }
+        if (refresh && IsCurrentAppearanceGeneration(appearance)) Refresh();
+    }
 
     protected override void OnDisappearing()
     {
@@ -178,6 +206,6 @@ public abstract class CreationAutosavePage : NativePageBase
                 && ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), this))
                 await Navigation.PopAsync();
         }
-        finally { _navigating = false; }
+        finally { FinishNavigation(appearance); }
     }
 }

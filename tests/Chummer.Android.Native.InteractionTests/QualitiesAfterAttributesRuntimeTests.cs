@@ -57,6 +57,17 @@ internal static partial class AfterRunAuthorityHarness
                 });
                 await alerts.PreflightAsync();
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+                var deferRefresh = typeof(CreationAutosavePage).GetMethod("TryDeferCoordinatorRefresh",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+                bool committedRefreshDeferred = false;
+                EventHandler observeContinuation = (_, _) =>
+                {
+                    if (coordinator.State.ContentRevision <= before.ContentRevision) return;
+                    committedRefreshDeferred = (bool)deferRefresh.Invoke(page, null)!;
+                    Require(committedRefreshDeferred,
+                        "Own next-step commit rendered the old Skills editor as invalid before navigation.");
+                };
+                coordinator.Changed += observeContinuation;
                 int uiThread = Environment.CurrentManagedThreadId;
                 probe!.BeforeReReview = () => Require(Environment.CurrentManagedThreadId != uiThread,
                     "Qualities recovery read or save blocked the UI thread.");
@@ -67,8 +78,13 @@ internal static partial class AfterRunAuthorityHarness
                     ((IButtonController)next).SendClicked();
                     ((IButtonController)next).SendClicked();
                 }));
+                coordinator.Changed -= observeContinuation;
                 var saved = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
                 bool committed = scenario is "keep" or "unknown";
+                if (scenario == "keep") Require(committedRefreshDeferred,
+                    "Successful recovery did not exercise deferred coordinator rendering.");
+                Require(!(bool)deferRefresh.Invoke(page, null)!,
+                    "Finished continuation left coordinator rendering deferred.");
                 Require(probe.ConfirmCalls == (committed ? 1 : 0) && probe.OrdinaryConfirmCalls == 0,
                     "Recovery bypassed its explicit seam or dispatched twice.");
                 Require(alerts.Titles.Count == 1, "Continue duplicated or skipped the recovery question.");
