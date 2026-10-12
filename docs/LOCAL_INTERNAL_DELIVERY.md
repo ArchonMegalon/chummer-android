@@ -132,7 +132,28 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 202 is the latest [observed Internal availability](../play/evidence/preview202-internal-observation.json),
+Preview 203 is the latest [observed Internal availability](../play/evidence/preview203-internal-observation.json),
+released on 12 October at 15:07 Europe/Vienna. Attributes and Skills now autosave
+after slider changes and Continue without a separate ordinary review. Skills
+search covers the full catalogue and specialization selection is direct. Scale
+checks are cached, coalesced, bounded to one worker and retired when superseded;
+Core admission, owner identity and uncertain-write no-replay remain intact.
+Historical dependent Skills still open their explicit repair step, not an
+automatic migration or silent discard. Android #718 merged with the reviewed
+tree, consuming Core #154 and UI #436/#437. Actual-Core managed checks and the
+bounded native attribute save/cold-reopen/next-step route passed. Native evidence
+distinguishes the earlier unchanged autosave implementation from the final
+navigation fix; all nine runner files stayed unchanged during final reopen.
+Local ARM64/Internal build, content/proof/hygiene checks, isolated original-key
+signing, independent keyless verification and one upload/readback passed.
+Earlier slider app ANRs remain recorded; final bounded smoke observed no new app
+ANR, but SystemUI boot problems and slow shell/restore remain. Physical Play203,
+startup/reload closure and full Creation/Career/live Origin acceptance are not
+claimed. Original FirstBook uncertainty and diagnostic-contract portability
+remain open. Version203 is consumed; this evidence update needs no rebuild or
+re-upload.
+
+Preview 202's [historical Internal availability](../play/evidence/preview202-internal-observation.json) was
 released on 12 October at 11:21 Europe/Vienna. Core #153 removes duplicate
 quality and magic evaluations from the Creation overview by reusing the same
 fresh request's admitted finalization-load results. UI #434/#435 and Android #716
