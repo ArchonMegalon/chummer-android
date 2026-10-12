@@ -83,7 +83,10 @@ test-app egress rules are stopped/removed after the route.
 
 ## Evidence boundary
 
-No198 ARM64 release AAB, original-key signature, Play upload or physical
-installation is claimed by this record. Preview197 remains the latest observed Internal availability.
+Preview198 is now available on Play Internal after the local ARM64 build,
+original-key isolated signature, independent keyless payload/certificate checks
+and one scoped upload/readback. See the separate
+[exact release record](../play/evidence/preview198-internal-observation.json).
+Physical Play198 installation remains unverified.
 This is not whole Creation/Career/Origin, startup performance, tablet or public
 beta acceptance. Core/UI package inputs are unchanged.
