@@ -114,6 +114,7 @@ public sealed class CreationGearPage : NativePageBase
         _basketBody = new() { Spacing = 14 };
         _basketDetails = new() { Spacing = 6 };
         _body.Clear();
+        _technicalDetails.Remove(_catalogDetails);
         _technicalDetails = new() { Spacing = 6 };
         _body.Add(NativeTheme.Title(_copy["Gear.Title"]));
         _technicalDetails.Add(NativeTheme.Body(_copy["Gear.Intro"], NativeTheme.Muted));
