@@ -31,6 +31,15 @@ internal sealed class CreationAttributesPhoneDraft
             : new(CharacterCreationFoundationOutcomes.Blocked, null,
                 [CharacterCreationAttributesBlockers.StaleWorkspaceRevision]);
 
+    public Func<bool> PrepareSelection(CharacterCreationAttributesState state, CharacterOverviewState overview,
+        IReadOnlyList<CharacterCreationAttributeAllocation> allocations)
+    {
+        var session = HasPreparedState(state) ? _session : null;
+        var copied = allocations.ToArray();
+        return () => session is not null && CreationAttributesPhoneAuthority.CanAdoptPreview(
+            state, overview, session.Preview(copied), copied);
+    }
+
     // Worker preparation owns a copy; it must never enumerate or update the UI draft.
     internal CreationAttributesPhoneDraft Copy()
     {

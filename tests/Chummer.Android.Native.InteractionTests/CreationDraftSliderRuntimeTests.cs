@@ -70,6 +70,7 @@ internal static partial class AfterRunAuthorityHarness
                     x.AutomationId == "creation-attributes-slider-" + id.ToLowerInvariant());
                 var body = SliderFor("BOD");
                 var magic = SliderFor("MAG");
+                ((ISliderController)body).SendDragStarted();
                 int reads = probe!.LoadCalls + probe.PreviewCalls;
                 var timing = System.Diagnostics.Stopwatch.StartNew();
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => body.Value = 2.4));
@@ -90,10 +91,12 @@ internal static partial class AfterRunAuthorityHarness
                     x.Text == agility.Maximum.ToString(System.Globalization.CultureInfo.CurrentCulture));
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => body.Value = body.Maximum));
                 await ui.DrainDispatchedAsyncVoidAsync();
+                await agility.ScalePreparation;
                 Require(AgilityMax().TextDecorations == TextDecorations.Strikethrough,
                     "Spending the one metatype maximum did not grey the other attribute's maximum.");
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => body.Value = 4));
                 await ui.DrainDispatchedAsyncVoidAsync();
+                await agility.ScalePreparation;
                 Require(AgilityMax().TextDecorations == TextDecorations.None,
                     "Returning the metatype maximum did not re-enable the other attribute's maximum.");
                 int startingMagic = draft.Attribute(state, "MAG")!.Current;
@@ -188,6 +191,8 @@ internal static partial class AfterRunAuthorityHarness
                 Console.WriteLine("PASS active-skill drag 0→1→2: one deferred specialization refresh, zero Core I/O");
                 // The completed drag rebuilt the catalog; only its new controls are current.
                 slider = MinimalVisible(page).OfType<Slider>().Single(x => x.AutomationId == "creation-skills-slider-" + key);
+                ((ISliderController)slider).SendDragStarted();
+                await Task.WhenAll(MinimalVisible(page).OfType<CreationIntegerSlider>().Select(x => x.ScalePreparation));
 
                 var ratingSlider = (CreationIntegerSlider)slider;
                 Label Tick(int value) => ratingSlider.RatingScale.Children.OfType<Label>().Single(x => x.Text == value.ToString());
@@ -209,6 +214,7 @@ internal static partial class AfterRunAuthorityHarness
                 await ui.DrainDispatchedAsyncVoidAsync();
                 Require(slider.Value == 2 && draft.Preview!.SkillGroupPointBudget.Remaining == 0,
                     "Group slider lost its point budget.");
+                await Task.WhenAll(ratingSlider.ScalePreparation, otherGroup.ScalePreparation);
                 Require(OtherOne().TextDecorations == TextDecorations.Strikethrough,
                     "Spending the shared group pool did not grey another group's first point.");
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => slider.Value = 3));
@@ -222,6 +228,7 @@ internal static partial class AfterRunAuthorityHarness
                     "Budget refusal changed the accepted scale.");
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => slider.Value = 1));
                 await ui.DrainDispatchedAsyncVoidAsync();
+                await Task.WhenAll(ratingSlider.ScalePreparation, otherGroup.ScalePreparation);
                 Require(Tick(2).TextDecorations == TextDecorations.None,
                     "Returning a group point did not re-enable its affordable value.");
                 Require(OtherOne().TextDecorations == TextDecorations.None,
@@ -241,11 +248,19 @@ internal static partial class AfterRunAuthorityHarness
                 await ui.DrainDispatchedAsyncVoidAsync();
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => slider.Value = 0));
                 await ui.DrainDispatchedAsyncVoidAsync();
-                Require(JsonSerializer.Serialize(draft.Groups) == retained && slider.Value == 2,
+                // Departure now starts autosave and disables the retired editor.
+                // A programmatic Value write on a disabled control is not a user
+                // input; it must still leave the admitted draft unchanged.
+                Require(JsonSerializer.Serialize(draft.Groups) == retained && (slider.Value == 2 || !slider.IsEnabled),
                     "Departure or owner A→B→A revived a cached rating action.");
-                probe.BeforePreview = null;
-                RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
                 if (!leave) IssuedPageLifecycle(page, "OnDisappearing");
+                await page.FlushAutosaveAsync();
+                await Task.WhenAll(MinimalVisible(page).OfType<CreationIntegerSlider>().Select(x => x.ScalePreparation)
+                    .Append(((CreationIntegerSlider)activeSlider).ScalePreparation)
+                    .Append(ratingSlider.ScalePreparation).Append(otherGroup.ScalePreparation));
+                await ui.DrainDispatchedAsyncVoidAsync();
+                RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+                probe.BeforePreview = null;
             }
         });
     }

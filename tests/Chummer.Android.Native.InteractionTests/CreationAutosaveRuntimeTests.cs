@@ -10,6 +10,49 @@ internal static partial class AfterRunAuthorityHarness
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
         {
+            int scaleUiThread = Environment.CurrentManagedThreadId;
+            object version = new();
+            bool allowed = false;
+            int checks = 0;
+            var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            using var release = new ManualResetEventSlim();
+            var scale = new CreationIntegerSlider("autosave-background-scale", "Rating", () => 1,
+                () => (1, 6, true), _ => Task.CompletedTask, selectionVersion: () => version,
+                prepareSelection: rating =>
+                {
+                    Require(Environment.CurrentManagedThreadId == scaleUiThread, "Draft capture left the UI thread.");
+                    bool captured = allowed;
+                    return () =>
+                    {
+                        Require(Environment.CurrentManagedThreadId != scaleUiThread, "Scale rules blocked the UI thread.");
+                        Interlocked.Increment(ref checks);
+                        if (!captured)
+                        {
+                            entered.TrySetResult();
+                            Require(release.Wait(TimeSpan.FromSeconds(10)), "Scale worker was not released.");
+                        }
+                        return captured;
+                    };
+                });
+            Task oldScale = scale.ScalePreparation;
+            try
+            {
+                await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                Require(!oldScale.IsCompleted, "Scale work was not blocked independently of the UI.");
+                allowed = true;
+                version = new();
+                scale.UpdateProjection();
+                await scale.ScalePreparation.WaitAsync(TimeSpan.FromSeconds(5));
+                release.Set();
+                await oldScale.WaitAsync(TimeSpan.FromSeconds(5));
+                Require(scale.RatingScale.Children.OfType<Label>().All(x => x.TextDecorations == TextDecorations.None),
+                    "A retired scale result overwrote current affordances.");
+                int completedChecks = checks;
+                scale.UpdateProjection();
+                Require(checks == completedChecks, "An unchanged allocation repeated scale evaluation.");
+            }
+            finally { release.Set(); }
+            Console.WriteLine("PASS background scale: responsive UI, immutable capture, stale rejection, cached result");
             foreach (string scenario in new[] { "saved", "departure", "unknown", "owner-aba" })
             {
                 var owners = new ControlledLinkedOwner();
@@ -24,6 +67,9 @@ internal static partial class AfterRunAuthorityHarness
                 var navigation = new NavigationPage(page);
                 var window = new Window(navigation);
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+                int uiThread = Environment.CurrentManagedThreadId;
+                probe!.BeforeRead = () => Require(Environment.CurrentManagedThreadId != uiThread,
+                    "Autosave performed a Core source/store read on the UI thread.");
                 Require(!MinimalVisible(page).OfType<Button>().Any(button =>
                     button.AutomationId == "creation-attributes-prepare-preview"), "Attributes still requires review.");
                 var slider = MinimalVisible(page).OfType<Slider>().Single(x => x.AutomationId == "creation-attributes-slider-bod");
@@ -82,6 +128,10 @@ internal static partial class AfterRunAuthorityHarness
             var skillsPage = new CreationSkillsPage(skillsRuntime.Coordinator, authority);
             var skillsWindow = new Window(new NavigationPage(skillsPage));
             await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(skillsPage, "OnAppearing")));
+            int skillsUiThread = Environment.CurrentManagedThreadId;
+            skillsProbe!.BeforeLoad = skillsProbe.BeforePreview = () => Require(
+                Environment.CurrentManagedThreadId != skillsUiThread,
+                "Skill autosave performed a Core source/store read on the UI thread.");
             Require(!MinimalVisible(skillsPage).OfType<Button>().Any(x => x.AutomationId is
                 "creation-skills-review" or "creation-skills-review-top"), "Skills still requires review.");
             var source = CreationSkillsPhoneAuthority.AvailableActiveSkills(authority).Skip(20)

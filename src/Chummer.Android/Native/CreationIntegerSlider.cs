@@ -9,11 +9,14 @@ internal sealed class CreationIntegerSlider : Slider
     private readonly Func<int> _current;
     private readonly Func<(int Minimum, int Maximum, bool Enabled)> _range;
     private readonly Func<int, bool>? _canSelect;
+    private readonly Func<int, Func<bool>>? _prepareSelection;
     private readonly Func<object?>? _selectionVersion;
     private object? _scaleVersion;
     private (int Minimum, int Maximum, bool Enabled)? _scaleRange;
     private readonly Dictionary<int, bool> _available = [];
     private readonly Dictionary<int, Label> _ticks = [];
+    private long _scaleGeneration;
+    internal Task ScalePreparation { get; private set; } = Task.CompletedTask;
 
     public Grid RatingScale { get; } = new()
     {
@@ -23,7 +26,8 @@ internal sealed class CreationIntegerSlider : Slider
 
     public CreationIntegerSlider(string automationId, string label, Func<int> current,
         Func<(int Minimum, int Maximum, bool Enabled)> range, Func<int, Task> change,
-        Func<int, bool>? canSelect = null, Func<object?>? selectionVersion = null)
+        Func<int, bool>? canSelect = null, Func<object?>? selectionVersion = null,
+        Func<int, Func<bool>>? prepareSelection = null)
     {
         AutomationId = automationId;
         MinimumTrackColor = NativeTheme.Success;
@@ -34,6 +38,7 @@ internal sealed class CreationIntegerSlider : Slider
         _current = current;
         _range = range;
         _canSelect = canSelect;
+        _prepareSelection = prepareSelection;
         _selectionVersion = selectionVersion;
         RatingScale.AutomationId = automationId + "-scale";
         SemanticProperties.SetDescription(this, label);
@@ -119,16 +124,42 @@ internal sealed class CreationIntegerSlider : Slider
                     RatingScale.Add(tick, i);
                 }
             }
-            foreach (int rating in ratings)
-                _available[rating] = enabled && (_canSelect?.Invoke(rating) ?? true);
+            long generation = ++_scaleGeneration;
+            if (enabled && _prepareSelection is not null)
+            {
+                // Capture immutable requests on the UI thread. Workers never read
+                // the mutable editor draft or touch native controls. These are only
+                // affordances; accepted edits and saving still go through Core.
+                var checks = ratings.Select(rating => (Rating: rating, Check: _prepareSelection(rating))).ToArray();
+                ScalePreparation = PrepareScaleAsync(checks, generation, version);
+            }
+            else
+                foreach (int rating in ratings)
+                    _available[rating] = enabled && (_canSelect?.Invoke(rating) ?? true);
         }
+        RenderScale();
+    }
+
+    private async Task PrepareScaleAsync((int Rating, Func<bool> Check)[] checks, long generation, object? version)
+    {
+        (int Rating, bool Available)[] results;
+        try { results = await Task.Run(() => checks.Select(check => (check.Rating, check.Check())).ToArray()); }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        { results = checks.Select(check => (check.Rating, false)).ToArray(); }
+        if (generation != _scaleGeneration || !ReferenceEquals(version, _selectionVersion?.Invoke())) return;
+        foreach (var result in results) _available[result.Rating] = result.Available;
+        RenderScale();
+    }
+
+    private void RenderScale()
+    {
         foreach (var (rating, tick) in _ticks)
         {
-            bool available = _available[rating];
-            tick.TextColor = available ? NativeTheme.Text : Color.FromArgb("#919896");
+            bool known = _available.TryGetValue(rating, out bool available);
+            tick.TextColor = known && available ? NativeTheme.Text : Color.FromArgb("#919896");
             tick.FontAttributes = rating == _current() ? FontAttributes.Bold : FontAttributes.None;
-            tick.TextDecorations = available ? TextDecorations.None : TextDecorations.Strikethrough;
-            SemanticProperties.SetDescription(tick, tick.Text + (available ? string.Empty : ". " +
+            tick.TextDecorations = known && !available ? TextDecorations.Strikethrough : TextDecorations.None;
+            SemanticProperties.SetDescription(tick, tick.Text + (!known || available ? string.Empty : ". " +
                 PhoneStrings.Get("CreationRatingUnavailable", "Not available with the current allocation")));
         }
     }

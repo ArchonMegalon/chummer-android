@@ -506,8 +506,9 @@ public sealed class CreationSkillsPage : CreationAutosavePage
                     return Task.FromResult(false);
                 }
                 return Task.FromResult(refresh);
-            }), target => target == current() || _draft.CanSelectPrepared(state, skills(target),
-                changedGroups?.Invoke(target) ?? groups()), () => _draft.Preview ?? (object)state);
+            }), selectionVersion: () => _draft.Preview ?? (object)state,
+            prepareSelection: target => target == current() ? () => true : _draft.PrepareSelection(state, skills(target),
+                changedGroups?.Invoke(target) ?? groups()));
         slider.DragStarted += (_, _) => { dragging = Current(); if (dragging) BeginAllocationGesture(); };
         slider.DragCompleted += async (_, _) =>
         {

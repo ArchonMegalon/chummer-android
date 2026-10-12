@@ -391,15 +391,14 @@ public sealed class CreationAttributesPage : CreationAutosavePage
                 feedback.IsVisible = !string.IsNullOrEmpty(feedback.Text);
                 if (accepted) DraftChanged();
                 return Task.FromResult(accepted && !TryUpdateProjection(state));
-            }), target =>
+            }), selectionVersion: () => _draft.ProjectionIdentity, prepareSelection: target =>
             {
-                if (!_draft.HasPreparedState(state)) return false;
-                if (target == Current().Current) return true;
+                if (!_draft.HasPreparedState(state)) return () => false;
+                if (target == Current().Current) return () => true;
                 int delta = target - Current().Current;
                 var allocations = _draft.ChangedAllocations(state, attribute.AttributeId, karma ? 0 : delta, karma ? delta : 0);
-                return allocations is not null && CreationAttributesPhoneAuthority.CanAdoptPreview(
-                    state, Coordinator.State, _draft.PreviewPrepared(state, allocations), allocations);
-            }, () => _draft.ProjectionIdentity);
+                return allocations is not null ? _draft.PrepareSelection(state, Coordinator.State, allocations) : () => false;
+            });
         slider.DragStarted += (_, _) => BeginAllocationGesture();
         slider.DragCompleted += (_, _) => EndAllocationGesture();
         _projectionUpdates.Add(slider.UpdateProjection);
