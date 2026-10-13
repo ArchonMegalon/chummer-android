@@ -1378,6 +1378,7 @@ internal static partial class AfterRunAuthorityHarness
                 confirmationEntered.TrySetResult();
                 Require(releaseConfirmation.Wait(TimeSpan.FromSeconds(20)), "Test did not release the blocked Core confirmation.");
             };
+            var finalPage = Current();
             Task confirmation = ui.BeginAsyncVoid(() => ((IButtonController)finalConfirm).SendClicked());
             try
             {
@@ -1406,9 +1407,10 @@ internal static partial class AfterRunAuthorityHarness
                 await confirmation;
                 probe.BeforeConfirm = null;
             }
-            Require(Element<Label>("life-completion-saved").Text == CreationKarmaCopy.CareerReady && probe!.ConfirmCalls == 1,
-                "Phone confirmation did not reopen the exact Career runner.");
-            await Click("life-completion-open-career");
+            Require(ReferenceEquals(Current(), root) && probe!.ConfirmCalls == 1,
+                "Phone confirmation did not lead directly to the exact Career runner.");
+            if (IssuedPageField<int>(finalPage, "_subscribed") != 0) IssuedPageLifecycle(finalPage, "OnDisappearing");
+            await Appear();
             Require(ReferenceEquals(Current(), root)
                 && Element<Label>("phone-runner-sheet").Text == "CAREER RUNNER"
                 && !IssuedElements(root).Any(e => e.AutomationId is "phone-runner-create" or "creation-life-module-continue" or "phone-runner-loading")

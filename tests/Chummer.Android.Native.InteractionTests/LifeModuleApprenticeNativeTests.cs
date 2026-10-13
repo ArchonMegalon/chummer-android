@@ -166,9 +166,11 @@ internal static partial class AfterRunAuthorityHarness
                 await Click("life-review-completion");
                 Require(Session().CanConfirm, "The complete Apprentice cannot enter Career: " + string.Join(", ", Session().Blockers));
                 var reviewed = Session().Preview!;
+                var completion = Session();
                 Element<Switch>("life-completion-confirmed").IsToggled = true;
                 await Click("life-confirm-completion");
-                Require(Session().Receipt is { CharacterCreated: true } && probe!.ConfirmCalls == 1,
+                Require(completion.Receipt is { CharacterCreated: true } && probe!.ConfirmCalls == 1
+                    && ReferenceEquals(Current(), dashboard),
                     "The Apprentice was not finalized once from its reviewed choices.");
                 var saved = store.Get(id).Value!;
                 var xml = System.Xml.Linq.XDocument.Parse(saved.Document.Content);
