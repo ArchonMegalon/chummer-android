@@ -23,6 +23,7 @@ internal static partial class AfterRunAuthorityHarness
             DashboardAvailabilityProbe? availability = null;
             await using var runtime = new NativeRewardRuntime(contentRoot, creationBootstrap: true,
                 productionCreationOverview: true, linkedOwners: owners,
+                lifeCompletionDecorator: actual => actual,
                 lifeBookDecorator: actual => probe = new(actual),
                 lifeOriginDecorator: actual => availability = new(actual));
             await runtime.Coordinator.InitializeAsync();
