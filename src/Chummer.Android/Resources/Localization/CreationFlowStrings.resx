@@ -320,6 +320,7 @@
   <data name="Resources.SavingDetail" xml:space="preserve"><value>Saving your resource budget. Please wait…</value></data>
   <data name="Gear.SavingDetail" xml:space="preserve"><value>Saving your equipment choices. Please wait…</value></data>
   <data name="Gear.SavedBasket" xml:space="preserve"><value>Your equipment choices are saved.</value></data>
+  <data name="Gear.BudgetChanged" xml:space="preserve"><value>Your budget changed. Review your retained equipment to continue.</value></data>
   <data name="Dashboard.Unavailable" xml:space="preserve"><value>Your creation choices could not be loaded. Reopen this runner to try again.</value></data>
   <data name="Dashboard.Loading" xml:space="preserve"><value>Loading your creation choices…</value></data>
   <data name="Dashboard.LoadFailed" xml:space="preserve"><value>Some choices could not be loaded. Try loading them again or reopen this runner.</value></data>

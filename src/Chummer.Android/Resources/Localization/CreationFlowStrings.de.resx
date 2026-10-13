@@ -391,6 +391,7 @@
   <data name="Resources.SavingDetail" xml:space="preserve"><value>Dein Ressourcenbudget wird gespeichert. Bitte warten…</value></data>
   <data name="Gear.SavingDetail" xml:space="preserve"><value>Deine Ausrüstungsauswahl wird gespeichert. Bitte warten…</value></data>
   <data name="Gear.SavedBasket" xml:space="preserve"><value>Deine Ausrüstungsauswahl ist gespeichert.</value></data>
+  <data name="Gear.BudgetChanged" xml:space="preserve"><value>Dein Budget hat sich geändert. Prüfe deine beibehaltene Ausrüstung, um fortzufahren.</value></data>
   <data name="Dashboard.Unavailable" xml:space="preserve"><value>Deine Erschaffungsauswahl konnte nicht geladen werden. Öffne diesen Runner erneut.</value></data>
   <data name="Dashboard.Loading" xml:space="preserve"><value>Deine Erschaffungsauswahl wird geladen…</value></data>
   <data name="Dashboard.LoadFailed" xml:space="preserve"><value>Einige Optionen konnten nicht geladen werden. Lade sie erneut oder öffne diesen Runner noch einmal.</value></data>
