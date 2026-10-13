@@ -39,6 +39,12 @@
                       Link="Resources/Localization/CreationFlowStrings.de.resx" />
     <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/CreationFlowStrings.es.resx"
                       Link="Resources/Localization/CreationFlowStrings.es.resx" />
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.resx"
+                      Link="Resources/Localization/Sr5CareerFlowStrings.resx" />
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.de.resx"
+                      Link="Resources/Localization/Sr5CareerFlowStrings.de.resx" />
+    <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/Sr5CareerFlowStrings.es.resx"
+                      Link="Resources/Localization/Sr5CareerFlowStrings.es.resx" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="../../src/Chummer.Android/Resources/Localization/CreationAllocationStrings.resx" Link="Resources/Localization/CreationAllocationStrings.resx" />

@@ -12,6 +12,19 @@ internal static partial class AfterRunAuthorityHarness
 {
     internal static async Task RunCareerQualityAsync(string contentRoot)
     {
+        foreach (var (culture, spend, gain, unchanged) in new[]
+        {
+            ("en-GB", "Spend 16 Karma", "Gain 8 Karma", "No Karma change"),
+            ("de-AT", "16 Karma ausgeben", "8 Karma erhalten", "Karma unverändert"),
+            ("es-ES", "Gastar 16 de Karma", "Ganar 8 de Karma", "Karma sin cambios")
+        })
+        {
+            using var copyCulture = new QualityTestCulture(culture);
+            Require(Sr5CareerQualityWizardPage.KarmaChangeLabel(-16) == spend
+                && Sr5CareerQualityWizardPage.KarmaChangeLabel(8) == gain
+                && Sr5CareerQualityWizardPage.KarmaChangeLabel(0) == unchanged,
+                $"Quality cost direction or localization is incorrect for {culture}.");
+        }
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
         {
@@ -53,7 +66,21 @@ internal static partial class AfterRunAuthorityHarness
                 {
                     await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(choose, "OnAppearing")));
                     var picker = MinimalVisible(choose).OfType<Picker>().Single();
+                    var negative = editor.Quotes.First(x => x.CanApply && x.RuleKarmaCost < 0
+                        && x.CharacterKarmaDelta == 0
+                        && x.Operation == CharacterCareerQualityOperation.AcquireLevel);
+                    picker.SelectedIndex = editor.Quotes.ToList().IndexOf(negative);
+                    var summary = MinimalVisible(choose).OfType<Label>()
+                        .Single(x => x.AutomationId == "sr5-career-quality-summary");
+                    string unchanged = linked ? "Karma unverändert" : "No Karma change";
+                    Require(picker.Items[picker.SelectedIndex].Contains(unchanged, StringComparison.Ordinal)
+                        && summary.Text == $"{unchanged} · Karma 100 → 100",
+                        "The real negative-quality rule value was presented as spendable Career Karma.");
                     picker.SelectedIndex = editor.Quotes.ToList().IndexOf(eligible);
+                    string spend = linked ? "16 Karma ausgeben" : "Spend 16 Karma";
+                    Require(picker.Items[picker.SelectedIndex].Contains(spend, StringComparison.Ordinal)
+                        && summary.Text == $"{spend} · Karma 100 → 84",
+                        "Positive quality display does not match the actual Core Karma delta.");
                     AssertQualityCopy(choose);
                     var review = MinimalVisible(choose).OfType<Button>().Single(x => x.AutomationId == "sr5-career-quality-review");
                     Require(review.IsEnabled, "Actual eligible quality cannot be reviewed.");

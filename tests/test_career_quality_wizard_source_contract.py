@@ -203,7 +203,10 @@ class CareerQualityWizardSourceContractTests(unittest.TestCase):
         self.assertIn('Text("Review quality")', PAGE)
         self.assertIn('Text("Back to Career")', PAGE)
         self.assertIn('QualityCatalogStrings.Name', PAGE)
-        self.assertIn('quote.RuleKarmaCost', PAGE)
+        self.assertNotIn('quote.RuleKarmaCost', PAGE)
+        self.assertNotIn('_selected.RuleKarmaCost', PAGE)
+        self.assertIn('KarmaChangeLabel(quote.CharacterKarmaDelta)', PAGE)
+        self.assertIn('KarmaChangeLabel(_selected.CharacterKarmaDelta)', PAGE)
         self.assertIn('quote.AvailableKarma', PAGE)
         for token in ('Text("Logical revision")', 'Text("Source revision")',
                       'Text("Rule digest")', 'Text("Content digest")', 'Text("Runtime digest")',
