@@ -172,8 +172,8 @@ internal static partial class AfterRunAuthorityHarness
                 Require(availability.Reads == reads,
                     "Story readiness unnecessarily queried next-module availability: " + scenario);
                 var elements = IssuedElements(page).ToArray();
-                Require(elements.OfType<Label>().Single(e => e.AutomationId == "creation-life-module-scope").Text == expected,
-                    "Wrong Life Modules dashboard guidance: " + scenario);
+                Require(elements.OfType<Label>().Count(e => e.Text?.Contains(expected, StringComparison.Ordinal) == true) == 1,
+                    "Life Modules guidance must appear once, inside the actionable next-decision row: " + scenario);
                 Require(elements.Any(e => e.AutomationId == "creation-life-module-budget") == showMechanics,
                     "Dashboard mechanics were revealed before reading: " + scenario);
                 var next = elements.Single(e => e.AutomationId == "creation-life-module-continue");

@@ -1151,7 +1151,7 @@ internal static partial class AfterRunAuthorityHarness
                     "LifeDashboard.Budget", "Confirmed modules and metatype: {0} / {1} Karma · remaining before final allocations: {2}",
                     moduleBudget.Used, moduleBudget.Total, moduleBudget.Remaining),
                 "Life Modules landing budget differs from the current Core projection.");
-            Require(Element<Label>("creation-life-module-scope").Text.Contains("Career", StringComparison.Ordinal)
+            Require(SemanticProperties.GetDescription(Element<Button>("creation-life-module-continue")).Contains("Career", StringComparison.Ordinal)
                 && JsonSerializer.Serialize(runtime.Coordinator.State.CreationWizard) == originalWizard,
                 "The dashboard lost the final-review boundary or rewrote generic finalization authority.");
             var dashboardState = runtime.Coordinator.State;

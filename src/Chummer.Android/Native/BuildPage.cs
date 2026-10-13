@@ -1569,10 +1569,6 @@ public sealed class BuildPage : NativePageBase
                 ? copy["Origin.MechanicsAfterReading"]
             : story.ReadingEdition is { HasExportableChapters: true }
                 ? copy["Origin.ReaderNextChapterPending"] : copy["Origin.ReaderFullTextPending"];
-        var scope = NativeTheme.Body(guidance, NativeTheme.Muted);
-        scope.AutomationId = "creation-life-module-scope";
-        _body.Add(scope);
-
         var card = new VerticalStackLayout { Spacing = 8 };
         card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get("LifeDashboard.BudgetTitle", "Confirmed module budget")));
         bool exact = budget is { BudgetId: CharacterCreationBudgetIds.LifeModules, IsExact: true, Blockers.Count: 0 };
@@ -1594,6 +1590,8 @@ public sealed class BuildPage : NativePageBase
             && (!finished || Coordinator.CanOpenLifeModuleCompletion());
         long render = _dossierRenderGeneration;
         long appearance = CaptureAppearanceGeneration();
+        // Keep the next-step explanation inside its tappable row rather than
+        // repeating the same paragraph above it. The exact authority is unchanged.
         _body.Add(CreationNavigationRow(
             finished ? CreationAllocationStrings.Get("LifeDashboard.Complete", "Complete your runner") : CreationAllocationStrings.Get("LifeDashboard.Continue", "Continue your story"),
             CurrentPhoneWizardScope.MarkExperimental(guidance),
