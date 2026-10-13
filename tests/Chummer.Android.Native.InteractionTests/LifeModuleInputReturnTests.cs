@@ -143,6 +143,10 @@ internal static partial class AfterRunAuthorityHarness
                     Require(ReferenceEquals(Current(), editor), "Rejected " + kind + " input silently left its editor.");
                     Require(IssuedElements(editor).Any(x => x.AutomationId?.StartsWith("life-blocker-", StringComparison.Ordinal) == true),
                         "Rejected input did not explain the Core blocker.");
+                    var ordered = IssuedElements(editor).ToList();
+                    int submitIndex = ordered.FindIndex(x => x.AutomationId == "life-use-" + kind);
+                    Require(submitIndex >= 0 && ordered.FindIndex(x => x.AutomationId?.StartsWith("life-blocker-", StringComparison.Ordinal) == true)
+                        < submitIndex, "Rejected-input guidance was hidden below its submit/remove actions.");
                     Guid? contactId = session.Input!.ContactSelection!.SingleOrDefault()?.ContactId;
                     if (kind == "contact")
                     {

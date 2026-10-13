@@ -255,7 +255,17 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
             case LifeCompletionStep.MagicCatalog: MagicCatalog(); break;
             case LifeCompletionStep.Review: CompletionReview(); break;
         }
-        foreach (string reason in _session.Blockers.Distinct()) Body(CreationKarmaCopy.Blocker(reason), "life-blocker-" + reason);
+        // Keep rejected-input guidance beside the action just used, not below
+        // the remove action where the bottom navigation can hide it.
+        var inputSubmit = _body.Children.OfType<Button>().FirstOrDefault(button =>
+            button.AutomationId is "life-use-contact" or "life-use-skill");
+        int blockerIndex = inputSubmit is null ? _body.Count : _body.Children.IndexOf(inputSubmit);
+        foreach (string reason in _session.Blockers.Distinct())
+        {
+            var blocker = NativeTheme.Body(CreationKarmaCopy.Blocker(reason));
+            blocker.AutomationId = "life-blocker-" + reason;
+            _body.Insert(blockerIndex++, blocker);
+        }
     }
 
     private void Overview()
