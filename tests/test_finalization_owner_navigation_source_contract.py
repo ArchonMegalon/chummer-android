@@ -23,7 +23,7 @@ class FinalizationOwnerNavigationSourceContractTests(unittest.TestCase):
                         "NuyenRemaining", "Change", "ConfirmHelp", "Saving", "Confirm", "Mode", "CareerTransition",
                         "SavedTitle", "ReceiptAccount", "CareerReady", "BuildMethod", "Career", "Creation", "Reopened",
                         "ReopenRequired", "OpenCareer", "ViewConfirmation", "Method.Priority", "Method.SumToTen", "Method.Karma", "Method.LifeModules",
-                        "CashLifestyle", "CashDiceTotal"):
+                        "CashLifestyle", "CashDiceTotal", "ShowChanges", "HideChanges", "CarryoverHelp"):
                 self.assertTrue(values[f"Finalization.{key}"], (suffix, key))
 
     def finalization_handler(self) -> str:
@@ -117,7 +117,7 @@ class FinalizationOwnerNavigationSourceContractTests(unittest.TestCase):
         confirm = source.split("private async Task ConfirmAsync()", 1)[1].split("private bool IsCurrentPage", 1)[0]
         self.assertIn("_completion is not null", confirm)
         self.assertLess(confirm.index("_completion = result"), confirm.index("if (!IsCurrentPage(originalAppearance)"))
-        self.assertIn("ReferenceEquals(confirm.Parent, _body)", source)
+        self.assertIn("ReferenceEquals(confirm.Parent, _footer)", source)
 
 
 if __name__ == "__main__":
