@@ -1039,4 +1039,8 @@ Preview: {3}…</value></data>
   <data name="Your previous qualities and Karma have been restored." xml:space="preserve"><value>Your previous qualities and Karma have been restored.</value></data>
   <data name="Your change is saved." xml:space="preserve"><value>Your change is saved.</value></data>
   <data name="This runner has changed since this quality was saved." xml:space="preserve"><value>This runner has changed since this quality was saved.</value></data>
+  <data name="Spend {0} Karma" xml:space="preserve"><value>Spend {0} Karma</value></data>
+  <data name="Gain {0} Karma" xml:space="preserve"><value>Gain {0} Karma</value></data>
+  <data name="No Karma change" xml:space="preserve"><value>No Karma change</value></data>
+  <data name="{0} · Karma {1} → {2}" xml:space="preserve"><value>{0} · Karma {1} → {2}</value></data>
 </root>

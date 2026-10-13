@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text.Json;
+using Chummer.Application.Owners;
 using Chummer.Presentation.Overview;
 
 namespace Chummer.Android.Native;
@@ -33,6 +34,9 @@ internal sealed class RunnerSessionSr5CareerWizardPhoneAuthority
             return new(null, Sr5CareerWizardPhoneBlockers.WorkspaceAuthorityUnavailable);
         }
 
+        // Capture before the first await; quality admission must not substitute
+        // a later owner (including an A -> B -> A transition) during probing.
+        OwnerContextStamp? qualityOwner = _coordinator.State.DisplayOwnerContext;
         NativeWorkspaceAuthoritySnapshot? first =
             await _coordinator.CaptureSr5CareerWizardWorkspaceAuthorityAsync(cancellationToken)
                 .ConfigureAwait(false);
@@ -44,12 +48,17 @@ internal sealed class RunnerSessionSr5CareerWizardPhoneAuthority
         try
         {
             List<Sr5CareerWizardPhoneAuthorityProbe> probes = [];
-            foreach (Sr5CareerWizardPhoneActionDefinition action in Sr5CareerWizardPhoneCatalog.Actions)
+            // Quality requires a clean owner/session admission. Read it before
+            // legacy presenter probes, which publish per-action errors (for
+            // example, no expense to edit) into the shared overview state.
+            // An unavailable unrelated action must not hide a valid quality route.
+            foreach (Sr5CareerWizardPhoneActionDefinition action in Sr5CareerWizardPhoneCatalog.Actions
+                .OrderBy(static action => action.ActionId == Sr5CareerWizardActionIds.ChangeQuality ? 0 : 1))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 RequireCurrent(first);
                 Sr5CareerWizardPhoneAuthorityProbe? probe =
-                    await LoadProbeAsync(action.ActionId, first, cancellationToken)
+                    await LoadProbeAsync(action.ActionId, first, qualityOwner, cancellationToken)
                         .ConfigureAwait(false);
                 if (probe is not null)
                     probes.Add(probe);
@@ -81,6 +90,7 @@ internal sealed class RunnerSessionSr5CareerWizardPhoneAuthority
     private Task<Sr5CareerWizardPhoneAuthorityProbe?> LoadProbeAsync(
         string actionId,
         NativeWorkspaceAuthoritySnapshot expected,
+        OwnerContextStamp? qualityOwner,
         CancellationToken cancellationToken)
         => actionId switch
         {
@@ -159,6 +169,7 @@ internal sealed class RunnerSessionSr5CareerWizardPhoneAuthority
             Sr5CareerWizardActionIds.ChangeQuality => LoadQualityAsync(
                 actionId,
                 expected,
+                qualityOwner,
                 cancellationToken),
             Sr5CareerWizardActionIds.BeforeRun => LoadTypedAsync(
                 actionId,
@@ -192,12 +203,13 @@ internal sealed class RunnerSessionSr5CareerWizardPhoneAuthority
     private async Task<Sr5CareerWizardPhoneAuthorityProbe?> LoadQualityAsync(
         string actionId,
         NativeWorkspaceAuthoritySnapshot expected,
+        OwnerContextStamp? expectedOwner,
         CancellationToken cancellationToken)
     {
         CareerQualityEditorState? state;
         try
         {
-            state = await _coordinator.PrepareCareerQualityAsync(cancellationToken)
+            state = await _coordinator.PrepareCareerQualityAsync(cancellationToken, expectedOwner)
                 .ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

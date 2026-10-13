@@ -32,6 +32,22 @@ actions or the entire quality catalogue.
 
 ## Kept reusable
 
+The quality chooser displays the quoted **character Karma change**, not the
+quality's rule value. A negative quality with no Career grant says “No Karma
+change”; purchases say “Spend … Karma”, alongside the before/after balance.
+This changes presentation only, not Core pricing or admission. Focused actual
+Core/MAUI tests cover the no-grant negative quote and a 16-Karma purchase for
+local and linked owners, with English, German and Spanish formatter cases.
+The managed test assembly now embeds the Career resources too, so localization
+tests exercise the real translations rather than English fallback.
+
+The Career hub now captures the original owner before its first await and
+passes that stamp to the quality read. It probes quality before legacy
+presenter reads can publish unrelated per-action errors into the overview
+state. Missing expenses or unsupported actions stay unavailable; they must not
+hide a working quality route. This does not clear errors, relax owner admission,
+change canonical menu ordering, or grant mutation authority to a hub snapshot.
+
 - The phone hub route, `Sr5CareerActionPlan`, typed cost envelope, runner
   revision binding, checkpoint owner/backend seam, CAS token, and
   review/apply/receipt navigation follow the existing Career lane patterns.

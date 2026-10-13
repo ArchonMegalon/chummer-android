@@ -12,6 +12,19 @@ internal static partial class AfterRunAuthorityHarness
 {
     internal static async Task RunCareerQualityAsync(string contentRoot)
     {
+        foreach (var (culture, spend, gain, unchanged) in new[]
+        {
+            ("en-GB", "Spend 16 Karma", "Gain 8 Karma", "No Karma change"),
+            ("de-AT", "16 Karma ausgeben", "8 Karma erhalten", "Karma unverändert"),
+            ("es-ES", "Gastar 16 de Karma", "Ganar 8 de Karma", "Karma sin cambios")
+        })
+        {
+            using var copyCulture = new QualityTestCulture(culture);
+            Require(Sr5CareerQualityWizardPage.KarmaChangeLabel(-16) == spend
+                && Sr5CareerQualityWizardPage.KarmaChangeLabel(8) == gain
+                && Sr5CareerQualityWizardPage.KarmaChangeLabel(0) == unchanged,
+                $"Quality cost direction or localization is incorrect for {culture}.");
+        }
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
         {
@@ -37,6 +50,21 @@ internal static partial class AfterRunAuthorityHarness
                 var authority = new Sr5CareerQualityCoordinator(presenter, presenter);
                 var editor = await authority.PrepareAsync() ?? throw new InvalidOperationException("Actual Core quality editor missing.");
                 Require(editor.OwnerId == scope.NormalizedValue, "Device owner GUID replaced actual Core scope.");
+                var originalOwner = runtime.Coordinator.State.DisplayOwnerContext;
+                Require(await runtime.Coordinator.PrepareCareerQualityAsync() is null,
+                    "Quality reads without explicit owner custody must stay unavailable.");
+                var hubStore = new FileWorkspaceStore(runtime.StateDirectory);
+                var beforeHub = (linked ? hubStore.Get(scope, runtime.Id) : hubStore.Get(runtime.Id)).Value!;
+                var hub = await new RunnerSessionSr5CareerWizardPhoneAuthority(runtime.Coordinator).LoadAsync();
+                Require(hub.IsReady, "Career hub projection unavailable: " + hub.Blocker);
+                Require(hub.Snapshot!.Families.SelectMany(x => x.Actions)
+                    .Single(x => x.ActionId == Chummer.Presentation.Overview.Sr5CareerWizardActionIds.ChangeQuality).CanOpen,
+                    "The Career hub dropped a working quality route because it lost the original owner.");
+                Require(!hub.Snapshot.Families.SelectMany(x => x.Actions)
+                    .Single(x => x.ActionId == Chummer.Presentation.Overview.Sr5CareerWizardActionIds.EditKarmaExpense).CanOpen,
+                    "An absent Karma expense must remain unavailable without hiding quality changes.");
+                RequireSameRewardDocument(beforeHub,
+                    (linked ? hubStore.Get(scope, runtime.Id) : hubStore.Get(runtime.Id)).Value!);
                 var eligible = editor.Quotes.Single(x => x.Definition.Name == "Erased"
                     && x.Operation == CharacterCareerQualityOperation.AcquireLevel);
                 Require(eligible.CanApply && eligible.RuleKarmaCost == 16, "Real Career cost or admission is wrong.");
@@ -53,7 +81,21 @@ internal static partial class AfterRunAuthorityHarness
                 {
                     await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(choose, "OnAppearing")));
                     var picker = MinimalVisible(choose).OfType<Picker>().Single();
+                    var negative = editor.Quotes.First(x => x.CanApply && x.RuleKarmaCost < 0
+                        && x.CharacterKarmaDelta == 0
+                        && x.Operation == CharacterCareerQualityOperation.AcquireLevel);
+                    picker.SelectedIndex = editor.Quotes.ToList().IndexOf(negative);
+                    var summary = MinimalVisible(choose).OfType<Label>()
+                        .Single(x => x.AutomationId == "sr5-career-quality-summary");
+                    string unchanged = linked ? "Karma unverändert" : "No Karma change";
+                    Require(picker.Items[picker.SelectedIndex].Contains(unchanged, StringComparison.Ordinal)
+                        && summary.Text == $"{unchanged} · Karma 100 → 100",
+                        "The real negative-quality rule value was presented as spendable Career Karma.");
                     picker.SelectedIndex = editor.Quotes.ToList().IndexOf(eligible);
+                    string spend = linked ? "16 Karma ausgeben" : "Spend 16 Karma";
+                    Require(picker.Items[picker.SelectedIndex].Contains(spend, StringComparison.Ordinal)
+                        && summary.Text == $"{spend} · Karma 100 → 84",
+                        "Positive quality display does not match the actual Core Karma delta.");
                     AssertQualityCopy(choose);
                     var review = MinimalVisible(choose).OfType<Button>().Single(x => x.AutomationId == "sr5-career-quality-review");
                     Require(review.IsEnabled, "Actual eligible quality cannot be reviewed.");
@@ -119,11 +161,13 @@ internal static partial class AfterRunAuthorityHarness
                 owners.Set(new OwnerScope("career-quality-other"));
                 owners.Set(scope);
                 Require(reopenedPresenter.CurrentOwnerId == Guid.Empty, "A -> B -> A revived the prior phone owner session.");
+                Require(await runtime.Coordinator.PrepareCareerQualityAsync(default, originalOwner) is null,
+                    "A -> B -> A revived the captured quality-probe owner.");
                 Require(owners.ActiveLeases == 0, "Phone quality flow retained an owner lease.");
                 foreach (var page in navigation.Navigation.NavigationStack.OfType<NativePageBase>())
                     IssuedPageLifecycle(page, "OnDisappearing");
                 ui.AssertHealthy();
-                Console.WriteLine($"PASS Career quality {(linked ? "linked" : "local")}: real selection/review/apply handlers, 100→84, full saved effect/receipt, readable copy, reconstructed journal/readback, explicit managed correction 84→100, owner ABA fence");
+                Console.WriteLine($"PASS Career quality {(linked ? "linked" : "local")}: owner-bound Career hub despite unrelated unavailable actions, real selection/review/apply handlers, 100→84, full saved effect/receipt, readable copy, reconstructed journal/readback, explicit managed correction 84→100, owner ABA fence");
             }
         });
     }

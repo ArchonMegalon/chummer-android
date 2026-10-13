@@ -179,7 +179,17 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
             QualityCatalogStrings.Name(quote.Definition.SourceId, quote.Definition.Name),
             quote.LevelBefore,
             quote.LevelAfter,
-            quote.CanApply ? Format("{0} Karma", quote.RuleKarmaCost) : Sr5CareerQualityDraft.BlockerText(quote.Blocker));
+            quote.CanApply ? KarmaChangeLabel(quote.CharacterKarmaDelta) : Sr5CareerQualityDraft.BlockerText(quote.Blocker));
+
+    // A quality's rule value is not necessarily the amount booked in Career
+    // (for example, acquiring a negative quality may grant no Karma).
+    internal static string KarmaChangeLabel(int karmaDelta)
+        => karmaDelta switch
+        {
+            < 0 => Format("Spend {0} Karma", -(long)karmaDelta),
+            > 0 => Format("Gain {0} Karma", karmaDelta),
+            _ => Text("No Karma change")
+        };
 
     internal static string OperationLabel(CharacterCareerQualityOperation operation)
         => operation switch
@@ -218,8 +228,8 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
         _summary.Text = _selected is null
             ? Text("No exact quality operation is available.")
             : Format(
-                "Cost {0} Karma · available {1} · after {2}",
-                _selected.RuleKarmaCost,
+                "{0} · Karma {1} → {2}",
+                KarmaChangeLabel(_selected.CharacterKarmaDelta),
                 _selected.AvailableKarma,
                 _selected.AvailableKarma + _selected.CharacterKarmaDelta);
         _blocker.Text = !revisionMatches
