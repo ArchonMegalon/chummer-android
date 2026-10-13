@@ -352,6 +352,13 @@ def finalize_exact_build(device: shared.Device) -> dict[str, object]:
         surface_name="Sealed creation finalization review",
     )
     reviewed: dict[str, str] = {}
+    changes = device.wait_exact_resource_id_bidirectional(
+        "creation-finalization-changes-toggle", timeout=60,
+        backward_scrolls=30, forward_scrolls=30, scroll_distance_ratio=0.22,
+        evidence_prefix="sr5-priority-finalization-changes", surface_name="Complete final review",
+    )
+    _require_enabled(changes, "Complete final review")
+    device.shell("input", "tap", *(str(value) for value in changes.center))
     details = device.wait_exact_resource_id_bidirectional(
         "creation-finalization-technical-details-toggle", timeout=60,
         backward_scrolls=30, forward_scrolls=30, scroll_distance_ratio=0.22,

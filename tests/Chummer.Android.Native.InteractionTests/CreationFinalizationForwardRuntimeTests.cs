@@ -83,6 +83,13 @@ internal static partial class AfterRunAuthorityHarness
                 await alerts.PreflightAsync();
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
                 save = MinimalVisible(page).OfType<Button>().Single(x => x.AutomationId == "creation-finalization-confirm");
+                Require(!MinimalVisible(page).Any(x => x.AutomationId?.StartsWith("creation-finalization-delta-", StringComparison.Ordinal) == true),
+                    "Whole-build deltas hide the forward action behind a long review.");
+                Require(MinimalVisible(page).Count(x => x.AutomationId?.StartsWith("creation-finalization-carryover-", StringComparison.Ordinal) == true) == 2,
+                    "Final confirmation hides a carryover reduction.");
+                RequireSameRewardDocument(before, (linked
+                    ? new FileWorkspaceStore(runtime.StateDirectory).Get(ContactsOwnerA, runtime.Id)
+                    : new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id)).Value!);
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)save).SendClicked()));
                 committed = false;
                 var cold = new FileWorkspaceStore(runtime.StateDirectory);

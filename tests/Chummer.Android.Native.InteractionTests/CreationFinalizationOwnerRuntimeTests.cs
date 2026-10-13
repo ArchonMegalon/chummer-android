@@ -3022,6 +3022,7 @@ internal static partial class AfterRunAuthorityHarness
                 RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
                 var binding = Element<Label>("creation-finalization-binding");
                 Require(!binding.IsVisible, "Review hashes are visible by default.");
+                ClickDetails("creation-finalization-changes-toggle");
                 ClickDetails("creation-finalization-technical-details-toggle");
                 Require(binding.IsVisible, "The current review cannot disclose its exact binding.");
                 ClickDetails("creation-finalization-technical-details-toggle");
@@ -4025,9 +4026,33 @@ internal static partial class AfterRunAuthorityHarness
             .SetValue(page, true);
         var refresh = typeof(CreationFinalizationPage).GetMethod("Refresh", BindingFlags.Instance | BindingFlags.NonPublic)!;
         refresh.Invoke(page, null);
-        var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+        var layout = (Grid)page.Content!;
+        var body = (VerticalStackLayout)layout.Children.OfType<ScrollView>().Single().Content!;
+        var footer = layout.Children.OfType<VerticalStackLayout>().Single();
         var binding = body.Children.OfType<Label>().Single(label => label.AutomationId == "creation-finalization-binding");
         Require(!binding.IsVisible, "Final-review hashes should start hidden.");
+        var changes = body.Children.OfType<Button>().Single(button => button.AutomationId == "creation-finalization-changes-toggle");
+        var confirm = footer.Children.OfType<Button>().Single(button => button.AutomationId == "creation-finalization-confirm");
+        var toggle = body.Children.OfType<Button>().Single(button => button.AutomationId == "creation-finalization-technical-details-toggle");
+        Require(confirm.IsVisible && confirm.IsEnabled && footer.IsVisible && Grid.GetRow(footer) == 1
+            && layout.RowDefinitions[1].Height == GridLength.Auto && !body.Children.Contains(confirm),
+            "Final confirmation is still buried below the complete change list.");
+        var cards = body.Children.OfType<Border>().Where(border => border.AutomationId?.StartsWith("creation-finalization-delta-", StringComparison.Ordinal) == true).ToArray();
+        Require(cards.Length == review.OrderedDeltas.Count && cards.All(card => !card.IsVisible) && !toggle.IsVisible,
+            "Compact review exposes all change cards or removes part of the sealed review.");
+        foreach (var carryover in review.OrderedDeltas.Where(delta => delta.Kind == CharacterCreationFinalizationDeltaKinds.Resources
+                     && delta.DeltaId is "carryover:karma" or "carryover:nuyen"))
+        {
+            var amount = body.Children.OfType<Label>().Single(label => label.AutomationId == "creation-finalization-" + carryover.DeltaId.Replace(':', '-'));
+            Require(amount.IsVisible && amount.Text == CreationFinalizationPage.TargetLabel(carryover) + ": " + CreationFinalizationPage.ChangeLabel(carryover)
+                && body.Children.IndexOf(amount) < body.Children.IndexOf(changes),
+                "Compact review hid or recalculated discarded creation funds.");
+        }
+        ((IButtonController)toggle).SendClicked();
+        Require(!binding.IsVisible, "A hidden technical toggle bypassed collapsed review.");
+        ((IButtonController)changes).SendClicked();
+        Require(cards.All(card => card.IsVisible) && toggle.IsVisible,
+            "The user cannot open every reviewed change.");
         var labels = body.Children.OfType<Border>().Select(border => border.Content)
             .OfType<VerticalStackLayout>().SelectMany(card => card.Children.OfType<Label>()).ToArray();
         foreach (var delta in review.OrderedDeltas)
@@ -4052,7 +4077,6 @@ internal static partial class AfterRunAuthorityHarness
                     && !label.IsVisible && label.Text.Split('\n')[0] == delta.TargetId),
                     "A readable name removed its exact typed identity from diagnostics.");
         }
-        var toggle = body.Children.OfType<Button>().Single(button => button.AutomationId == "creation-finalization-technical-details-toggle");
         ((IButtonController)toggle).SendClicked();
         Require(binding.IsVisible, "Technical detail toggle did not reveal the review binding.");
         Require(labels.Where(label => label.AutomationId?.StartsWith("creation-finalization-source-", StringComparison.Ordinal) == true)
@@ -4061,10 +4085,20 @@ internal static partial class AfterRunAuthorityHarness
         Require(!binding.IsVisible, "Technical detail toggle did not collapse the review binding.");
         Require(labels.Where(label => label.AutomationId?.StartsWith("creation-finalization-source-", StringComparison.Ordinal) == true)
             .All(label => !label.IsVisible), "Technical detail toggle did not collapse source identities.");
+        ((IButtonController)toggle).SendClicked();
+        ((IButtonController)changes).SendClicked();
+        Require(cards.All(card => !card.IsVisible) && !toggle.IsVisible && !binding.IsVisible,
+            "Closing changes left review cards or technical disclosure visible.");
+        ((IButtonController)changes).SendClicked();
+        Require(cards.All(card => card.IsVisible) && !binding.IsVisible,
+            "Reopening changes silently restored technical disclosure.");
         refresh.Invoke(page, null);
+        ((IButtonController)changes).SendClicked();
         ((IButtonController)toggle).SendClicked();
         Require(!binding.IsVisible && !body.Children.OfType<Label>().Single(label => label.AutomationId == "creation-finalization-binding").IsVisible,
             "A detached review toggle disclosed stale authority.");
+        Require(body.Children.OfType<Border>().Where(border => border.AutomationId?.StartsWith("creation-finalization-delta-", StringComparison.Ordinal) == true)
+            .All(card => !card.IsVisible), "A detached change toggle expanded a fresh review.");
         Require(JsonSerializer.Serialize(review) == original && coordinator.IsCreationFinalizationReviewCurrent(review),
             "Display names or technical disclosure changed the admitted review authority.");
     }

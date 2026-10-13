@@ -929,7 +929,10 @@ Valor de ataque (Muy cerca / Cerca / Media / Lejos / Muy lejos): {3}</value></da
   <data name="Finalization.StaleReview" xml:space="preserve"><value>Esta revisión ya no está actualizada. Abre de nuevo tu runner y revisa los cambios.</value></data>
   <data name="Finalization.Review" xml:space="preserve"><value>Revisión final</value></data>
   <data name="Finalization.EnterCareer" xml:space="preserve"><value>Entrar en modo Carrera</value></data>
-  <data name="Finalization.ReviewHelp" xml:space="preserve"><value>Revisa los cambios y los fondos restantes. Se guardarán juntos solo cuando confirmes.</value></data>
+  <data name="Finalization.ReviewHelp" xml:space="preserve"><value>Revisa tus fondos restantes. No se guarda nada hasta que confirmes.</value></data>
+  <data name="Finalization.ShowChanges" xml:space="preserve"><value>Ver todos los cambios ({0})</value></data>
+  <data name="Finalization.HideChanges" xml:space="preserve"><value>Ocultar cambios</value></data>
+  <data name="Finalization.CarryoverHelp" xml:space="preserve"><value>Se pierde el presupuesto de creación que supere los límites de transferencia. El dinero inicial se añade después.</value></data>
   <data name="Finalization.After" xml:space="preserve"><value>Tras finalizar</value></data>
   <data name="Finalization.KarmaRemaining" xml:space="preserve"><value>Karma restante</value></data>
   <data name="Finalization.NuyenRemaining" xml:space="preserve"><value>Nuyen restantes</value></data>

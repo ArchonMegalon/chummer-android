@@ -173,6 +173,11 @@ public sealed class CreationFinalizationPage : NativePageBase
         Padding = new Thickness(20, 18, 20, 40),
         Spacing = 14
     };
+    private readonly VerticalStackLayout _footer = new()
+    {
+        Padding = new Thickness(20, 12, 20, 16),
+        BackgroundColor = NativeTheme.Surface
+    };
     private readonly string _idempotencyKey;
     private CharacterCreationFinalizationResult<CharacterCreationFinalizationReceipt>? _completion;
     private bool _confirming;
@@ -209,12 +214,20 @@ public sealed class CreationFinalizationPage : NativePageBase
             + $"{review.Binding.ContentRevision}:{plan.PlanDigest}");
         Title = Copy("Title", "Finish creation");
         AutomationId = "creation-finalization-page";
-        Content = new ScrollView { Content = _body };
+        Grid layout = new()
+        {
+            RowDefinitions = { new RowDefinition(GridLength.Star), new RowDefinition(GridLength.Auto) }
+        };
+        layout.Add(new ScrollView { Content = _body });
+        layout.Add(_footer, 0, 1);
+        Content = layout;
     }
 
     protected override void Refresh()
     {
         _body.Clear();
+        _footer.Clear();
+        _footer.IsVisible = false;
         if (_completion?.Value is { } saved)
         {
             // A durable completion survives navigation/reload failures. Never
@@ -250,7 +263,7 @@ public sealed class CreationFinalizationPage : NativePageBase
         _body.Add(NativeTheme.Eyebrow(Copy("Review", "Final review")));
         _body.Add(NativeTheme.Title(Copy("EnterCareer", "Enter Career mode")));
         Label introduction = NativeTheme.Body(Copy("ReviewHelp",
-            "Check the changes and remaining funds below. They are saved together only when you confirm."), NativeTheme.Muted);
+            "Check your remaining funds. Nothing is saved until you confirm."), NativeTheme.Muted);
 
         Label binding = NativeTheme.Body(
             $"Revision {_review.Binding.ContentRevision} · "
@@ -279,16 +292,74 @@ public sealed class CreationFinalizationPage : NativePageBase
         budgetCard.AutomationId = "creation-finalization-costs";
         _body.Add(budgetCard);
 
-        // Keep every reviewed change and cost visible. Raw source anchors are
-        // diagnostics, not extra choices; they can span many phone screens.
+        // A compact review must not hide funds discarded at the Career boundary.
+        // Project Core's exact deltas; do not recalculate the carryover rules here.
+        foreach (CharacterCreationFinalizationDelta carryover in _review.OrderedDeltas
+                     .Where(static delta => delta.Kind == CharacterCreationFinalizationDeltaKinds.Resources
+                         && delta.DeltaId is "carryover:karma" or "carryover:nuyen")
+                     .OrderBy(static delta => delta.Order))
+        {
+            Label amount = NativeTheme.Body(TargetLabel(carryover) + ": " + ChangeLabel(carryover));
+            amount.AutomationId = "creation-finalization-" + carryover.DeltaId.Replace(':', '-');
+            _body.Add(amount);
+        }
+        if (_review.Plan.CarryoverPolicy is not null)
+            _body.Add(NativeTheme.Body(Copy("CarryoverHelp",
+                "Excess creation funds are lost. Starting cash is added afterward."), NativeTheme.Muted));
+
+        Label boundary = NativeTheme.Body(
+            Copy("ConfirmHelp", "Confirm to finish creation and start Career mode. If your runner changes before saving, you will need to review again."),
+            NativeTheme.Muted);
+        boundary.AutomationId = "creation-finalization-atomic-boundary";
+        _body.Add(boundary);
+
+        Button confirm = NativeTheme.PrimaryButton(
+            _confirming ? Copy("Saving", "Saving…") : Copy("Confirm", "Confirm and enter Career"));
+        confirm.AutomationId = "creation-finalization-confirm";
+        confirm.IsEnabled = !_confirming;
+        confirm.HeightRequest = -1;
+        confirm.MinimumHeightRequest = 50;
+        long confirmAppearance = _appearanceGeneration;
+        confirm.Clicked += async (_, _) =>
+        {
+            if (!IsCurrentPage(confirmAppearance) || !ReferenceEquals(confirm.Parent, _footer)) return;
+            await RunAsync(ConfirmAsync);
+        };
+        _footer.Add(confirm);
+        _footer.IsVisible = true;
+
+        // Keep the complete ordered review available without putting dozens of
+        // cards between the totals and the one explicit confirmation.
+        bool showChanges = false;
+        List<Border> changeCards = [];
+        Button changes = NativeTheme.SecondaryButton(CreationAllocationStrings.Format(
+            "Finalization.ShowChanges", "Show all changes ({0})", _review.OrderedDeltas.Count));
+        changes.AutomationId = "creation-finalization-changes-toggle";
+        changes.IsEnabled = !_confirming;
         List<Label> sourceDetails = [binding];
         bool showDetails = false;
         Button details = NativeTheme.SecondaryButton(CreationFlowStrings.Get(
             "Qualities.ShowDetails", "Show technical details"));
         details.AutomationId = "creation-finalization-technical-details-toggle";
+        details.IsVisible = false;
+        details.IsEnabled = !_confirming;
+        changes.Clicked += (_, _) =>
+        {
+            if (!_visible || _confirming || !ReferenceEquals(changes.Parent, _body)
+                || !Coordinator.IsCreationFinalizationReviewCurrent(_review)) return;
+            showChanges = !showChanges;
+            foreach (Border card in changeCards) card.IsVisible = showChanges;
+            details.IsVisible = showChanges;
+            // Closing the review also retires its technical disclosure.
+            showDetails = false;
+            foreach (Label source in sourceDetails) source.IsVisible = false;
+            details.Text = CreationFlowStrings.Get("Qualities.ShowDetails", "Show technical details");
+            changes.Text = showChanges ? Copy("HideChanges", "Hide changes")
+                : CreationAllocationStrings.Format("Finalization.ShowChanges", "Show all changes ({0})", _review.OrderedDeltas.Count);
+        };
         details.Clicked += (_, _) =>
         {
-            if (!_visible || _confirming || !ReferenceEquals(details.Parent, _body)
+            if (!_visible || _confirming || !showChanges || !ReferenceEquals(details.Parent, _body)
                 || !Coordinator.IsCreationFinalizationReviewCurrent(_review))
                 return;
             showDetails = !showDetails;
@@ -298,6 +369,7 @@ public sealed class CreationFinalizationPage : NativePageBase
                 ? CreationFlowStrings.Get("Qualities.HideDetails", "Hide technical details")
                 : CreationFlowStrings.Get("Qualities.ShowDetails", "Show technical details");
         };
+        _body.Add(changes);
         _body.Add(details);
         _body.Add(binding);
 
@@ -328,26 +400,10 @@ public sealed class CreationFinalizationPage : NativePageBase
             card.Add(source);
             Border border = NativeTheme.Card(card);
             border.AutomationId = $"creation-finalization-delta-{delta.Order.ToString(CultureInfo.InvariantCulture)}";
+            border.IsVisible = false;
+            changeCards.Add(border);
             _body.Add(border);
         }
-
-        Label boundary = NativeTheme.Body(
-            Copy("ConfirmHelp", "Confirm to finish creation and start Career mode. If your runner changes before saving, you will need to review again."),
-            NativeTheme.Muted);
-        boundary.AutomationId = "creation-finalization-atomic-boundary";
-        _body.Add(NativeTheme.Card(boundary));
-
-        Button confirm = NativeTheme.PrimaryButton(
-            _confirming ? Copy("Saving", "Saving…") : Copy("Confirm", "Confirm and enter Career"));
-        confirm.AutomationId = "creation-finalization-confirm";
-        confirm.IsEnabled = !_confirming;
-        long confirmAppearance = _appearanceGeneration;
-        confirm.Clicked += async (_, _) =>
-        {
-            if (!IsCurrentPage(confirmAppearance) || !ReferenceEquals(confirm.Parent, _body)) return;
-            await RunAsync(ConfirmAsync);
-        };
-        _body.Add(confirm);
     }
 
     private async Task ConfirmAsync()

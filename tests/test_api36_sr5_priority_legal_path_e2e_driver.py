@@ -209,6 +209,7 @@ class FinalizationDevice:
                 f"preview sha256:{PREVIEW_DIGEST[:11]}…"
             ),
             "creation-finalization-costs": "costs",
+            "creation-finalization-changes-toggle": "Show all changes (39)",
             "creation-finalization-technical-details-toggle": "Show technical details",
             "creation-finalization-atomic-boundary": "atomic",
             "creation-finalization-content-revision": "16",
@@ -231,9 +232,12 @@ class FinalizationDevice:
         self.values.update(overrides or {})
         self.taps: list[tuple[str, ...]] = []
         self.details_open = False
+        self.changes_open = False
         self.last_selector = ""
 
     def wait_exact_resource_id_bidirectional(self, selector: str, **_kwargs: object) -> driver.shared.UiNode:
+        if selector == "creation-finalization-technical-details-toggle" and not self.changes_open:
+            raise AssertionError("The proof driver must explicitly open the full change list")
         if selector == "creation-finalization-binding" and not self.details_open:
             raise AssertionError("The proof driver must explicitly open the hidden technical details")
         if selector not in self.values:
@@ -249,6 +253,8 @@ class FinalizationDevice:
 
     def shell(self, *arguments: str) -> str:
         self.taps.append(arguments)
+        if self.last_selector == "creation-finalization-changes-toggle":
+            self.changes_open = not self.changes_open
         if self.last_selector == "creation-finalization-technical-details-toggle":
             self.details_open = not self.details_open
         return ""

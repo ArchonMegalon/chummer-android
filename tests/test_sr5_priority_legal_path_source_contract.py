@@ -117,15 +117,15 @@ class Sr5PriorityLegalPathSourceContractTests(unittest.TestCase):
         self.assertIn("explicit, atomic confirmation", finalization)
         self.assertNotIn("CharacterCreationWizardSnapshot snapshot", projection)
 
-    def test_final_review_collapses_only_source_diagnostics(self) -> None:
+    def test_compact_final_review_retains_all_changes_and_separate_source_disclosure(self) -> None:
         source = FINALIZATION_PAGE.read_text(encoding="utf-8")
         review = source.split("public sealed class CreationFinalizationPage", 1)[1]
         review = review.split("public sealed class CreationFinalizationReceiptPage", 1)[0]
         for marker in (
-            "List<Label> sourceDetails = [];",
+            "List<Label> sourceDetails = [binding];",
             "bool showDetails = false;",
             '"creation-finalization-technical-details-toggle"',
-            "!_visible || _confirming || !ReferenceEquals(details.Parent, _body)",
+            "!_visible || _confirming || !showChanges || !ReferenceEquals(details.Parent, _body)",
             "!Coordinator.IsCreationFinalizationReviewCurrent(_review)",
             "source.IsVisible = false;",
             "sourceDetails.Add(source);",
@@ -135,16 +135,26 @@ class Sr5PriorityLegalPathSourceContractTests(unittest.TestCase):
             '"Qualities.HideDetails"',
         ):
             self.assertIn(marker, review)
-        # Costs, before/after values and the complete ordered delta list remain
-        # unconditional. Disclosure must never become a mutation/review action.
+        # All exact changes remain reviewable; disclosure is not mutation.
         self.assertIn("_review.OrderedDeltas", review)
         self.assertIn("delta.BeforeValue", review)
         self.assertIn("delta.AfterValue", review)
         self.assertIn("Number(delta.KarmaCost)", review)
         self.assertIn("Number(delta.NuyenCost)", review)
+        self.assertIn("_footer.Add(confirm);", review)
+        self.assertIn("layout.Add(_footer, 0, 1);", review)
+        self.assertIn("border.IsVisible = false;", review)
+        self.assertIn("foreach (Border card in changeCards) card.IsVisible = showChanges;", review)
+        self.assertIn('delta.DeltaId is "carryover:karma" or "carryover:nuyen"', review)
+        self.assertLess(review.index('"creation-finalization-" + carryover.DeltaId'), review.index("_footer.Add(confirm);"))
         toggle = review.split("details.Clicked +=", 1)[1].split("_body.Add(details);", 1)[0]
         self.assertNotIn("ConfirmCreationFinalizationAsync", toggle)
         self.assertNotIn("Refresh()", toggle)
+        changes = review.split("changes.Clicked +=", 1)[1].split("details.Clicked +=", 1)[0]
+        self.assertIn("!ReferenceEquals(changes.Parent, _body)", changes)
+        self.assertIn("!Coordinator.IsCreationFinalizationReviewCurrent(_review)", changes)
+        self.assertNotIn("ConfirmCreationFinalizationAsync", changes)
+        self.assertNotIn("Refresh()", changes)
         self.assertIn("Coordinator.ConfirmCreationFinalizationAsync(_review, _idempotencyKey)", review)
 
     def test_driver_is_physical_source_bound_and_does_not_seed_rule_state(self) -> None:

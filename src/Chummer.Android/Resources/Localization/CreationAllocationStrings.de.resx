@@ -929,7 +929,10 @@ Angriffswert (Sehr nah / Nah / Mittel / Weit / Sehr weit): {3}</value></data>
   <data name="Finalization.StaleReview" xml:space="preserve"><value>Diese Prüfung ist nicht mehr aktuell. Öffne deinen Runner erneut und prüfe die Änderungen.</value></data>
   <data name="Finalization.Review" xml:space="preserve"><value>Abschlussprüfung</value></data>
   <data name="Finalization.EnterCareer" xml:space="preserve"><value>In die Karriere wechseln</value></data>
-  <data name="Finalization.ReviewHelp" xml:space="preserve"><value>Prüfe die Änderungen und das verbleibende Guthaben. Erst deine Bestätigung speichert alles zusammen.</value></data>
+  <data name="Finalization.ReviewHelp" xml:space="preserve"><value>Prüfe dein verbleibendes Guthaben. Erst deine Bestätigung speichert den Abschluss.</value></data>
+  <data name="Finalization.ShowChanges" xml:space="preserve"><value>Alle Änderungen anzeigen ({0})</value></data>
+  <data name="Finalization.HideChanges" xml:space="preserve"><value>Änderungen ausblenden</value></data>
+  <data name="Finalization.CarryoverHelp" xml:space="preserve"><value>Guthaben über den Übertragsgrenzen verfällt. Das Startgeld kommt danach hinzu.</value></data>
   <data name="Finalization.After" xml:space="preserve"><value>Nach dem Abschluss</value></data>
   <data name="Finalization.KarmaRemaining" xml:space="preserve"><value>Verbleibendes Karma</value></data>
   <data name="Finalization.NuyenRemaining" xml:space="preserve"><value>Verbleibende Nuyen</value></data>

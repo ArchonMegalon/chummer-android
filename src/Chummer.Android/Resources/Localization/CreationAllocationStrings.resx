@@ -929,7 +929,10 @@ Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
   <data name="Finalization.StaleReview" xml:space="preserve"><value>This review is no longer current. Reopen your runner and review again.</value></data>
   <data name="Finalization.Review" xml:space="preserve"><value>Final review</value></data>
   <data name="Finalization.EnterCareer" xml:space="preserve"><value>Enter Career mode</value></data>
-  <data name="Finalization.ReviewHelp" xml:space="preserve"><value>Check the changes and remaining funds below. They are saved together only when you confirm.</value></data>
+  <data name="Finalization.ReviewHelp" xml:space="preserve"><value>Check your remaining funds. Nothing is saved until you confirm.</value></data>
+  <data name="Finalization.ShowChanges" xml:space="preserve"><value>Show all changes ({0})</value></data>
+  <data name="Finalization.HideChanges" xml:space="preserve"><value>Hide changes</value></data>
+  <data name="Finalization.CarryoverHelp" xml:space="preserve"><value>Excess creation funds are lost. Starting cash is added afterward.</value></data>
   <data name="Finalization.After" xml:space="preserve"><value>After finalization</value></data>
   <data name="Finalization.KarmaRemaining" xml:space="preserve"><value>Karma remaining</value></data>
   <data name="Finalization.NuyenRemaining" xml:space="preserve"><value>Nuyen remaining</value></data>
