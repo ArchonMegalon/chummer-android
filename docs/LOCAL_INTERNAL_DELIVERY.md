@@ -132,7 +132,23 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 216 is the latest [observed Internal availability](../play/evidence/preview216-internal-observation.json),
+Preview 217 is the latest [observed Internal availability](../play/evidence/preview217-internal-observation.json),
+released on 13 October at 13:26 Europe/Vienna. Successful Life Modules final
+confirmation now opens the restored Career root automatically, preserving
+navigation, owner and exact persisted-receipt guards. Android #746 merged
+normally with the tested tree; Core/UI inputs are unchanged. Eight focused
+actual-Core/MAUI scenarios and three related routes pass. A fresh native217
+synthetic completion draft finalized once, automatically opened Career, and
+restored the same saved bytes in a verified new process; all19 prior files remain
+unchanged. This is completion-tail evidence, not a full balanced character or
+live manuscript journey. Local ARM64/Internal build, separate original-key
+signing and independent verification passed. One upload and final confirmation
+produced actual Play Internal availability. Physical217, startup/reload closure
+and full Creation/Origin remain unverified. SystemUI boot/observer failures and
+the original uncertain FirstBook fence remain retained. Version217 is consumed;
+do not rebuild or re-upload it.
+
+Preview 216's [historical Internal availability](../play/evidence/preview216-internal-observation.json) was
 released on 13 October at 12:28 Europe/Vienna. Contact review now immediately
 shows localized checking feedback and disables fields while preparing. Existing
 action, owner, revision and explicit-save guards remain. Android #744 merged
