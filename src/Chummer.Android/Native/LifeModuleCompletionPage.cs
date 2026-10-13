@@ -101,6 +101,30 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
         await _session.ReviewAsync(default, () => IsCurrentAppearanceGeneration(appearance));
     }
     private async Task ChangeReview(CharacterCreationFoundationFinalizationPreviewRequest input) { Change(input); await Review(); }
+    private async Task ReviewInputAndReturn(CharacterCreationFoundationFinalizationPreviewRequest input,
+        Func<CharacterCreationFoundationFinalizationPreview, bool> acceptsSelection)
+    {
+        long render = _render, appearance = CaptureAppearanceGeneration();
+        var navigation = Navigation;
+        var stack = navigation.NavigationStack.ToArray();
+        bool OwnsNavigation() => Current(render, appearance) && ReferenceEquals(stack.LastOrDefault(), this)
+            && navigation.NavigationStack.SequenceEqual(stack) && navigation.ModalStack.Count == 0;
+        if (!OwnsNavigation()) return;
+        Change(input);
+        _body.IsEnabled = false;
+        if (_pending is not null) _pending.Text = CreationKarmaCopy.Loading;
+        await _session.ReviewAsync(default, OwnsNavigation);
+        // Ready only describes the runner snapshot. Returning also needs the
+        // exact saved-input review, its section's Core result and this page's
+        // unchanged appearance/stack. Other unfinished sections are not a reason
+        // to require finalization or to dismiss a rejected editor.
+        if (OwnsNavigation() && _session.Reviewed && _session.Saved
+            && Quote is { } reviewed && acceptsSelection(reviewed))
+            await navigation.PopAsync();
+    }
+
+    private static bool AcceptsSkillInputs(CharacterCreationFoundationFinalizationPreview preview)
+        => preview.SkillsQuote is { } skills && skills.Blockers.All(reason => reason == CharacterCreationSkillsBlockers.NativeLanguageRequired);
     private void Body(string text, string? id = null)
     { var label = NativeTheme.Body(text); label.AutomationId = id; _body.Add(label); }
     private Button Button(string text, string id, Func<Task> action, bool enabled = true, bool multiline = false)
@@ -231,7 +255,17 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
             case LifeCompletionStep.MagicCatalog: MagicCatalog(); break;
             case LifeCompletionStep.Review: CompletionReview(); break;
         }
-        foreach (string reason in _session.Blockers.Distinct()) Body(CreationKarmaCopy.Blocker(reason), "life-blocker-" + reason);
+        // Keep rejected-input guidance beside the action just used, not below
+        // the remove action where the bottom navigation can hide it.
+        var inputSubmit = _body.Children.OfType<Button>().FirstOrDefault(button =>
+            button.AutomationId is "life-use-contact" or "life-use-skill");
+        int blockerIndex = inputSubmit is null ? _body.Count : _body.Children.IndexOf(inputSubmit);
+        foreach (string reason in _session.Blockers.Distinct())
+        {
+            var blocker = NativeTheme.Body(CreationKarmaCopy.Blocker(reason));
+            blocker.AutomationId = "life-blocker-" + reason;
+            _body.Insert(blockerIndex++, blocker);
+        }
     }
 
     private void Overview()
@@ -421,15 +455,16 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
             Button(LifeCopy("RemoveSpecialization", "Remove specialization"), "life-remove-specialization", () => ChangeReview(Input with
             { SkillSelection = skills with { Skills = skills.Skills.Where(x => x != original).Append(edit with { SpecializationOptionId = null, SpecializationPayment = null }).ToArray() } }), multiline: true);
         }
-        Button(CreationKarmaCopy.UseSelection, "life-use-skill", async () =>
-        {
-            Change(Input with { SkillSelection = skills with { Skills = skills.Skills.Where(x => x != original).Append(edit).ToArray() } });
-            await Review(); if (_session.Ready) await Navigation.PopAsync();
-        });
+        Button(CreationKarmaCopy.UseSelection, "life-use-skill", () => ReviewInputAndReturn(
+            Input with { SkillSelection = skills with { Skills = skills.Skills.Where(x => x != original).Append(edit).ToArray() } },
+            AcceptsSkillInputs));
         if (original is not null)
             Body(LifeCopy("RemoveSkillHelp", "Only your added choices for this skill are removed. Life Module grants stay."), "life-remove-skill-help");
-        Button(LifeCopy("RemoveSkill", "Remove skill choices"), "life-remove-skill", async () =>
-        { Change(Input with { SkillSelection = skills with { Skills = skills.Skills.Where(x => x != original).ToArray() } }); await Review(); if (_session.Ready) await Navigation.PopAsync(); }, original is not null, multiline: true);
+        Button(LifeCopy("RemoveSkill", "Remove skill choices"), "life-remove-skill", () => ReviewInputAndReturn(
+            Input with { SkillSelection = skills with { Skills = skills.Skills.Where(x => x != original).ToArray() } },
+            // Removing a saved input may leave other blockers. Show them on the
+            // list; only final confirmation can mutate the canonical runner.
+            static _ => true), original is not null, multiline: true);
     }
 
     private void Group()

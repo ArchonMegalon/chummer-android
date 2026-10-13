@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="LifeCompletion.ContactLimit" xml:space="preserve"><value>Senke Einfluss oder Loyalität dieser Connection, um die aktuellen Grenzen einzuhalten.</value></data>
+  <data name="LifeCompletion.ContactInvalid" xml:space="preserve"><value>Prüfe Angaben und Werte der Connection. Gruppenconnections brauchen Loyalität 1.</value></data>
+  <data name="LifeCompletion.KarmaExceeded" xml:space="preserve"><value>Nicht genug Karma übrig. Senke eine Ausgabe, bevor du fortfährst.</value></data>
   <data name="SkillsPreview.Saving" xml:space="preserve"><value>Wird gespeichert…</value></data>
   <data name="SkillsPreview.OpeningQualities" xml:space="preserve"><value>Vor- und Nachteile werden geöffnet…</value></data>
   <data name="SkillsPreview.ContinueQualities" xml:space="preserve"><value>Weiter zu Vor- und Nachteilen</value></data>

@@ -19,6 +19,9 @@ internal static class CreationKarmaCopy
         CharacterCreationLifeModuleTalentCatalog.SelectionInvalid => CreationAllocationStrings.Get("LifeCompletion.TalentSelectionInvalid", "Review this talent and its choices using the currently available options."),
         CharacterCreationLifeModuleResourcesQuote.SelectionRequired => CreationAllocationStrings.Get("LifeCompletion.ResourcesRequired", "Open Resources, choose how much Karma to spend (0 is allowed), then save and review."),
         CharacterCreationLifeModuleContactsQuote.SelectionRequired => ReviewOptionalStepFirst(Contacts),
+        CharacterCreationLifeModuleContactsQuote.ContactLimitExceeded => CreationAllocationStrings.Get("LifeCompletion.ContactLimit", "Lower this contact's Connection or Loyalty to fit the current contact limits."),
+        CharacterCreationContactsBlockers.ContactInvalid => CreationAllocationStrings.Get("LifeCompletion.ContactInvalid", "Check the contact details and ratings. Group contacts need Loyalty 1."),
+        CharacterCreationAttributesBlockers.GlobalKarmaExceeded => CreationAllocationStrings.Get("LifeCompletion.KarmaExceeded", "Not enough Karma remains. Lower a purchase before continuing."),
         CharacterCreationLifeModuleGearQuote.SelectionRequired => ReviewOptionalStepFirst(Gear),
         CharacterCreationLifeModuleLifestylesQuote.SelectionRequired => ReviewOptionalStepFirst(Lifestyles),
         CharacterCreationLifeModuleMagicQuote.SelectionRequired => ReviewStepFirst(Magic),
@@ -27,6 +30,7 @@ internal static class CreationKarmaCopy
         CharacterCreationGearBlockers.UnsupportedSemantics => CreationAllocationStrings.Get("Karma.GearUnsupported", "This item's rules are not supported by this equipment wizard yet."),
         "creation-magic-resonance-option-semantics-unsupported" => CreationFlowStrings.MagicBlocker(code),
         "creation-skills-native-language-required" => CreationAllocationStrings.Get("Karma.NativeLanguageRequired", "Choose a language under Skills, mark it as your native language, then use that selection in the draft."),
+        _ when code.StartsWith("creation-skills-", StringComparison.Ordinal) => CreationAllocationStrings.SkillBlocker(code),
         _ => code
     };
     public static string Powers => CreationAllocationStrings.Get("Karma.Powers", "Adept powers");

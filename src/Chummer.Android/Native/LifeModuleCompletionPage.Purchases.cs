@@ -5,6 +5,7 @@ namespace Chummer.Android.Native;
 
 internal sealed partial class LifeModuleCompletionPage
 {
+    private Guid? _newContactId;
     private void Gear()
     {
         if (Quote?.GearAuthority is not { } authority) return;
@@ -82,9 +83,12 @@ internal sealed partial class LifeModuleCompletionPage
     private void Contact()
     {
         if (Input.ContactSelection is not { } contacts) return;
-        var original = contacts.SingleOrDefault(x => x.ContactId.ToString("D") == _id);
+        var original = contacts.SingleOrDefault(x => _id is null
+            ? x.ContactId == _newContactId : x.ContactId.ToString("D") == _id);
         if (_id is not null && original is null) return;
-        var edit = original ?? new CharacterCreationKarmaContactSelection(Guid.NewGuid(), new("", "", "", "", "", "", "", "", "", "", "", "", ""), 1, 1);
+        // A rejected new contact remains the same editable input across refresh;
+        // correcting it must not append another identity or erase its name.
+        var edit = original ?? new CharacterCreationKarmaContactSelection(_newContactId ??= Guid.NewGuid(), new("", "", "", "", "", "", "", "", "", "", "", "", ""), 1, 1);
         Text(CreationKarmaCopy.ContactName, "life-contact-name", edit.Identity.Name, value => edit = edit with { Identity = edit.Identity with { Name = value } });
         Text(CreationKarmaCopy.ContactRole, "life-contact-role", edit.Identity.Role, value => edit = edit with { Identity = edit.Identity with { Role = value } });
         Text(CreationKarmaCopy.ContactLocation, "life-contact-location", edit.Identity.Location, value => edit = edit with { Identity = edit.Identity with { Location = value } });
@@ -95,10 +99,14 @@ internal sealed partial class LifeModuleCompletionPage
         Flag(CreationKarmaCopy.GroupContact, "life-contact-group", edit.IsGroup, value => edit = edit with { IsGroup = value });
         Flag(CreationKarmaCopy.FamilyContact, "life-contact-family", edit.Family, value => edit = edit with { Family = value });
         Flag(CreationKarmaCopy.BlackmailContact, "life-contact-blackmail", edit.Blackmail, value => edit = edit with { Blackmail = value });
-        Button(CreationKarmaCopy.UseSelection, "life-use-contact", async () =>
-        { Change(Input with { ContactSelection = contacts.Where(x => x != original).Append(edit).ToArray() }); await Review(); if (_session.Ready) await Navigation.PopAsync(); });
-        Button(CreationKarmaCopy.Remove, "life-remove-contact", async () =>
-        { Change(Input with { ContactSelection = contacts.Where(x => x != original).ToArray() }); await Review(); if (_session.Ready) await Navigation.PopAsync(); }, original is not null);
+        Button(CreationKarmaCopy.UseSelection, "life-use-contact", () => ReviewInputAndReturn(
+            Input with { ContactSelection = contacts.Where(x => x != original).Append(edit).ToArray() },
+            preview => preview.ContactsQuote is { Blockers.Count: 0 }));
+        Button(CreationKarmaCopy.Remove, "life-remove-contact", () => ReviewInputAndReturn(
+            Input with { ContactSelection = contacts.Where(x => x != original).ToArray() },
+            // Other invalid rows remain editable on the list. This row is gone
+            // after the exact draft save; it must not leave an empty editor.
+            static _ => true), original is not null);
     }
 
     private static string MagicCaption(string kind) => kind switch

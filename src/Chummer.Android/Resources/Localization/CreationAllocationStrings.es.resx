@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="LifeCompletion.ContactLimit" xml:space="preserve"><value>Reduce Conexión o Lealtad de este contacto para respetar los límites actuales.</value></data>
+  <data name="LifeCompletion.ContactInvalid" xml:space="preserve"><value>Revisa los datos y valores del contacto. Los contactos de grupo necesitan Lealtad 1.</value></data>
+  <data name="LifeCompletion.KarmaExceeded" xml:space="preserve"><value>No queda suficiente Karma. Reduce una compra antes de continuar.</value></data>
   <data name="SkillsPreview.Saving" xml:space="preserve"><value>Guardando…</value></data>
   <data name="SkillsPreview.OpeningQualities" xml:space="preserve"><value>Abriendo cualidades…</value></data>
   <data name="SkillsPreview.ContinueQualities" xml:space="preserve"><value>Continuar a cualidades</value></data>

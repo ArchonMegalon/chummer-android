@@ -2812,12 +2812,12 @@ internal static partial class AfterRunAuthorityHarness
     private sealed class LifeCompletionNativeProbe(IOwnerBoundCharacterCreationLifeModuleFinalizationService inner)
         : IOwnerBoundCharacterCreationLifeModuleFinalizationService
     {
-        public Action? AfterLoad, BeforeConfirm, AfterConfirm;
+        public Action? AfterLoad, AfterPreview, BeforeConfirm, AfterConfirm;
         public int ConfirmCalls, PreviewCalls;
         public CharacterCreationFoundationResult<CharacterCreationFoundationState> Load(OwnerContextStamp owner, CharacterWorkspaceId id)
         { Require(SynchronizationContext.Current is null, "Life Modules load blocks the UI context."); var r = inner.Load(owner, id); AfterLoad?.Invoke(); return r; }
         public CharacterCreationFoundationResult<CharacterCreationFoundationFinalizationPreview> Preview(OwnerContextStamp owner, CharacterCreationFoundationFinalizationPreviewRequest request)
-        { Require(SynchronizationContext.Current is null, "Life Modules preview blocks the UI context."); PreviewCalls++; return inner.Preview(owner, request); }
+        { Require(SynchronizationContext.Current is null, "Life Modules preview blocks the UI context."); PreviewCalls++; var r = inner.Preview(owner, request); AfterPreview?.Invoke(); return r; }
         public CharacterCreationFoundationResult<CharacterCreationFoundationFinalizationReceipt> Confirm(OwnerContextStamp owner, CharacterCreationFoundationFinalizationConfirmRequest request)
         { Require(SynchronizationContext.Current is null, "Life Modules confirmation blocks the UI context."); ConfirmCalls++; BeforeConfirm?.Invoke(); var r = inner.Confirm(owner, request); AfterConfirm?.Invoke(); return r; }
     }
