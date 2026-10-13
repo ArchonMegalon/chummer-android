@@ -132,7 +132,28 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 219 is the latest [observed Internal availability](../play/evidence/preview219-internal-observation.json),
+Preview 221 is the latest [observed Internal availability](../play/evidence/preview221-internal-observation.json),
+last updated on 13 October at 22:11 Europe/Vienna. Career qualities now use the
+real owner-bound local workspace: supported effects, Karma, expenses and history
+save atomically, with read-only interrupted-result recovery and explicit undo.
+Android #753, Core #160 and UI #454 merged normally; their trees match the tested
+inputs. The local Core package passed 935 managed cases, the exact UI consumer
+900 cases, and the affected Android actual-Core/MAUI handlers and compile passed.
+Native API36 x64 Release/Internal testing used ordinary import/Save, purchased
+Erased (100 to 84 Karma), recovered its saved receipt after process restart,
+corrected it (84 to 100) and reopened again. The actual original XML was restored,
+both cold reads matched saved bytes, and all 27 prior workspace files/three drafts
+remained unchanged. This is one supported quality route in a separate SDK-test
+package, not exhaustive Career acceptance. The production ARM64 build, isolated
+original-key signing and independent keyless checks passed; one upload/final
+confirmation produced Internal availability. Physical221, startup/reload closure,
+full Creation/Career and live Origin remain open. Unsupported quality operations
+remain unavailable; the negative-quality cost label still needs clearer wording.
+The original FirstBook fence and local diagnostics-contract limitation remain.
+Version221 is consumed; do not rebuild/re-upload. Signed, unuploaded220 and the
+prior219 rollback packet are retained unchanged.
+
+Preview 219's [historical Internal availability](../play/evidence/preview219-internal-observation.json) was
 released on 13 October at 16:24 Europe/Vienna. Life Modules completion now leads
 forward through the next valid section to Career; invalid input stays editable
 with guidance. Unchanged reviewed steps avoid repeated calculation; final Career
