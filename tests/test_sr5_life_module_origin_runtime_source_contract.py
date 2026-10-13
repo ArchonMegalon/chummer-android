@@ -21,7 +21,11 @@ class Sr5LifeModuleOriginRuntimeSourceContractTests(unittest.TestCase):
         self.assertIn("AddSingleton<OriginDossierLifeModulePhoneRuntime>", program)
         self.assertIn("IOwnerBoundLifeModuleOriginService interaction", runtime)
         self.assertIn("IOriginDossierDraftTimelineStore", runtime)
-        self.assertIn("_interaction.Restore(owner, persisted)", runtime)
+        # Only Core may refresh a pristine opening after a save-only change.
+        # Existing pending-command recovery and explicit Confirm stay intact.
+        self.assertIn("_interaction.Reopen(owner, persisted)", runtime)
+        self.assertIn("persisted.PendingPreview is not null", runtime)
+        self.assertEqual(1, runtime.count("_interaction.Start(owner, workspaceId)"))
         self.assertIn("_store.LoadAsync(owner.Owner.NormalizedValue, workspaceId", runtime)
         self.assertIn("if (!_interaction.IsCurrent(owner)) return StaleOwner();", runtime)
         # Core Prepare includes its own fresh Restore; the phone does not

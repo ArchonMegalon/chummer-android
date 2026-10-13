@@ -1,9 +1,11 @@
+using System.Text.Json;
 using Chummer.Android.Native;
 using Chummer.Application.LifeModules;
 using Chummer.Application.Owners;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.LifeModules;
 using Chummer.Contracts.Owners;
+using Chummer.Infrastructure.Workspaces;
 using Chummer.Presentation.OriginBooks;
 using Chummer.Run.Contracts.Community;
 using Microsoft.Maui.Controls;
@@ -103,6 +105,15 @@ internal static partial class AfterRunAuthorityHarness
             // its only explanation was below the entire creation dashboard.
             var previousRunner = runtime.Coordinator.State.WorkspaceId;
             await CreateRunner(save: false);
+            // Reproduce the native ordering: opening Life Modules can precede
+            // the user's explicit Save. A save-only change must not strand
+            // this untouched first choice after the phone runtime is recreated.
+            var opening = await runtime.Coordinator.OpenSr5LifeModuleOriginAsync();
+            Require(opening.IsSuccess && opening.State?.Choices.Count > 0
+                && opening.State.Timeline.Count == 0 && opening.StoryCheckpoint?.PendingPreview is null,
+                "SETUP: the unsaved runner needs an undecided opening.");
+            var openingCheckpoint = opening.StoryCheckpoint
+                ?? throw new InvalidOperationException("SETUP: opening checkpoint was not retained.");
             await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
             var dirty = runtime.Coordinator.State;
             Require(dirty.Session.ActiveWorkspace?.IsDirty == true, "SETUP: expected unsaved runner.");
@@ -125,6 +136,38 @@ internal static partial class AfterRunAuthorityHarness
             var save = page.ToolbarItems.Single(item => item.AutomationId == "build-save-runner");
             await ui.BeginAsyncVoid(() => save.Command.Execute(null));
             await ui.DrainDispatchedAsyncVoidAsync();
+            var savedId = dirty.WorkspaceId!.Value;
+            var saved = runtime.Coordinator.State;
+            Require(saved.ContentRevision == dirty.ContentRevision
+                && saved.SavedRevision == saved.ContentRevision
+                && saved.Session.ActiveWorkspace?.IsDirty == false,
+                "Explicit Save did not preserve content while advancing its saved revision.");
+            Require(availability!.Restore(owners.Capture(), openingCheckpoint).Outcome
+                == LifeModuleOriginDossierOutcomes.Conflict,
+                "The regression must keep the original command admission stale after Save.");
+            var workspaceStore = new FileWorkspaceStore(runtime.StateDirectory);
+            string savedBytes = JsonSerializer.Serialize(workspaceStore.Get(savedId));
+            var coldTimeline = new FileOriginDossierDraftTimelineStore(runtime.StateDirectory);
+            var retainedOpening = await coldTimeline.LoadAsync(owners.Capture().Owner.NormalizedValue, savedId.Value);
+            Require(retainedOpening?.CheckpointDigest == openingCheckpoint.CheckpointDigest,
+                "SETUP: cold reopening must exercise the original persisted pre-Save checkpoint.");
+            var coldPhone = new OriginDossierLifeModulePhoneRuntime(availability, coldTimeline);
+            var reopened = await coldPhone.OpenAsync(owners.Capture(), savedId.Value);
+            Require(reopened.IsSuccess && reopened.State?.Choices.Count > 0
+                && reopened.State.Timeline.Count == 0 && reopened.StoryCheckpoint?.PendingPreview is null,
+                "Saved opening lost its metatype choices: " + string.Join(", ", reopened.Blockers));
+            var reopenedCheckpoint = reopened.StoryCheckpoint
+                ?? throw new InvalidOperationException("Cold reopen did not return a checkpoint.");
+            Require(reopenedCheckpoint.CheckpointDigest != openingCheckpoint.CheckpointDigest
+                && reopenedCheckpoint.Projection.CurrentTurn.LegalChoices.Select(c => c.ChoiceId)
+                    .SequenceEqual(openingCheckpoint.Projection.CurrentTurn.LegalChoices.Select(c => c.ChoiceId)),
+                "Cold reopen must return fresh admission for the same choices.");
+            var continued = await runtime.Coordinator.OpenSr5LifeModuleOriginAsync();
+            Require(continued.IsSuccess
+                && continued.StoryCheckpoint?.CheckpointDigest == reopenedCheckpoint.CheckpointDigest
+                && JsonSerializer.Serialize(workspaceStore.Get(savedId)) == savedBytes,
+                "Continue must reuse the fresh checkpoint without changing runner data or accepting a choice.");
+            Console.WriteLine("PASS Life Modules opening: open before Save, toolbar Save, cold phone reopen, same choices, unchanged runner, no implicit decision");
             picker = IssuedElements(page).OfType<Picker>().Single(p => p.AutomationId == "build-workspace-picker");
             target = runtime.Coordinator.State.OpenWorkspaces.ToList().FindIndex(w => w.Id == previousRunner);
             await ui.BeginAsyncVoid(() => picker.SelectedIndex = target);
@@ -205,6 +248,8 @@ internal static partial class AfterRunAuthorityHarness
             => inner.Start(owner, id);
         public LifeModuleOriginDossierResult<LifeModuleOriginDossierDraftCheckpoint> Restore(OwnerContextStamp owner,
             LifeModuleOriginDossierDraftCheckpoint checkpoint) => inner.Restore(owner, checkpoint);
+        public LifeModuleOriginDossierResult<LifeModuleOriginDossierDraftCheckpoint> Reopen(OwnerContextStamp owner,
+            LifeModuleOriginDossierDraftCheckpoint checkpoint) => inner.Reopen(owner, checkpoint);
         public LifeModuleOriginDossierResult<LifeModuleOriginDossierDraftCheckpoint> Prepare(OwnerContextStamp owner,
             LifeModuleOriginDossierDraftCheckpoint checkpoint, string choiceId,
             IReadOnlyDictionary<string, string>? followUpValues = null)
