@@ -132,7 +132,25 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 214 is the latest [observed Internal availability](../play/evidence/preview214-internal-observation.json),
+Preview 215 is the latest [observed Internal availability](../play/evidence/preview215-internal-observation.json),
+released on 13 October at 11:28 Europe/Vienna. Saved-Gear Contacts loading errors
+now remain visible after action refresh, with safe retry. Core explicitly reopens
+an unchanged pristine Origin opening after Save without relaxing pending/accepted
+decision guards. Android #742 and the exact Core/UI package inputs merged normally.
+The Contacts feedback regression fails on old source and passes with the fix;
+13 Gear/12 Contacts handler scenarios,16 source checks and affected builds pass.
+Native Gear save opens Contacts once; Back/Continue and new-process reopening
+preserve the saved bytes and all14 existing workspace files. Separate saved-Origin
+Continue/restart passes on the same Core/UI inputs; its unchanged-route evidence
+is reused after the Contacts-only delta. Injected-failure visibility is managed
+proof; the user's exact Contacts failure cause remains unconfirmed.
+Local ARM64/Internal build, isolated original-key signing and independent keyless
+artifact checks pass. One upload/confirmation yielded actual Console availability.
+Physical Play215, improved startup and full Creation/Career/live Origin remain
+unverified. Emulator SystemUI/observer failures remain retained, not a speed pass.
+Version215 is consumed; do not rebuild or re-upload it.
+
+Preview 214's [historical Internal availability](../play/evidence/preview214-internal-observation.json) was
 released on 13 October at 06:12 Europe/Vienna. Retained toolbar actions now stay
 disabled while runner data reloads; the current menu is restored after loading.
 Earlier single actionable choices and compact Life Modules guidance remain.
