@@ -2,9 +2,11 @@ using System.Globalization;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Chummer.Android.Native;
+using Chummer.Application.Owners;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Workspaces;
 using Chummer.Infrastructure.Workspaces;
+using Chummer.Presentation;
 using Chummer.Presentation.Overview;
 using Microsoft.Maui;
 using Microsoft.Maui.Controls;
@@ -48,7 +50,8 @@ internal static partial class AfterRunAuthorityHarness
                 Require(ReferenceEquals(Shell.Current?.CurrentPage, page), "SETUP: Career page is not current.");
 
                 // Use the registered Android adapter and exact local client, not
-                // a fabricated null snapshot. This is the Play-observed denial.
+                // a fabricated null snapshot. This intentionally incomplete
+                // fixture has no exact metatype GUID and must remain denied.
                 for (int click = 1; click <= 2; click++)
                 {
                     var button = MinimalVisible(page).OfType<Button>().Single(x =>
@@ -80,10 +83,25 @@ internal static partial class AfterRunAuthorityHarness
     }
 
     private sealed class ObservedCareerQualityWorkspace(AndroidCareerQualityAtomicWorkspace inner)
-        : ICareerQualityAtomicWorkspace, IDisposable
+        : ICareerQualityAtomicWorkspace, IOwnerBoundCareerQualityAtomicWorkspace, IDisposable
     {
         internal int Reads { get; private set; }
         internal int Writes { get; private set; }
+        public ICareerQualityAtomicWorkspace ForOwner(OwnerContextStamp expectedOwner)
+            => new Bound(this, inner.ForOwner(expectedOwner));
+        private sealed class Bound(ObservedCareerQualityWorkspace parent, ICareerQualityAtomicWorkspace workspace)
+            : ICareerQualityAtomicWorkspace
+        {
+            public Task<CareerQualityAuthoritySnapshot?> ReadAsync(CharacterWorkspaceId id, CancellationToken ct)
+            {
+                parent.Reads++;
+                return workspace.ReadAsync(id, ct);
+            }
+            public Task<CareerQualityAtomicCommitResult?> CommitAsync(CharacterCareerQualityPlan plan, CancellationToken ct)
+                => parent.CommitAsync(plan, ct);
+            public Task<CareerQualityAtomicCorrectionResult?> CorrectAsync(CharacterCareerQualityCorrectionPlan plan, CancellationToken ct)
+                => parent.CorrectAsync(plan, ct);
+        }
         public Task<CareerQualityAuthoritySnapshot?> ReadAsync(CharacterWorkspaceId id, CancellationToken ct)
         {
             Reads++;

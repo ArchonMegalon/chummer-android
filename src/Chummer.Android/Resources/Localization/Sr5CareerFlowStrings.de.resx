@@ -1025,4 +1025,18 @@ Vorschau: {3}…</value></data>
   <data name="Discard the saved review for {0} (runner revision {1})? This removes only the local review, not runner data or proposal approvals." xml:space="preserve"><value>Gespeicherte Prüfung für {0} (Runner-Stand {1}) verwerfen? Das entfernt nur die lokale Prüfung, keine Runner-Daten oder Vorschlagsfreigaben.</value></data>
   <data name="The selected runner changed. Reopen After Run for the current saved runner." xml:space="preserve"><value>Der ausgewählte Runner wurde gewechselt. Öffne Nach dem Run für den aktuell gespeicherten Runner erneut.</value></data>
   <data name="Record local rewards or review a governed run settlement. Resolve any pending transaction first." xml:space="preserve"><value>Erfasse lokale Belohnungen oder prüfe eine freigegebene Run-Abrechnung. Kläre zuerst jeden noch offenen Vorgang.</value></data>
+  <data name="Change a quality" xml:space="preserve"><value>Vor- oder Nachteil ändern</value></data>
+  <data name="Choose a quality, then check its Karma cost before applying the change." xml:space="preserve"><value>Wähle einen Vor- oder Nachteil und prüfe vor dem Anwenden die Karma-Kosten.</value></data>
+  <data name="Apply quality change" xml:space="preserve"><value>Änderung anwenden</value></data>
+  <data name="Saving your quality change…" xml:space="preserve"><value>Änderung wird gespeichert…</value></data>
+  <data name="Quality saved" xml:space="preserve"><value>Änderung gespeichert</value></data>
+  <data name="Back to Career" xml:space="preserve"><value>Zurück zur Karriere</value></data>
+  <data name="Undo this quality change" xml:space="preserve"><value>Diese Änderung rückgängig machen</value></data>
+  <data name="Undo restores your previous qualities and Karma." xml:space="preserve"><value>Rückgängig stellt deine vorherigen Vor- und Nachteile sowie dein Karma wieder her.</value></data>
+  <data name="Why do you want to undo this change?" xml:space="preserve"><value>Warum möchtest du diese Änderung rückgängig machen?</value></data>
+  <data name="Undo this quality change?" xml:space="preserve"><value>Diese Änderung rückgängig machen?</value></data>
+  <data name="Your previous qualities and Karma will be restored." xml:space="preserve"><value>Deine vorherigen Vor- und Nachteile sowie dein Karma werden wiederhergestellt.</value></data>
+  <data name="Your previous qualities and Karma have been restored." xml:space="preserve"><value>Deine vorherigen Vor- und Nachteile sowie dein Karma wurden wiederhergestellt.</value></data>
+  <data name="Your change is saved." xml:space="preserve"><value>Deine Änderung ist gespeichert.</value></data>
+  <data name="This runner has changed since this quality was saved." xml:space="preserve"><value>Dieser Runner wurde seit dieser Änderung weiter bearbeitet.</value></data>
 </root>

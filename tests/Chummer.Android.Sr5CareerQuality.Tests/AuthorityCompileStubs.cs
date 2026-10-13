@@ -1,9 +1,14 @@
 using Chummer.Contracts.Characters;
+using Chummer.Application.Owners;
 
 namespace Chummer.Presentation
 {
     public interface IChummerClient
     {
+    }
+    public interface IOwnerBoundCareerQualityAtomicWorkspace
+    {
+        Overview.ICareerQualityAtomicWorkspace ForOwner(OwnerContextStamp expectedOwner);
     }
 }
 
@@ -86,6 +91,7 @@ namespace Chummer.Android.Native
 
     public sealed class RunnerSessionStateStub
     {
+        public OwnerContextStamp? DisplayOwnerContext { get; init; }
         public RunnerSessionProfileStub? Profile { get; init; }
         public RunnerSessionRulesStub? Rules { get; init; }
         public CharacterWorkspaceId? WorkspaceId { get; init; }
@@ -98,15 +104,20 @@ namespace Chummer.Android.Native
     public sealed class RunnerSessionCoordinator
     {
         public RunnerSessionStateStub State { get; } = new();
+        public bool IsCareerQualityOwnerCurrent(OwnerContextStamp? owner, CharacterWorkspaceId workspaceId) => false;
+
+        public Task<Chummer.Presentation.Overview.CareerQualityAuthoritySnapshot?> ReadCareerQualityRecoverySnapshotAsync(
+            CancellationToken ct, OwnerContextStamp? owner)
+            => Task.FromResult<Chummer.Presentation.Overview.CareerQualityAuthoritySnapshot?>(null);
 
         public Task<Chummer.Presentation.Overview.CareerQualityEditorState?>
-            PrepareCareerQualityAsync(CancellationToken cancellationToken)
+            PrepareCareerQualityAsync(CancellationToken cancellationToken, OwnerContextStamp? owner)
             => Task.FromResult<Chummer.Presentation.Overview.CareerQualityEditorState?>(null);
 
         public Task<Chummer.Presentation.Overview.CareerQualityReview>
             ReviewCareerQualityAsync(
                 Chummer.Presentation.Overview.CareerQualityDraft draft,
-                CancellationToken cancellationToken)
+                CancellationToken cancellationToken, OwnerContextStamp? owner)
             => throw new InvalidOperationException();
 
         public Task<Chummer.Presentation.Overview.CareerQualityConfirmation>
@@ -114,13 +125,13 @@ namespace Chummer.Android.Native
                 Chummer.Presentation.Overview.CareerQualityReview review,
                 Guid transactionId,
                 DateTime expenseDateLocal,
-                CancellationToken cancellationToken)
+                CancellationToken cancellationToken, OwnerContextStamp? owner)
             => throw new InvalidOperationException();
 
         public Task<Chummer.Presentation.Overview.CareerQualityCorrectionConfirmation>
             CorrectCareerQualityAsync(
                 Chummer.Presentation.Overview.CareerQualityCorrectionRequest request,
-                CancellationToken cancellationToken)
+                CancellationToken cancellationToken, OwnerContextStamp? owner)
             => throw new InvalidOperationException();
     }
 

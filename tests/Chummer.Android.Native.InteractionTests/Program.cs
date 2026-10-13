@@ -158,6 +158,11 @@ internal static class Program
             await AfterRunAuthorityHarness.RunCareerEntryFailureAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--career-quality-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCareerQualityAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--mystic-readable-content-root")
         {
             CreationMagicNativeRuntimeTests.RunMysticReadability(args[1]);

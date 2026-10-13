@@ -21,7 +21,6 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
     private readonly ISr5CareerQualityCheckpointAuthority _checkpointAuthority;
     private readonly Picker _qualities;
     private readonly Label _summary;
-    private readonly Label _authorityDetail;
     private readonly Label _blocker;
     private readonly Label _recovery;
     private readonly Button _review;
@@ -59,7 +58,7 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
         RunnerSessionCoordinator coordinator,
         CareerQualityEditorState editor)
     {
-        PreferencesSr5CareerCheckpointOwnerAuthority ownerAuthority = new();
+        RunnerSessionSr5CareerQualityPresenter ownerAuthority = new(coordinator);
         Sr5CareerQualityLiveCheckpointAuthority checkpointAuthority = new(
             ownerAuthority,
             editor,
@@ -98,15 +97,15 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
             Spacing = 14
         };
         body.Add(NativeTheme.Eyebrow(Text("SR5 Career · 1 of 3")));
-        body.Add(NativeTheme.Title(Text("Choose a quality operation")));
+        body.Add(NativeTheme.Title(Text("Change a quality")));
         body.Add(NativeTheme.Body(
-            Text("Only exact Core candidates from enabled sources, custom data and the active GM policy are shown. Android never identifies a quality by its label and never applies a partial effect family."),
+            Text("Choose a quality, then check its Karma cost before applying the change."),
             NativeTheme.Muted));
         body.Add(NativeTheme.FieldLabel(Text("Quality and operation")));
         _qualities = new Picker
         {
             AutomationId = "sr5-career-quality-picker",
-            Title = Text("Exact quality operation"),
+            Title = Text("Quality and operation"),
             ItemsSource = editor.Quotes.Select(QualityLabel).ToArray(),
             SelectedIndex = editor.Quotes.Count > 0 ? 0 : -1,
             BackgroundColor = NativeTheme.Surface,
@@ -117,9 +116,6 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
         _summary = NativeTheme.Body(string.Empty, NativeTheme.Text);
         _summary.AutomationId = "sr5-career-quality-summary";
         body.Add(_summary);
-        _authorityDetail = NativeTheme.Body(string.Empty, NativeTheme.Muted);
-        _authorityDetail.AutomationId = "sr5-career-quality-authority";
-        body.Add(_authorityDetail);
         _blocker = NativeTheme.Body(string.Empty, NativeTheme.Danger);
         _blocker.AutomationId = "sr5-career-quality-blocker";
         body.Add(_blocker);
@@ -139,7 +135,7 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
             body.Add(NativeTheme.Card(omitted));
         }
 
-        _review = NativeTheme.PrimaryButton(Text("Review exact quality diff"));
+        _review = NativeTheme.PrimaryButton(Text("Review quality"));
         _review.AutomationId = "sr5-career-quality-review";
         _review.Clicked += async (_, _) => await RunAsync(OpenReviewAsync);
         body.Add(_review);
@@ -180,12 +176,12 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
         => Format(
             "{0} · {1} · level {2} → {3} · {4}",
             OperationLabel(quote.Operation),
-            quote.Definition.Name,
+            QualityCatalogStrings.Name(quote.Definition.SourceId, quote.Definition.Name),
             quote.LevelBefore,
             quote.LevelAfter,
-            quote.CanApply ? Format("{0} Karma", quote.RuleKarmaCost) : quote.Blocker.ToString());
+            quote.CanApply ? Format("{0} Karma", quote.RuleKarmaCost) : Sr5CareerQualityDraft.BlockerText(quote.Blocker));
 
-    private static string OperationLabel(CharacterCareerQualityOperation operation)
+    internal static string OperationLabel(CharacterCareerQualityOperation operation)
         => operation switch
         {
             CharacterCareerQualityOperation.AcquireLevel => Text("Acquire level"),
@@ -206,6 +202,8 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
     private void RefreshEnabledState()
     {
         bool revisionMatches = Coordinator.State.WorkspaceId == _editor.WorkspaceId
+            && _checkpointAuthority.CurrentOwnerId != Guid.Empty
+            && _checkpointAuthority.CurrentOwnerId == Sr5CareerQualityDraft.CheckpointOwnerId(_editor.OwnerId)
             && Coordinator.State.ContentRevision == _editor.WorkspaceRevision
             && Coordinator.State.SavedRevision == _editor.SavedRevision
             && !Coordinator.State.IsDirty
@@ -220,23 +218,10 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
         _summary.Text = _selected is null
             ? Text("No exact quality operation is available.")
             : Format(
-                "{0} · {1} · level {2} → {3} · runner Karma {4} → {5}",
-                _selected.Definition.Type,
-                OperationLabel(_selected.Operation),
-                _selected.LevelBefore,
-                _selected.LevelAfter,
+                "Cost {0} Karma · available {1} · after {2}",
+                _selected.RuleKarmaCost,
                 _selected.AvailableKarma,
                 _selected.AvailableKarma + _selected.CharacterKarmaDelta);
-        _authorityDetail.Text = _selected is null
-            ? string.Empty
-            : Format(
-                _selected.Authority.GmAllows
-                    ? "source {0} · source id {1} · internal id {2} · effects {3} · GM allowed"
-                    : "source {0} · source id {1} · internal id {2} · effects {3} · GM blocked",
-                _selected.SourceName,
-                _selected.Identity.SourceId.ToString("D"),
-                _selected.Identity.InternalId.ToString("D"),
-                _selected.Authority.Effects.MutationCount);
         _blocker.Text = !revisionMatches
             ? Text("The saved runner revision changed. Reopen quality advancement.")
             : !completeAuthority
@@ -322,6 +307,21 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
         {
             _recovery.Text = Text("This quality recovery lock belongs to another owner or runner revision.");
             _recovery.TextColor = NativeTheme.Danger;
+            return;
+        }
+        if (_checkpoint.Phase == Sr5CareerCheckpointPhase.Applied
+            && await _authority.ResolveCorrectionAsync(_checkpoint) is { } corrected)
+        {
+            if (!_store.TryDeleteCorrected(Sr5CareerQualityCheckpointCas.From(_checkpoint),
+                corrected.Receipt, corrected.Correction, out string correctionBlocker))
+            {
+                _recovery.Text = correctionBlocker;
+                _recovery.TextColor = NativeTheme.Danger;
+                return;
+            }
+            await DisplayAlertAsync(Text("Correction saved"),
+                Text("Your previous qualities and Karma have been restored."), Text("OK"));
+            await Navigation.PopToRootAsync();
             return;
         }
         Sr5CareerQualityRecoveryResolution resolution = await _authority.ResolveAsync(_checkpoint);
@@ -472,37 +472,17 @@ public sealed class Sr5CareerQualityReviewPage : NativePageBase
             Spacing = 14
         };
         body.Add(NativeTheme.Eyebrow(Text("SR5 Career · 2 of 3")));
-        body.Add(NativeTheme.Title(Text("Review exact atomic diff")));
+        body.Add(NativeTheme.Title(Text("Review quality")));
         CharacterCareerQualityQuote quote = draft.Review.Quote;
         VerticalStackLayout diff = new() { Spacing = 8 };
-        diff.Add(NativeTheme.Metric(Text("Quality"), quote.Definition.Name));
-        diff.Add(NativeTheme.Metric(Text("Operation"), quote.Operation.ToString()));
-        diff.Add(NativeTheme.Metric(Text("Typed identity"), Format("{0} · source {1}", quote.Identity.InternalId.ToString("D"), quote.Identity.SourceId.ToString("D"))));
+        diff.Add(NativeTheme.Metric(Text("Quality"), QualityCatalogStrings.Name(quote.Definition.SourceId, quote.Definition.Name)));
+        diff.Add(NativeTheme.Metric(Text("Operation"), Sr5CareerQualityWizardPage.OperationLabel(quote.Operation)));
         diff.Add(NativeTheme.Metric(Text("Level"), $"{quote.LevelBefore} → {quote.LevelAfter}"));
         diff.Add(NativeTheme.Metric(Text("Runner Karma"), $"{quote.AvailableKarma} → {quote.AvailableKarma + quote.CharacterKarmaDelta}"));
-        diff.Add(NativeTheme.Metric(Text("Rule cost / delta"), $"{quote.RuleKarmaCost} / {quote.CharacterKarmaDelta}"));
-        diff.Add(NativeTheme.Metric(Text("Source"), Format("{0} · enabled {1}", quote.SourceName, quote.Definition.SourceEnabled)));
-        diff.Add(NativeTheme.Metric(Text("GM policy"), Format("allowed {0} · free approved {1}", quote.Authority.GmAllows, quote.Authority.GmFreeCostApproved)));
-        diff.Add(NativeTheme.Metric(Text("Effects"), Format("exact {0} · mutations {1}", quote.Authority.Effects.IsExact, quote.Authority.Effects.MutationCount)));
-        diff.Add(NativeTheme.Metric(Text("Applied effect families"), string.Join(", ", quote.Authority.Effects.AppliedFamilies)));
-        diff.Add(NativeTheme.Metric(Text("Unsupported effect families"), string.Join(", ", quote.Authority.Effects.UnsupportedFamilies)));
-        foreach (CharacterCareerQualityPrerequisiteResult prerequisite in quote.Prerequisites)
-        {
-            diff.Add(NativeTheme.Metric(
-                Format("Prerequisite · {0}", prerequisite.Prerequisite),
-                Format(prerequisite.Satisfied ? "satisfied · {0}" : "blocked · {0}", prerequisite.Authority)));
-        }
-        diff.Add(NativeTheme.Metric(Text("Transaction"), draft.TransactionId.ToString("D")));
-        diff.Add(NativeTheme.Metric(Text("Workspace / saved revisions"), $"{draft.ExpectedWorkspaceRevision} / {draft.ExpectedSavedRevision}"));
-        diff.Add(NativeTheme.Metric(Text("Logical revision"), quote.LogicalRevision));
-        diff.Add(NativeTheme.Metric(Text("Source revision"), quote.SourceRevision));
-        diff.Add(NativeTheme.Metric(Text("Rule digest"), quote.RuleDigest));
-        diff.Add(NativeTheme.Metric(Text("Content digest"), draft.RuntimeAuthority.ContentDigest));
-        diff.Add(NativeTheme.Metric(Text("Runtime digest"), draft.RuntimeAuthority.RuntimeDigest));
         body.Add(NativeTheme.Card(diff));
         _blocker = NativeTheme.Body(string.Empty, NativeTheme.Danger);
         body.Add(_blocker);
-        _apply = NativeTheme.PrimaryButton(Text("Confirm atomic quality transaction"));
+        _apply = NativeTheme.PrimaryButton(Text("Apply quality change"));
         _apply.AutomationId = "sr5-career-quality-apply";
         _apply.Clicked += async (_, _) =>
         {
@@ -513,9 +493,6 @@ public sealed class Sr5CareerQualityReviewPage : NativePageBase
             }
         };
         body.Add(_apply);
-        body.Add(NativeTheme.Body(
-            Text("The checkpoint moves to Applying first. Presentation commits the full quality/effect delta, expense and receipt atomically; Android never retries an unknown outcome."),
-            NativeTheme.Muted));
         Content = new ScrollView { Content = body };
         Refresh();
     }
@@ -533,7 +510,7 @@ public sealed class Sr5CareerQualityReviewPage : NativePageBase
         _blocker.Text = !current
             ? Text("Owner, revision, source, rule, effects, runtime, content or durable checkpoint changed.")
             : attempted
-                ? Text("The one-shot atomic commit is running or awaiting authoritative recovery.")
+                ? Text("Saving your quality change…")
                 : string.Empty;
     }
 
@@ -614,7 +591,7 @@ public sealed class Sr5CareerQualityReceiptPage : NativePageBase
             throw new InvalidOperationException(Text("The quality receipt does not own this resolved checkpoint."));
         }
 
-        Title = Text("Quality receipt");
+        Title = Text("Quality saved");
         AutomationId = Sr5CareerWizardRoutes.QualityReceipt;
         VerticalStackLayout body = new()
         {
@@ -622,30 +599,16 @@ public sealed class Sr5CareerQualityReceiptPage : NativePageBase
             Spacing = 14
         };
         body.Add(NativeTheme.Eyebrow(Text("SR5 Career · 3 of 3")));
-        body.Add(NativeTheme.Title(Text("Verified atomic quality receipt")));
+        body.Add(NativeTheme.Title(Text("Quality saved")));
         VerticalStackLayout details = new() { Spacing = 8 };
-        details.Add(NativeTheme.Metric(Text("Quality"), receipt.Definition.Name));
-        details.Add(NativeTheme.Metric(Text("Operation"), receipt.Operation.ToString()));
-        details.Add(NativeTheme.Metric(Text("Typed identity"), $"{receipt.Identity.InternalId:D} · {receipt.Identity.SourceId:D}"));
-        details.Add(NativeTheme.Metric(Text("Instances"), $"{receipt.InstancesBefore.Count} → {receipt.InstancesAfter.Count}"));
+        details.Add(NativeTheme.Metric(Text("Quality"), QualityCatalogStrings.Name(receipt.Definition.SourceId, receipt.Definition.Name)));
+        details.Add(NativeTheme.Metric(Text("Operation"), Sr5CareerQualityWizardPage.OperationLabel(receipt.Operation)));
+        details.Add(NativeTheme.Metric(Text("Level"), $"{receipt.InstancesBefore.Count} → {receipt.InstancesAfter.Count}"));
         details.Add(NativeTheme.Metric(Text("Runner Karma"), $"{receipt.CharacterKarmaBefore} → {receipt.CharacterKarmaAfter}"));
-        details.Add(NativeTheme.Metric(Text("Expense"), $"{receipt.ExpenseAmount} · {receipt.ExpenseReason}"));
-        details.Add(NativeTheme.Metric(Text("Transaction"), receipt.TransactionId.ToString("D")));
-        details.Add(NativeTheme.Metric(Text("Saved revision"), receipt.WorkspaceRevisionAfter.ToString(CultureInfo.InvariantCulture)));
         body.Add(NativeTheme.Card(details));
         _durability = NativeTheme.Body(string.Empty, NativeTheme.Muted);
         body.Add(_durability);
-        body.Add(NativeTheme.Body(
-            Format(
-                "receipt {0} · source {1} → {2} · rule {3} → {4} · state {5}",
-                receipt.ReceiptDigest,
-                receipt.SourceRevisionBefore,
-                receipt.SourceRevisionAfter,
-                receipt.RuleDigestBefore,
-                receipt.RuleDigestAfter,
-                receipt.StateDigestAfter),
-            NativeTheme.Muted));
-        Button acknowledge = NativeTheme.PrimaryButton(Text("Acknowledge receipt"));
+        Button acknowledge = NativeTheme.PrimaryButton(Text("Back to Career"));
         acknowledge.AutomationId = "sr5-career-quality-receipt-acknowledge";
         acknowledge.Clicked += async (_, _) => await RunAsync(async () =>
         {
@@ -660,12 +623,12 @@ public sealed class Sr5CareerQualityReceiptPage : NativePageBase
             await Navigation.PopToRootAsync();
         });
         body.Add(acknowledge);
-        Button correct = NativeTheme.SecondaryButton(Text("Correct this quality transaction"));
+        Button correct = NativeTheme.SecondaryButton(Text("Undo this quality change"));
         correct.AutomationId = "sr5-career-quality-receipt-correct";
         correct.Clicked += async (_, _) => await RunAsync(CorrectAsync);
         body.Add(correct);
         body.Add(NativeTheme.Body(
-            Text("Correction is a separate typed compensating transaction. It restores exact instances and Karma and removes only the original expense; the receipt is never edited in place."),
+            Text("Undo restores your previous qualities and Karma."),
             NativeTheme.Muted));
         Content = new ScrollView { Content = body };
         Refresh();
@@ -675,7 +638,7 @@ public sealed class Sr5CareerQualityReceiptPage : NativePageBase
     {
         string? reason = await DisplayPromptAsync(
             Text("Correct quality transaction"),
-            Text("Enter the reason recorded with the compensating transaction."),
+            Text("Why do you want to undo this change?"),
             accept: Text("Review correction"),
             cancel: Text("Keep transaction"),
             initialValue: Text("User-requested correction"),
@@ -685,8 +648,8 @@ public sealed class Sr5CareerQualityReceiptPage : NativePageBase
             return;
         }
         bool confirmed = await DisplayAlertAsync(
-            Text("Apply compensating correction?"),
-            Text("This atomically restores the exact pre-transaction quality instances and Karma and removes the bound expense."),
+            Text("Undo this quality change?"),
+            Text("Your previous qualities and Karma will be restored."),
             Text("Correct"),
             Text("Cancel"));
         if (!confirmed)
@@ -709,7 +672,7 @@ public sealed class Sr5CareerQualityReceiptPage : NativePageBase
         }
         await DisplayAlertAsync(
             Text("Correction saved"),
-            Format("Compensating transaction {0} restored the exact prior state.", correction.CorrectionId.ToString("D")),
+            Text("Your previous qualities and Karma have been restored."),
             Text("OK"));
         await Navigation.PopToRootAsync();
     }
@@ -721,8 +684,8 @@ public sealed class Sr5CareerQualityReceiptPage : NativePageBase
             && Coordinator.State.SavedRevision == _receipt.SavedRevisionAfter
             && !Coordinator.State.IsDirty;
         _durability.Text = exact
-            ? Text("The receipt was recovered from the exact clean atomic saved revision.")
-            : Text("The runner moved past this receipt; it remains bound to the earlier saved revision.");
+            ? Text("Your change is saved.")
+            : Text("This runner has changed since this quality was saved.");
         _durability.TextColor = exact ? NativeTheme.Muted : NativeTheme.Danger;
     }
 }

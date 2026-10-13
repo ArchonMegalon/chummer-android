@@ -11,6 +11,8 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="AuthorityCompileStubs.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Owners/OwnerScope.cs" Link="Core/OwnerScope.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Application/Owners/OwnerContextStamp.cs" Link="Core/OwnerContextStamp.cs" />
     <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerActiveSkillAdvanceRules.cs" Link="Core/CharacterCareerActiveSkillAdvanceRules.cs" />
     <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerAttributeAdvanceRules.cs" Link="Core/CharacterCareerAttributeAdvanceRules.cs" />
     <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerKnowledgeSkillAdvanceRules.cs" Link="Core/CharacterCareerKnowledgeSkillAdvanceRules.cs" />

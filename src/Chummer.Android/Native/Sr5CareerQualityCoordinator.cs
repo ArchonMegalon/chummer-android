@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Chummer.Application.Owners;
 using Chummer.Contracts.Characters;
 using Chummer.Presentation.Overview;
 
@@ -11,6 +12,9 @@ public interface ISr5CareerQualityPresenter
     Sr5CareerRunnerBinding Binding { get; }
 
     Task<CareerQualityEditorState?> LoadAsync(CancellationToken cancellationToken);
+
+    Task<CareerQualityAuthoritySnapshot?> ReadRecoverySnapshotAsync(CancellationToken cancellationToken)
+        => Task.FromResult<CareerQualityAuthoritySnapshot?>(null);
 
     Task<CareerQualityReview> ReviewAsync(
         CareerQualityDraft draft,
@@ -28,8 +32,16 @@ public interface ISr5CareerQualityPresenter
 }
 
 internal sealed class RunnerSessionSr5CareerQualityPresenter(
-    RunnerSessionCoordinator coordinator) : ISr5CareerQualityPresenter
+    RunnerSessionCoordinator coordinator) : ISr5CareerQualityPresenter, ISr5CareerCheckpointOwnerAuthority
 {
+    private readonly OwnerContextStamp? _owner = coordinator.State.DisplayOwnerContext;
+    private readonly Chummer.Contracts.Workspaces.CharacterWorkspaceId? _workspace = coordinator.State.WorkspaceId;
+
+    public Guid CurrentOwnerId => _workspace is { } workspace
+        && coordinator.IsCareerQualityOwnerCurrent(_owner, workspace)
+        && _owner is { } owner
+            ? Sr5CareerQualityDraft.CheckpointOwnerId(owner.Owner.NormalizedValue) : Guid.Empty;
+
     public Sr5CareerRunnerBinding Binding => new(
         coordinator.State.Profile?.Created == true,
         coordinator.State.Rules?.GameEdition,
@@ -40,12 +52,15 @@ internal sealed class RunnerSessionSr5CareerQualityPresenter(
         coordinator.State.Error);
 
     public Task<CareerQualityEditorState?> LoadAsync(CancellationToken cancellationToken)
-        => coordinator.PrepareCareerQualityAsync(cancellationToken);
+        => coordinator.PrepareCareerQualityAsync(cancellationToken, _owner);
+
+    public Task<CareerQualityAuthoritySnapshot?> ReadRecoverySnapshotAsync(CancellationToken cancellationToken)
+        => coordinator.ReadCareerQualityRecoverySnapshotAsync(cancellationToken, _owner);
 
     public Task<CareerQualityReview> ReviewAsync(
         CareerQualityDraft draft,
         CancellationToken cancellationToken)
-        => coordinator.ReviewCareerQualityAsync(draft, cancellationToken);
+        => coordinator.ReviewCareerQualityAsync(draft, cancellationToken, _owner);
 
     public Task<CareerQualityConfirmation> ConfirmAndRefreshAsync(
         CareerQualityReview review,
@@ -56,12 +71,12 @@ internal sealed class RunnerSessionSr5CareerQualityPresenter(
             review,
             transactionId,
             expenseDateLocal,
-            cancellationToken);
+            cancellationToken, _owner);
 
     public Task<CareerQualityCorrectionConfirmation> CorrectAndRefreshAsync(
         CareerQualityCorrectionRequest request,
         CancellationToken cancellationToken)
-        => coordinator.CorrectCareerQualityAsync(request, cancellationToken);
+        => coordinator.CorrectCareerQualityAsync(request, cancellationToken, _owner);
 }
 
 /// <summary>
@@ -70,6 +85,9 @@ internal sealed class RunnerSessionSr5CareerQualityPresenter(
 /// never trigger mutation retries; the durable Applying lock is resolved from
 /// the receipt projection instead.
 /// </summary>
+public sealed record Sr5CareerQualitySavedCorrection(
+    CharacterCareerQualityReceipt Receipt, CharacterCareerQualityCorrectionPlan Correction);
+
 public sealed class Sr5CareerQualityCoordinator(
     ISr5CareerQualityPresenter presenter,
     ISr5CareerCheckpointOwnerAuthority ownerAuthority)
@@ -231,7 +249,42 @@ public sealed class Sr5CareerQualityCoordinator(
         {
             return Unknown(checkpoint, "The runner changed during authoritative quality outcome lookup.");
         }
+        ValidateEditor(after, editor ?? throw new InvalidOperationException("Quality recovery is unavailable."),
+            ownerAuthority.CurrentOwnerId);
         return Resolve(checkpoint, after, editor);
+    }
+
+    public async Task<Sr5CareerQualitySavedCorrection?> ResolveCorrectionAsync(
+        Sr5CareerQualityCheckpoint checkpoint, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        var before = presenter.Binding;
+        RequireCleanSr5(before);
+        if (!checkpoint.IsStructurallyValid() || checkpoint.Phase != Sr5CareerCheckpointPhase.Applied
+            || checkpoint.Draft.ExpectedWorkspaceRevision > long.MaxValue - 2
+            || ownerAuthority.CurrentOwnerId != checkpoint.Draft.OwnerId
+            || before.WorkspaceId != checkpoint.Draft.WorkspaceId
+            || before.ContentRevision != checkpoint.Draft.ExpectedWorkspaceRevision + 2
+            || before.SavedRevision != before.ContentRevision) return null;
+
+        // Read-only reconciliation. The actual Core history must prove the
+        // original purchase AND its exact inverse; never resend either operation.
+        var snapshot = await presenter.ReadRecoverySnapshotAsync(cancellationToken).ConfigureAwait(false);
+        var after = presenter.Binding;
+        RequireCleanSr5(after);
+        if (snapshot is null || before != after || ownerAuthority.CurrentOwnerId != checkpoint.Draft.OwnerId) return null;
+        var editor = CareerQualityWorkflow.Project(snapshot);
+        ValidateEditor(after, editor, ownerAuthority.CurrentOwnerId);
+        var matches = snapshot.PersistedCorrections.Where(row =>
+            row.Correction.OriginalTransactionId == checkpoint.Draft.TransactionId).Take(2).ToArray();
+        if (matches.Length != 1 || !ReceiptMatchesDraft(checkpoint.Draft, matches[0].OriginalReceipt)) return null;
+        var saved = matches[0];
+        var confirmation = CareerQualityWorkflow.ValidateAtomicCorrection(saved.OriginalReceipt, saved.Correction,
+            new(saved.Correction, saved.ObservedRestoredState, saved.ObservedExpense, snapshot));
+        if (confirmation.PersistedState.WorkspaceRevision != before.ContentRevision
+            || saved.Correction.ExpectedWorkspaceRevision != checkpoint.Draft.ExpectedWorkspaceRevision + 1)
+            return null;
+        return new(saved.OriginalReceipt, saved.Correction);
     }
 
     public async Task<CharacterCareerQualityCorrectionPlan> CorrectAsync(
@@ -278,6 +331,7 @@ public sealed class Sr5CareerQualityCoordinator(
         CharacterCareerQualityCorrectionPlan correction = confirmation.Correction;
         Sr5CareerRunnerBinding after = presenter.Binding;
         if (!CharacterCareerQualityRules.IsCoherent(correction)
+            || ownerAuthority.CurrentOwnerId != checkpoint.Draft.OwnerId
             || correction.CorrectionId != correctionId
             || correction.OriginalTransactionId != receipt.TransactionId
             || correction.Identity != receipt.Identity
@@ -313,6 +367,9 @@ public sealed class Sr5CareerQualityCoordinator(
             || editor.WorkspaceId != checkpoint.Draft.WorkspaceId
             || editor.WorkspaceRevision != binding.ContentRevision
             || editor.SavedRevision != binding.SavedRevision
+            || editor.OwnerId != checkpoint.Draft.Review.Draft.ExpectedOwnerId
+            || editor.RuntimeFingerprint != checkpoint.Draft.Review.Draft.ExpectedRuntimeFingerprint
+            || editor.ContentDigest != checkpoint.Draft.Review.Draft.ExpectedContentDigest
             || editor.OmittedCandidateCount != 0
             || editor.OmittedReceiptCount != 0
             || binding.IsDirty
@@ -394,8 +451,8 @@ public sealed class Sr5CareerQualityCoordinator(
             && receipt.WorkspaceRevisionAfter == draft.ExpectedWorkspaceRevision + 1
             && receipt.SavedRevisionBefore == draft.ExpectedSavedRevision
             && receipt.SavedRevisionAfter == draft.ExpectedSavedRevision + 1
-            && string.Equals(receipt.RuntimeFingerprint, draft.RuntimeAuthority.RuntimeDigest, StringComparison.Ordinal)
-            && string.Equals(receipt.ContentDigest, draft.RuntimeAuthority.ContentDigest, StringComparison.Ordinal)
+            && string.Equals(receipt.RuntimeFingerprint, quote.Binding.RuntimeFingerprint, StringComparison.Ordinal)
+            && string.Equals(receipt.ContentDigest, quote.Binding.ContentDigest, StringComparison.Ordinal)
             && string.Equals(receipt.SourceRevisionBefore, quote.SourceRevision, StringComparison.Ordinal)
             && string.Equals(receipt.RuleDigestBefore, quote.RuleDigest, StringComparison.Ordinal)
             && string.Equals(receipt.LogicalRevisionBefore, quote.LogicalRevision, StringComparison.Ordinal);
@@ -421,14 +478,14 @@ public sealed class Sr5CareerQualityCoordinator(
         Guid expectedOwner)
     {
         if (expectedOwner == Guid.Empty
-            || !Guid.TryParseExact(editor.OwnerId, "D", out Guid projectedOwner)
-            || projectedOwner != expectedOwner
+            || Sr5CareerQualityDraft.CheckpointOwnerId(editor.OwnerId) != expectedOwner
             || binding.WorkspaceId != editor.WorkspaceId
             || binding.ContentRevision != editor.WorkspaceRevision
             || binding.SavedRevision != editor.SavedRevision
             || !string.Equals(editor.RulesetId, CharacterCareerQualityRules.RulesetId, StringComparison.Ordinal)
-            || !string.Equals(editor.RuntimeFingerprint, Sr5CareerQualityRuntimeAuthority.CurrentRuntimeDigest, StringComparison.Ordinal)
-            || !string.Equals(editor.ContentDigest, Sr5CareerQualityRuntimeAuthority.CurrentContentDigest, StringComparison.Ordinal)
+            || !Sr5CareerQualityDraft.IsAuthorityDigest(editor.RuntimeFingerprint)
+            || !Sr5CareerQualityDraft.IsAuthorityDigest(editor.ContentDigest)
+            || editor.Quotes.Any(quote => !Sr5CareerQualityDraft.EditorMatchesQuote(editor, quote))
             || editor.OmittedCandidateCount != 0
             || editor.OmittedReceiptCount != 0)
         {

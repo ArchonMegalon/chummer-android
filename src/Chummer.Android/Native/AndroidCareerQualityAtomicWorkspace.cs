@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Chummer.Application.Owners;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Workspaces;
 using Chummer.Presentation;
@@ -12,7 +13,7 @@ namespace Chummer.Android.Native;
 /// Android never derives source, rule, GM, effect or persistence authority.
 /// </summary>
 public sealed class AndroidCareerQualityAtomicWorkspace : ICareerQualityAtomicWorkspace,
-    IDisposable
+    IOwnerBoundCareerQualityAtomicWorkspace, IDisposable
 {
     private static readonly JsonSerializerOptions ExactJson = new()
     {
@@ -20,6 +21,7 @@ public sealed class AndroidCareerQualityAtomicWorkspace : ICareerQualityAtomicWo
     };
 
     private readonly IChummerClient _client;
+    private readonly ICareerQualityAtomicWorkspace? _boundAuthority;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private bool _disposed;
 
@@ -27,6 +29,14 @@ public sealed class AndroidCareerQualityAtomicWorkspace : ICareerQualityAtomicWo
     {
         _client = client ?? throw new ArgumentNullException(nameof(client));
     }
+
+    private AndroidCareerQualityAtomicWorkspace(IChummerClient client, ICareerQualityAtomicWorkspace authority)
+        : this(client) => _boundAuthority = authority;
+
+    public ICareerQualityAtomicWorkspace ForOwner(OwnerContextStamp expectedOwner)
+        => expectedOwner.IsValid && _client is IOwnerBoundCareerQualityAtomicWorkspace owners
+            ? new AndroidCareerQualityAtomicWorkspace(_client, owners.ForOwner(expectedOwner))
+            : throw new InvalidOperationException("Original-account quality authority is unavailable.");
 
     public async Task<CareerQualityAuthoritySnapshot?> ReadAsync(
         CharacterWorkspaceId workspaceId,
@@ -215,9 +225,9 @@ public sealed class AndroidCareerQualityAtomicWorkspace : ICareerQualityAtomicWo
     }
 
     private ICareerQualityAtomicWorkspace? ResolveAuthority()
-        => ReferenceEquals(_client, this)
+        => _boundAuthority ?? (ReferenceEquals(_client, this)
             ? null
-            : _client as ICareerQualityAtomicWorkspace;
+            : _client as ICareerQualityAtomicWorkspace);
 
     private static async Task<CareerQualityAuthoritySnapshot> ReadRequiredAsync(
         ICareerQualityAtomicWorkspace authority,

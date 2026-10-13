@@ -80,7 +80,8 @@ internal sealed class Sr5CareerQualityLiveCheckpointAuthority(
                     && binding.SavedRevision == binding.ContentRevision,
             Sr5CareerCheckpointPhase.Applied =>
                 expected < long.MaxValue
-                && binding.ContentRevision == expected + 1
+                && (binding.ContentRevision == expected + 1
+                    || expected <= long.MaxValue - 2 && binding.ContentRevision == expected + 2)
                 && binding.SavedRevision == binding.ContentRevision,
             _ => false
         };
