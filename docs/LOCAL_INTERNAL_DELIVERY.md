@@ -132,7 +132,21 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 223 is the latest [observed Internal availability](../play/evidence/preview223-internal-observation.json),
+Preview 224 is the latest [observed Internal availability](../play/evidence/preview224-internal-observation.json),
+released on 14 October at 01:41 Europe/Vienna. Career refreshes its same-owner,
+same-runner action list after saving and retains unchanged-entry caching and
+owner/stale-callback checks. Android #759 merged normally with the tested tree;
+Core/UI inputs are unchanged from223. Actual Core/MAUI handler checks, EN/DE/ES
+guidance and45 focused source checks passed. Native API36 x64 Release/Internal
+smoke recorded one award22to23, returned automatically to usable family actions,
+opened the next action and recovered23 after process restart. All37 saved files
+were byte-identical across restart. Local ARM64 build, original-key isolated
+signing and independent keyless verification passed; one upload/confirmation
+produced observed Internal availability. Physical224, startup/reload closure,
+free-grant skill/group advancement and complete Creation/Career/Origin remain
+unverified or unfinished. Version224 is consumed; preserve prior rollback packets.
+
+Preview 223's historical [observed Internal availability](../play/evidence/preview223-internal-observation.json),
 released on 14 October at 01:01 Europe/Vienna. Career now resolves the exact
 saved Core profile, including numeric XML booleans. Core #161, UI #458 and
 Android #757 merged normally with the tested trees. Native API36 x64
