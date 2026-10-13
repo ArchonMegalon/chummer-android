@@ -132,7 +132,23 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 221 is the latest [observed Internal availability](../play/evidence/preview221-internal-observation.json),
+Preview 222 is the latest [observed Internal availability](../play/evidence/preview222-internal-observation.json),
+released on 13 October at 22:59 Europe/Vienna. Career quality labels now show the
+actual Karma change and resulting balance; negative qualities with no Career
+grant say so. The hub retains the original owner stamp and admits the quality
+route before unrelated legacy-action errors can suppress it. Android #755 merged
+normally with the exact tested tree; Core/UI inputs are unchanged. Actual
+Core/MAUI local and linked checks, EN/DE/ES labels and 28 affected source checks
+pass. Native API36 x64 Release/Internal smoke opens the quality editor through
+the hub and confirms no-change100→100 and spend8/100→92 labels without mutation;
+30 workspace files, three drafts and settings stay byte-identical. This is not
+a new native purchase/correction test or exhaustive Career acceptance. Local
+ARM64 build, original-key signing and independent keyless verification passed;
+one upload/final confirmation produced Internal availability. Physical222,
+startup/reload closure and full Creation/Career/Origin remain open. Version222
+is consumed; do not rebuild/re-upload. Prior release and rollback packets remain.
+
+Preview 221's [historical Internal availability](../play/evidence/preview221-internal-observation.json) was
 last updated on 13 October at 22:11 Europe/Vienna. Career qualities now use the
 real owner-bound local workspace: supported effects, Karma, expenses and history
 save atomically, with read-only interrupted-result recovery and explicit undo.
