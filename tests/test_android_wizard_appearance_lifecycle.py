@@ -39,7 +39,11 @@ def test_base_rejects_stale_appearance_continuations_before_rendering() -> None:
 
     assert "Interlocked.Increment(ref _appearanceGeneration)" in appearance
     assert appearance.count("ThrowIfAppearanceIsStale(") >= 4
-    assert "await Coordinator.InitializeAsync();\n            ThrowIfAppearanceIsStale(" in appearance
+    assert (
+        "await Coordinator.InitializeAsync();\n"
+        "            initializationCompleted = true;\n"
+        "            ThrowIfAppearanceIsStale("
+    ) in appearance
     assert "await PrepareForAppearanceRefreshAsync(appearanceToken);\n            ThrowIfAppearanceIsStale(" in appearance
     assert "ClearAppearanceRefreshIfCurrent(appearanceGeneration);" in appearance
     assert "Volatile.Write(ref _appearanceRefreshActive, 0);" not in appearance
@@ -92,6 +96,25 @@ def test_career_projection_is_linked_to_the_page_lifetime_without_double_init() 
     assert "await LoadLatestAsync(_loadLifetime.Token);" in appearance
     assert "cancellationToken.ThrowIfCancellationRequested();" in appearance
     assert "await Coordinator.InitializeAsync();" not in load
+
+
+def test_career_family_rebinds_on_return_without_replaying_a_child_action() -> None:
+    page = source("Sr5CareerWizardPage.cs").split("public sealed class Sr5CareerActionFamilyPage", 1)[1]
+    load = page.split("private async Task LoadCurrentActionsAsync(", 1)[1].split(
+        "protected override void Refresh()", 1
+    )[0]
+    assert "PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)" in page
+    assert "CreateLinkedTokenSource(cancellationToken)" in page
+    assert "version != Volatile.Read(ref _loadVersion)" in load
+    assert "IsOriginalRunnerCurrent()" in load
+    assert "MatchesCurrentRunner(snapshot.Binding)" in load
+    assert "current.Bind(snapshot)" in load
+    assert "_session = current;" in load
+    assert "Apply" not in load
+    assert "TrySelectAction" not in load
+    assert "ReferenceEquals(_session, displayedSession)" in page
+    assert '"sr5-career-family-retry"' in page
+    assert 'TechnicalDetails(boundary, "sr5-career-family-details"' in page
 
 
 def test_downtime_projection_propagates_appearance_cancellation_to_authority() -> None:

@@ -166,7 +166,8 @@
   <data name="Career.ChooseFamily" xml:space="preserve"><value>¿Qué te gustaría hacer?</value></data>
   <data name="Career.Eyebrow" xml:space="preserve"><value>Shadowrun Quinta Edición</value></data>
   <data name="Career.FamilyBoundary" xml:space="preserve"><value>Seleccionar una fila solo escribe un punto de control de navegación vinculado al resumen. El destino debe volver a cargar y validar su propia autoridad tipada.</value></data>
-  <data name="Career.FamilyStale" xml:space="preserve"><value>El runner cambió después de proyectar esta familia de acciones. Vuelve y recarga la autoridad de carrera.</value></data>
+  <data name="Career.FamilyStale" xml:space="preserve"><value>El runner ha cambiado. Actualiza las acciones disponibles para continuar.</value></data>
+  <data name="Career.FamilyChanged" xml:space="preserve"><value>El runner o la cuenta han cambiado. Abre Carrera de nuevo.</value></data>
   <data name="Career.Heading" xml:space="preserve"><value>Carrera</value></data>
   <data name="Career.LastSelection" xml:space="preserve"><value> · última selección</value></data>
   <data name="Career.Loading" xml:space="preserve"><value>Cargando las acciones de carrera disponibles…</value></data>

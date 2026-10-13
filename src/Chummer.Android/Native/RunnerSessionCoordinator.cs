@@ -5832,6 +5832,11 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         using (lease) return true;
     }
 
+    internal bool IsCareerNavigationOwnerCurrent(OwnerContextStamp? expectedOwner)
+        => State.DisplayOwnerContext == expectedOwner
+           && State.Session.OwnerContext == expectedOwner
+           && IsNativePersistenceOwnerCurrent(expectedOwner);
+
     private CareerQualityInteractionPresenter? QualityPresenterForOwner(OwnerContextStamp? expectedOwner)
         => expectedOwner is { IsValid: true } owner && State.WorkspaceId is { } workspaceId
             && IsCareerQualityOwnerCurrent(owner, workspaceId)

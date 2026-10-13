@@ -1,4 +1,5 @@
 using Chummer.Presentation.Overview;
+using Chummer.Application.Owners;
 
 namespace Chummer.Android.Native;
 
@@ -18,6 +19,7 @@ public sealed class Sr5CareerWizardPage : NativePageBase
     private CancellationTokenSource? _loadLifetime;
     private Sr5CareerWizardDesktopSession? _session;
     private Sr5CareerWizardSnapshot? _snapshot;
+    private OwnerContextStamp? _ownerContext;
     private string? _loadBlocker;
     private string? _checkpointNotice;
     private string? _afterRunEntryBlocker;
@@ -108,6 +110,7 @@ public sealed class Sr5CareerWizardPage : NativePageBase
 
         Sr5CareerWizardDesktopSession session = _session;
         Sr5CareerWizardDesktopState state = session.State;
+        OwnerContextStamp? ownerContext = _ownerContext;
         Label binding = NativeTheme.Body(
             WizardStrings.Format(
                 "Career.Binding",
@@ -177,7 +180,8 @@ public sealed class Sr5CareerWizardPage : NativePageBase
                     Coordinator,
                     session,
                     _checkpointStore,
-                    family.FamilyId)),
+                    family.FamilyId,
+                    ownerContext)),
                 automationId: definition.RouteId));
         }
 
@@ -318,6 +322,7 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         Refresh();
         try
         {
+            OwnerContextStamp? owner = Coordinator.State.DisplayOwnerContext;
             Sr5CareerWizardPhoneLoadResult loaded =
                 await _authority.LoadAsync(cancellationToken);
             if (cancellationToken.IsCancellationRequested
@@ -326,7 +331,8 @@ public sealed class Sr5CareerWizardPage : NativePageBase
                 return;
             }
             Sr5CareerWizardSnapshot? snapshot = loaded.Snapshot;
-            if (!loaded.IsReady || snapshot is null)
+            if (!loaded.IsReady || snapshot is null
+                || !Coordinator.IsCareerNavigationOwnerCurrent(owner))
             {
                 _snapshot = null;
                 _session = null;
@@ -363,6 +369,7 @@ public sealed class Sr5CareerWizardPage : NativePageBase
             }
             _snapshot = snapshot;
             _session = session;
+            _ownerContext = owner;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -394,10 +401,11 @@ public sealed class Sr5CareerWizardPage : NativePageBase
         _body.Add(NativeTheme.Card(label));
     }
 
-    private static bool MatchesCurrentRunner(
+    private bool MatchesCurrentRunner(
         Sr5CareerWizardBinding binding,
         CharacterOverviewState state)
-        => state.Profile?.Created == true
+        => Coordinator.IsCareerNavigationOwnerCurrent(_ownerContext)
+           && state.Profile?.Created == true
            && Sr5CareerWizardCatalog.IsSr5CareerRunner(true, state.Rules?.GameEdition)
            && state.WorkspaceId is { } workspaceId
            && string.Equals(binding.WorkspaceId, workspaceId.Value, StringComparison.Ordinal)
@@ -454,9 +462,14 @@ public sealed class Sr5CareerWizardPage : NativePageBase
 
 public sealed class Sr5CareerActionFamilyPage : NativePageBase
 {
-    private readonly Sr5CareerWizardDesktopSession _session;
+    private Sr5CareerWizardDesktopSession _session;
     private readonly Sr5CareerWizardPhoneCheckpointStore _checkpointStore;
     private readonly string _familyId;
+    private readonly string _workspaceId;
+    private readonly OwnerContextStamp? _ownerContext;
+    private CancellationTokenSource? _loadLifetime;
+    private long _loadVersion;
+    private bool _loading;
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -467,16 +480,86 @@ public sealed class Sr5CareerActionFamilyPage : NativePageBase
         RunnerSessionCoordinator coordinator,
         Sr5CareerWizardDesktopSession session,
         Sr5CareerWizardPhoneCheckpointStore checkpointStore,
-        string familyId) : base(coordinator)
+        string familyId,
+        OwnerContextStamp? ownerContext) : base(coordinator)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _checkpointStore = checkpointStore ?? throw new ArgumentNullException(nameof(checkpointStore));
         _familyId = Sr5CareerWizardPhoneCatalog.RequireFamily(familyId).FamilyId;
+        _workspaceId = session.State.Snapshot.Binding.WorkspaceId;
+        _ownerContext = ownerContext;
         Sr5CareerWizardPhoneFamilyDefinition definition =
             Sr5CareerWizardPhoneCatalog.RequireFamily(_familyId);
         Title = WizardStrings.CareerFamilyTitle(definition.FamilyId, definition.Title);
         AutomationId = definition.RouteId;
         Content = new ScrollView { Content = _body };
+    }
+
+    protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
+    {
+        _loadLifetime?.Cancel();
+        _loadLifetime?.Dispose();
+        _loadLifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        await LoadCurrentActionsAsync(_loadLifetime.Token);
+        cancellationToken.ThrowIfCancellationRequested();
+    }
+
+    protected override void OnDisappearing()
+    {
+        _loadLifetime?.Cancel();
+        _loadLifetime?.Dispose();
+        _loadLifetime = null;
+        Interlocked.Increment(ref _loadVersion);
+        _loading = false;
+        base.OnDisappearing();
+    }
+
+    private bool IsOriginalRunnerCurrent()
+        => Coordinator.IsCareerNavigationOwnerCurrent(_ownerContext)
+           && string.Equals(Coordinator.State.WorkspaceId?.Value, _workspaceId, StringComparison.Ordinal);
+
+    private async Task LoadCurrentActionsAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        long version = Interlocked.Increment(ref _loadVersion);
+        // Returning without a saved change reuses the admitted projection. A
+        // changed revision requires a new read, never replay of a child action.
+        if (!IsOriginalRunnerCurrent() || MatchesCurrentRunner(_session.State.Snapshot.Binding))
+        {
+            _loading = false;
+            return;
+        }
+        _loading = true;
+        Refresh();
+        try
+        {
+            var loaded = await new RunnerSessionSr5CareerWizardPhoneAuthority(Coordinator)
+                .LoadAsync(cancellationToken);
+            if (cancellationToken.IsCancellationRequested || version != Volatile.Read(ref _loadVersion)
+                || !IsOriginalRunnerCurrent() || !loaded.IsReady || loaded.Snapshot is not { } snapshot
+                || !MatchesCurrentRunner(snapshot.Binding))
+                return;
+            // Do not mutate the session retained by the parent or resurrect an
+            // old selection. Each destination still obtains its own fresh quote.
+            var current = new Sr5CareerWizardDesktopSession();
+            current.Bind(snapshot);
+            _checkpointStore.Clear();
+            _session = current;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            // Leave the stale projection non-actionable and offer an explicit
+            // read-only retry. Never expose raw exceptions or retry a mutation.
+        }
+        finally
+        {
+            if (version == Volatile.Read(ref _loadVersion))
+            {
+                _loading = false;
+                Refresh();
+            }
+        }
     }
 
     protected override void Refresh()
@@ -491,17 +574,39 @@ public sealed class Sr5CareerActionFamilyPage : NativePageBase
             WizardStrings.CareerFamilyDetail(definition.FamilyId, definition.Detail),
             NativeTheme.Muted));
 
-        Sr5CareerWizardDesktopState state = _session.State;
+        if (_loading)
+        {
+            _body.Add(new ActivityIndicator { IsRunning = true, Color = NativeTheme.Muted });
+            Label loading = NativeTheme.Body(WizardStrings.Get("Career.Loading", "Loading available Career actions…"));
+            loading.AutomationId = "sr5-career-family-loading";
+            _body.Add(loading);
+            return;
+        }
+
+        Sr5CareerWizardDesktopSession session = _session;
+        Sr5CareerWizardDesktopState state = session.State;
         if (!MatchesCurrentRunner(state.Snapshot.Binding))
         {
             _checkpointStore.Clear();
             Label blocker = NativeTheme.Body(
-                WizardStrings.Get(
+                IsOriginalRunnerCurrent() ? WizardStrings.Get(
                     "Career.FamilyStale",
-                    "The runner changed after this action family was projected. Return and reload Career authority."),
+                    "The runner changed. Refresh the available actions to continue.")
+                    : WizardStrings.Get("Career.FamilyChanged", "The runner or account changed. Open Career again."),
                 NativeTheme.Danger);
             blocker.AutomationId = "sr5-career-family-stale";
             _body.Add(NativeTheme.Card(blocker));
+            if (IsOriginalRunnerCurrent())
+            {
+                Button retry = NativeTheme.SecondaryButton(WizardStrings.Get("Common.Retry", "Retry"));
+                retry.AutomationId = "sr5-career-family-retry";
+                retry.Clicked += async (_, _) => await RunAsync(async () =>
+                {
+                    if (_loadLifetime is { IsCancellationRequested: false } lifetime)
+                        await LoadCurrentActionsAsync(lifetime.Token);
+                });
+                _body.Add(retry);
+            }
             return;
         }
 
@@ -524,7 +629,7 @@ public sealed class Sr5CareerActionFamilyPage : NativePageBase
             _body.Add(NativeTheme.NavigationRow(
                 WizardStrings.CareerActionTitle(route.ActionId, route.Title),
                 detail,
-                () => RunAsync(() => OpenActionAsync(action.ActionId)),
+                () => RunAsync(() => OpenActionAsync(session, action.ActionId)),
                 automationId: route.AutomationId));
         }
 
@@ -535,12 +640,14 @@ public sealed class Sr5CareerActionFamilyPage : NativePageBase
                 + "must load and validate its own typed authority again."),
             NativeTheme.Muted);
         boundary.AutomationId = "sr5-career-family-navigation-boundary";
-        _body.Add(NativeTheme.Card(boundary));
+        _body.Add(NativeTheme.TechnicalDetails(boundary, "sr5-career-family-details",
+            () => ReferenceEquals(_session, session) && MatchesCurrentRunner(state.Snapshot.Binding)));
     }
 
-    private async Task OpenActionAsync(string actionId)
+    private async Task OpenActionAsync(Sr5CareerWizardDesktopSession displayedSession, string actionId)
     {
-        if (!MatchesCurrentRunner(_session.State.Snapshot.Binding)
+        if (!ReferenceEquals(_session, displayedSession)
+            || !MatchesCurrentRunner(_session.State.Snapshot.Binding)
             || !_session.TrySelectAction(actionId))
         {
             _checkpointStore.Clear();
@@ -588,7 +695,8 @@ public sealed class Sr5CareerActionFamilyPage : NativePageBase
         };
 
     private bool MatchesCurrentRunner(Sr5CareerWizardBinding binding)
-        => Coordinator.State.Profile?.Created == true
+        => IsOriginalRunnerCurrent()
+           && Coordinator.State.Profile?.Created == true
            && Sr5CareerWizardCatalog.IsSr5CareerRunner(true, Coordinator.State.Rules?.GameEdition)
            && Coordinator.State.WorkspaceId is { } workspaceId
            && string.Equals(binding.WorkspaceId, workspaceId.Value, StringComparison.Ordinal)
