@@ -1184,6 +1184,7 @@ internal static partial class AfterRunAuthorityHarness
             await Click("life-review-qualities");
             Require(probe.PreviewCalls == openingPreviewCalls + 1 && !ReferenceEquals(Session().Preview, initialPreview),
                 "Changed quality inputs reused the earlier review.");
+            await Back(); // Forward destination -> qualities, then explicit overview inspection.
             await Back();
             Require(probe.PreviewCalls == openingPreviewCalls + 1,
                 "Returning to the overview repeated an unchanged saved review.");
@@ -1195,6 +1196,7 @@ internal static partial class AfterRunAuthorityHarness
             var oldAgility = Element<Stepper>("life-attribute-AGI");
             oldAgility.Value = 1;
             await Click("life-review-attributes");
+            await Back(); // Skills -> attributes.
             await Back();
             int reviewedAttributeCalls = probe.PreviewCalls;
             await Click("life-open-attributes");
@@ -1231,6 +1233,7 @@ internal static partial class AfterRunAuthorityHarness
                 "Resource inputs did not display the effective Core spending limit.");
             Element<Entry>("life-resource-investment").Text = "0";
             await Click("life-use-resources");
+            await Back(); // Gear -> resources.
             await Back();
             await Click("life-open-gear"); await Click("life-begin-gear"); await Back();
             await Click("life-open-lifestyles"); await Click("life-begin-lifestyles"); await Back();

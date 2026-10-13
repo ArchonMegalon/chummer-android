@@ -57,6 +57,7 @@
     <Compile Include="LifeModuleCompletionNativeTests.cs" />
     <Compile Include="LifeModuleCompletionForwardRuntimeTests.cs" />
     <Compile Include="LifeModuleInputReturnTests.cs" />
+    <Compile Include="LifeModuleWizardFlowTests.cs" />
     <Compile Include="LifeModuleDashboardGuidanceTests.cs" />
     <Compile Include="LifeModuleApprenticeNativeTests.cs" />
     <Compile Include="LifeModuleExoticSkillsNativeTests.cs" />

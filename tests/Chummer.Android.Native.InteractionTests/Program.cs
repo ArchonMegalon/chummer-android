@@ -320,6 +320,11 @@ internal static class Program
             await AfterRunAuthorityHarness.RunLifeModuleInputReturnAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--life-module-wizard-flow-content-root")
+        {
+            await AfterRunAuthorityHarness.RunLifeModuleWizardFlowAsync(args[1]);
+            return;
+        }
         if (args.Length is 2 or 3 && args[0] == "--life-module-forward-content-root")
         {
             await AfterRunAuthorityHarness.RunLifeModuleCompletionForwardAsync(args[1], args.Length == 3 ? args[2] : null);

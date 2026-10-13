@@ -52,6 +52,7 @@ internal static partial class AfterRunAuthorityHarness
             foreach (var entry in IssuedElements(Current()).OfType<Entry>().Where(row => row.AutomationId?.StartsWith("life-quality-", StringComparison.Ordinal) == true))
                 entry.Text = "Renraku";
             await Click("life-review-qualities");
+            await Back(); // Talent -> qualities before inspecting the overview.
             await Back();
             await Click("life-open-talent");
             await Click("life-talent-" + talentId);
@@ -104,6 +105,7 @@ internal static partial class AfterRunAuthorityHarness
             spell.SelectedIndex = Array.FindIndex(catalog.SpellCategories.ToArray(), row => row.Value == "Health");
             spirit.SelectedIndex = 0;
             Require(JsonSerializer.Serialize(Session().Input) == inputs, "Retired controls modified the newly reviewed choices.");
+            await Back(); // Attributes -> talent.
             await Back();
             IssuedPageLifecycle(Current(), "OnDisappearing");
             await navigation.PushAsync(new LifeModuleCompletionPage(runtime.Coordinator, store: new(runtime.StateDirectory)), false);
@@ -134,7 +136,7 @@ internal static partial class AfterRunAuthorityHarness
                 await Back();
                 await Click("life-open-attributes"); await Click("life-begin-attributes");
                 Element<Stepper>("life-attribute-MAG").Value = 2;
-                await Click("life-review-attributes"); await Back();
+                await Click("life-review-attributes"); await Back(); await Back();
                 await Click("life-open-skills"); await Click("life-begin-skills");
                 Element<SearchBar>("life-search").Text = "English";
                 await Click("life-search-go");
@@ -143,7 +145,7 @@ internal static partial class AfterRunAuthorityHarness
                 await Click("life-use-skill"); await Back();
                 await Click("life-open-resources");
                 Element<Entry>("life-resource-investment").Text = "0";
-                await Click("life-use-resources"); await Back();
+                await Click("life-use-resources"); await Back(); await Back();
                 await Click("life-open-gear"); await Click("life-begin-gear"); await Back();
                 await Click("life-open-lifestyles"); await Click("life-begin-lifestyles"); await Back();
                 await Click("life-open-contacts"); await Click("life-begin-contacts"); await Back();

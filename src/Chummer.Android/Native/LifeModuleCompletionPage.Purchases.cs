@@ -20,7 +20,7 @@ internal sealed partial class LifeModuleCompletionPage
                 quantity => Change(Input with { GearSelection = Input.GearSelection!.Where(x => x.OptionId != selected.OptionId)
                     .Concat(quantity > 0 ? [new CharacterCreationGearSelection(selected.OptionId, quantity)] : []).ToArray() }));
         }
-        Button(LifeCopy("SaveReview", "Save inputs and review"), "life-review-gear", Review);
+        ContinueButton("life-review-gear");
         Search();
         foreach (var option in Page(authority.Options.Where(x => x.Name.Contains(_search, StringComparison.CurrentCultureIgnoreCase))))
         {
@@ -54,7 +54,7 @@ internal sealed partial class LifeModuleCompletionPage
         }
         foreach (var line in Quote.LifestylesQuote?.Lines ?? [])
             Body(CreationKarmaCopy.LifestyleLine(line.Configuration.Name, line.BaseLifestyleName, line.Economics.TotalCost));
-        Button(LifeCopy("SaveReview", "Save inputs and review"), "life-review-lifestyles", Review);
+        ContinueButton("life-review-lifestyles");
         Search();
         foreach (var option in Page(authority.LifestyleOptions.Where(x => x.Name.Contains(_search, StringComparison.CurrentCultureIgnoreCase))))
         {
@@ -78,6 +78,7 @@ internal sealed partial class LifeModuleCompletionPage
         foreach (var contact in contacts)
             Button(contact.Identity.Name, "life-contact-" + contact.ContactId, () => Open(LifeCompletionStep.Contact, contact.ContactId.ToString("D")));
         Button(CreationKarmaCopy.AddContact, "life-add-contact", () => Open(LifeCompletionStep.Contact));
+        ContinueButton("life-continue-contacts");
     }
 
     private void Contact()
@@ -141,7 +142,7 @@ internal sealed partial class LifeModuleCompletionPage
         if (magic.Cost.MysticPowerPoints is { } points)
             Number(CreationKarmaCopy.Powers, "life-mystic-points", selected.MysticAdeptPowerPoints, points.MaximumPowerPoints,
                 value => Change(Input with { MagicSelection = Input.MagicSelection! with { MysticAdeptPowerPoints = value } }));
-        Button(LifeCopy("SaveReview", "Save inputs and review"), "life-review-magic", Review);
+        ContinueButton("life-review-magic");
     }
     private void MagicCatalog()
     {
