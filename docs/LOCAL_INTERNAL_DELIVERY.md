@@ -132,7 +132,23 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 212 is the latest [observed Internal availability](../play/evidence/preview212-internal-observation.json),
+Preview 213 is the latest [observed Internal availability](../play/evidence/preview213-internal-observation.json),
+released on 13 October at 05:25 Europe/Vienna. Life Modules next-step guidance
+now appears once inside the tappable Continue row and its accessibility description.
+The duplicate paragraph is removed; earlier single actionable choices remain.
+Android #738 merged normally with the identical tested tree; Core/UI unchanged.
+Focused dashboard regression covers eleven story/readiness states and dirty
+switch/save/recovery. Ten source checks and affected builds pass. Native213
+shows one guidance row and opens metatype choices with one tap; all fourteen
+retained workspace files are unchanged through update/navigation. The broader
+headless completion test aborted in its UI pump and is not counted as passing.
+Initial SystemUI boot ANR remains recorded; no startup-speed claim.
+Local ARM64/Internal build, isolated original-key signing and independent keyless
+verification passed. One upload/confirmation yielded actual Console availability.
+Physical Play213, startup/reload and complete Creation/Origin acceptance remain open.
+Version213 is consumed; do not rebuild or re-upload it.
+
+Preview 212's [historical Internal availability](../play/evidence/preview212-internal-observation.json) was
 released on 13 October at 04:45 Europe/Vienna. Final Creation review now keeps
 exact totals and carryover reductions visible, with all ordered changes available
 on demand. Confirm stays in a fixed footer; one save opens Career automatically.
