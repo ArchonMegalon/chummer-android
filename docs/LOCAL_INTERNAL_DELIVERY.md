@@ -132,7 +132,26 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 210 is the latest [observed Internal availability](../play/evidence/preview210-internal-observation.json),
+Preview 211 is the latest [observed Internal availability](../play/evidence/preview211-internal-observation.json),
+released on 13 October at 03:30 Europe/Vienna. A saved funding change now retains
+the equipment basket and offers explicit review under the new budget. One save
+binds the retained basket and automatically opens Contacts; saved Gear also
+cold-reopens and continues without another mutation. Earlier single actionable
+choices and compact controls remain included. Core #156, UI #441/#442 and
+Android #734 merged normally; exact new package intake is recorded separately.
+Focused Core/actual-handler tests, affected builds and native save/restart pass.
+Native evidence covers an empty retained basket; nonempty retention is covered
+by service/handler tests. The one save advances29/29 to30/30; original receipts,
+raw envelope and other eight files are retained. All nine post-save workspace
+files remain byte-identical through new-process reopen and navigation.
+Earlier SystemUI/offscreen-display failures are retained; no startup-speed claim.
+Local ARM64/Internal build, original-key isolated signing and independent keyless
+verification passed. One upload/confirmation yielded actual Console availability.
+Three additional source-contract failures reproduce on unchanged main and are
+not relabeled as passing. Physical Play211 and full Creation/Origin remain open.
+Version211 is consumed; do not rebuild or re-upload it.
+
+Preview 210's [historical Internal availability](../play/evidence/preview210-internal-observation.json) was
 released on 13 October at 01:14 Europe/Vienna. Skills and Attributes now show
 point-limit refusals once in the fixed footer above Continue. Valid edits clear
 the message and autosave; active saves and failed/uncertain writes take priority.
