@@ -2121,22 +2121,30 @@ internal static partial class AfterRunAuthorityHarness
                 var page = Current();
                 if (IssuedPageField<int>(page, "_subscribed") != 0) return;
                 Task appearance = ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
-                if (page is BuildPage && runtime.Coordinator.State.Profile?.Created == true)
+                try
                 {
-                    Require(Element<ActivityIndicator>("phone-runner-loading").IsRunning
-                        && !string.IsNullOrWhiteSpace(Element<Label>("phone-runner-loading-message").Text)
-                        && !page.ToolbarItems.Any(item => item.IsEnabled)
-                        && !IssuedElements(page).Any(e => e is Button || e.AutomationId is "phone-runner-create" or "phone-runner-sheet"),
-                        "Career reappearance exposes the old Creation surface while its current receipt is loading.");
+                    if (page is BuildPage && runtime.Coordinator.State.Profile?.Created == true)
+                    {
+                        Require(Element<ActivityIndicator>("phone-runner-loading").IsRunning
+                            && !string.IsNullOrWhiteSpace(Element<Label>("phone-runner-loading-message").Text)
+                            && !page.ToolbarItems.Any(item => item.IsEnabled)
+                            && !IssuedElements(page).Any(e => e is Button || e.AutomationId is "phone-runner-create" or "phone-runner-sheet"),
+                            "Career reappearance exposes the old Creation surface while its current receipt is loading.");
+                    }
+                    if (page is RetainedOriginBookPage)
+                    {
+                        Require(Element<ActivityIndicator>("origin-book-loading").IsRunning
+                            && !string.IsNullOrWhiteSpace(Element<Label>("origin-book-loading-message").Text)
+                            && !IssuedElements(page).Any(e => e is Button),
+                            "Opening or returning to the reader must show loading without stale book actions.");
+                    }
                 }
-                if (page is RetainedOriginBookPage)
+                finally
                 {
-                    Require(Element<ActivityIndicator>("origin-book-loading").IsRunning
-                        && !string.IsNullOrWhiteSpace(Element<Label>("origin-book-loading-message").Text)
-                        && !IssuedElements(page).Any(e => e is Button),
-                        "Opening or returning to the reader must show loading without stale book actions.");
+                    // A failed loading assertion must still join the actual
+                    // appearance instead of closing its UI queue underneath it.
+                    await appearance.WaitAsync(TimeSpan.FromSeconds(30));
                 }
-                await appearance.WaitAsync(TimeSpan.FromSeconds(30));
                 if (page is RetainedOriginBookPage)
                     Require(!IssuedElements(page).Any(e => e.AutomationId == "origin-book-loading"),
                         "The completed book reader retained its loading indicator.");

@@ -1009,7 +1009,9 @@ public sealed class BuildPage : NativePageBase
         _dossierRenderGeneration++;
         _body.Clear();
         Title = "Runner";
-        _save.IsEnabled = false;
+        // Retained toolbar actions belong to the previous rendered runner too.
+        // Refresh re-enables Save and creates the current rules menu after load.
+        foreach (ToolbarItem item in ToolbarItems) item.IsEnabled = false;
         _body.Add(new ActivityIndicator { IsRunning = true, AutomationId = "phone-runner-loading" });
         var loading = NativeTheme.Body(AndroidSurfaceStrings.Resolve()["Runner.Loading"], NativeTheme.Muted);
         loading.AutomationId = "phone-runner-loading-message";
