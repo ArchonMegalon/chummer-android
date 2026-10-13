@@ -268,13 +268,16 @@ def test_created_sr5_initial_phone_sheet_is_wizard_only() -> None:
     career_branch = career_branch.split("AddSummary();", maxsplit=2)
 
     assert "AddSr5CareerWizardRoute();" in career_branch[0]
-    assert "AddFeedback();" in career_branch[1]
+    refresh = build.split("protected override void Refresh()", maxsplit=1)[1]
+    # Feedback now precedes every profile branch so it stays on screen.
+    assert refresh.index("AddFeedback();") < refresh.index("if (Coordinator.State.Profile is null)")
     assert "return;" in career_branch[1]
     assert "AddDossier();" not in career_branch[0] + career_branch[1]
     assert "AddBuildAreas();" not in career_branch[0] + career_branch[1]
     fallback = career_branch[2].split("private void AddRouteMarker", maxsplit=1)[0]
     assert 'unavailable.AutomationId = "build-career-wizard-unavailable";' in fallback
-    assert "no authorized Career wizard" in fallback
+    assert 'PhoneStrings.Get("RunnerCareerUnavailable"' in fallback
+    assert "Career editing on this phone is available for SR5 runners only." in fallback
     assert "AddDossier();" not in fallback
     assert "AddBuildAreas();" not in fallback
 

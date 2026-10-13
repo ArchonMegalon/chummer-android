@@ -179,6 +179,13 @@ class CareerQualityWizardSourceContractTests(unittest.TestCase):
         self.assertEqual(ATOMIC_WORKSPACE.count(".CorrectAsync(correction, ct)"), 1)
         self.assertNotIn("catch (", ATOMIC_WORKSPACE)
 
+    def test_career_hub_carries_the_original_quality_owner_into_its_probe(self) -> None:
+        hub = (NATIVE / "RunnerSessionSr5CareerWizardPhoneAuthority.cs").read_text(encoding="utf-8")
+        self.assertLess(hub.index("OwnerContextStamp? qualityOwner ="), hub.index("await _coordinator.Capture"))
+        self.assertIn("LoadProbeAsync(action.ActionId, first, qualityOwner, cancellationToken)", hub)
+        self.assertIn("PrepareCareerQualityAsync(cancellationToken, expectedOwner)", hub)
+        self.assertNotIn("PrepareCareerQualityAsync(cancellationToken)", hub)
+
     def test_phone_deep_choose_review_receipt_and_correction_routes_are_exposed(self) -> None:
         route_model = (NATIVE / "Sr5CareerWizardModel.cs").read_text(encoding="utf-8")
         for route in (

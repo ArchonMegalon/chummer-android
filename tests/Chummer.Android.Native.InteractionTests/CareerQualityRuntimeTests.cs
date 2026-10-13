@@ -50,6 +50,21 @@ internal static partial class AfterRunAuthorityHarness
                 var authority = new Sr5CareerQualityCoordinator(presenter, presenter);
                 var editor = await authority.PrepareAsync() ?? throw new InvalidOperationException("Actual Core quality editor missing.");
                 Require(editor.OwnerId == scope.NormalizedValue, "Device owner GUID replaced actual Core scope.");
+                var originalOwner = runtime.Coordinator.State.DisplayOwnerContext;
+                Require(await runtime.Coordinator.PrepareCareerQualityAsync() is null,
+                    "Quality reads without explicit owner custody must stay unavailable.");
+                var hubStore = new FileWorkspaceStore(runtime.StateDirectory);
+                var beforeHub = (linked ? hubStore.Get(scope, runtime.Id) : hubStore.Get(runtime.Id)).Value!;
+                var hub = await new RunnerSessionSr5CareerWizardPhoneAuthority(runtime.Coordinator).LoadAsync();
+                Require(hub.IsReady, "Career hub projection unavailable: " + hub.Blocker);
+                Require(hub.Snapshot!.Families.SelectMany(x => x.Actions)
+                    .Single(x => x.ActionId == Chummer.Presentation.Overview.Sr5CareerWizardActionIds.ChangeQuality).CanOpen,
+                    "The Career hub dropped a working quality route because it lost the original owner.");
+                Require(!hub.Snapshot.Families.SelectMany(x => x.Actions)
+                    .Single(x => x.ActionId == Chummer.Presentation.Overview.Sr5CareerWizardActionIds.EditKarmaExpense).CanOpen,
+                    "An absent Karma expense must remain unavailable without hiding quality changes.");
+                RequireSameRewardDocument(beforeHub,
+                    (linked ? hubStore.Get(scope, runtime.Id) : hubStore.Get(runtime.Id)).Value!);
                 var eligible = editor.Quotes.Single(x => x.Definition.Name == "Erased"
                     && x.Operation == CharacterCareerQualityOperation.AcquireLevel);
                 Require(eligible.CanApply && eligible.RuleKarmaCost == 16, "Real Career cost or admission is wrong.");
@@ -146,11 +161,13 @@ internal static partial class AfterRunAuthorityHarness
                 owners.Set(new OwnerScope("career-quality-other"));
                 owners.Set(scope);
                 Require(reopenedPresenter.CurrentOwnerId == Guid.Empty, "A -> B -> A revived the prior phone owner session.");
+                Require(await runtime.Coordinator.PrepareCareerQualityAsync(default, originalOwner) is null,
+                    "A -> B -> A revived the captured quality-probe owner.");
                 Require(owners.ActiveLeases == 0, "Phone quality flow retained an owner lease.");
                 foreach (var page in navigation.Navigation.NavigationStack.OfType<NativePageBase>())
                     IssuedPageLifecycle(page, "OnDisappearing");
                 ui.AssertHealthy();
-                Console.WriteLine($"PASS Career quality {(linked ? "linked" : "local")}: real selection/review/apply handlers, 100→84, full saved effect/receipt, readable copy, reconstructed journal/readback, explicit managed correction 84→100, owner ABA fence");
+                Console.WriteLine($"PASS Career quality {(linked ? "linked" : "local")}: owner-bound Career hub despite unrelated unavailable actions, real selection/review/apply handlers, 100→84, full saved effect/receipt, readable copy, reconstructed journal/readback, explicit managed correction 84→100, owner ABA fence");
             }
         });
     }
