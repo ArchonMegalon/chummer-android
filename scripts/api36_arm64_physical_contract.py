@@ -224,15 +224,15 @@ TRUSTED_JDK_RELEASE_VALUES = {
     "SOURCE": ".:git:261f4ed0a496",
 }
 TRUSTED_PRESENTATION_PRODUCER_LOCK = {
-    "sha256": "206486ef3edfc92750ceb303ba464f4ca10dfbe7d9e83dfcf08cb9b115f32e6b",
+    "sha256": "851efcccbebb1471e7342cc2b9abe692efc32abea1659dc8d3086d25aa0d6bae",
     "sizeBytes": 2031,
 }
 TRUSTED_FULL_PROJECT_LOCK = {
-    "sha256": "7fee4c6d5960524b204bb485f4209ea44fcbf8310c29d194520b1ef1cccecd90",
+    "sha256": "fbf5154a3f370827921366d07fc2c0b6ba04bf4f988c33cda97fba9ec3c4074f",
     "sizeBytes": 71019,
 }
-TRUSTED_CORE_CONTENT_COMMIT = "52d0ca5e66d339c49a59c33a3c33d012198c4dd3"
-TRUSTED_CORE_CONTENT_TREE = "eaf8d6cbb930d91392c5a30685fb929efb9b72e7"
+TRUSTED_CORE_CONTENT_COMMIT = "f2e0f5df28b2c2afae830f309e99bfab7b63b93e"
+TRUSTED_CORE_CONTENT_TREE = "d09eefebce78883047fe622332bce9a15dba8d7d"
 WP1_REFERENCE_EVIDENCE_FILES = {
     "executionEvidence.toolchainLog": "toolchain.log",
     "executionEvidence.packageAuthorityLog": "package-authority.log",

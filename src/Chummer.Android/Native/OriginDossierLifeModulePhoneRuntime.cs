@@ -91,7 +91,10 @@ public sealed class OriginDossierLifeModulePhoneRuntime
             }
             else
             {
-                result = await ReadAsync(owner, () => _interaction.Restore(owner, persisted), cancellationToken)
+                // Core may refresh an unchanged, undecided opening after a
+                // save-only revision. Pending/accepted decisions keep strict
+                // recovery semantics; the phone never rewrites their authority.
+                result = await ReadAsync(owner, () => _interaction.Reopen(owner, persisted), cancellationToken)
                     .ConfigureAwait(false);
                 // A crash after the atomic mechanics commit but before saving
                 // the next chapter leaves a valid pending preview. Keep it available for

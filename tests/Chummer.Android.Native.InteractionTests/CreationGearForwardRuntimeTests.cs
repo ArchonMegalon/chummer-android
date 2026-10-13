@@ -167,6 +167,22 @@ internal static partial class AfterRunAuthorityHarness
                         var resume = MinimalVisible(editor).OfType<Button>().Single(x => x.AutomationId == "creation-gear-saved-continue");
                         Require(!MinimalVisible(editor).Any(x => x.AutomationId == "creation-gear-preview"),
                             "An unchanged saved basket still offers an unnecessary review.");
+                        if (scenario == "local")
+                        {
+                            contacts.BeforeLoad = () => throw new IOException("synthetic-saved-contacts-read");
+                            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)resume).SendClicked()));
+                            Require(ReferenceEquals(navigation.Navigation.NavigationStack.Last(), editor)
+                                && MinimalVisible(editor).OfType<Label>().Any(x =>
+                                    x.AutomationId == "creation-gear-saved-next-unavailable"
+                                    && x.Text == CreationFlowStrings.Get("Gear.NextUnavailable", "missing")),
+                                "Saved Gear lost its Contacts failure feedback during the action refresh.");
+                            Require(gear.ConfirmCalls == 1 && contacts.ConfirmCalls == 0,
+                                "A failed saved-basket continuation replayed a mutation.");
+                            contacts.BeforeLoad = null;
+                            resume = MinimalVisible(editor).OfType<Button>().Single(x =>
+                                x.AutomationId == "creation-gear-saved-continue");
+                            Require(resume.IsEnabled, "Saved Gear lost its read-only retry.");
+                        }
                         await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)resume).SendClicked()));
                         Require(scenario == "local" ? navigation.Navigation.NavigationStack.Last() is CreationContactsPage
                             : navigation.Navigation.NavigationStack.Last() is CreationSkillsPage,
@@ -177,6 +193,10 @@ internal static partial class AfterRunAuthorityHarness
                         await ui.DrainDispatchedAsyncVoidAsync();
                         Require(ReferenceEquals(navigation.Navigation.NavigationStack.Last(), editor),
                             "A departed saved-basket control remained usable.");
+                        await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(editor, "OnAppearing")));
+                        Require(!MinimalVisible(editor).Any(x => x.AutomationId == "creation-gear-saved-next-unavailable"),
+                            "A new appearance retained an old Contacts read failure.");
+                        IssuedPageLifecycle(editor, "OnDisappearing");
                     }
                     if (scenario == "unknown") Require(contacts.LoadCalls == 0, "Unknown commit advanced without a receipt.");
                     if (scenario == "missing-skills-no-editor")
