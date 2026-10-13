@@ -132,7 +132,25 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 213 is the latest [observed Internal availability](../play/evidence/preview213-internal-observation.json),
+Preview 214 is the latest [observed Internal availability](../play/evidence/preview214-internal-observation.json),
+released on 13 October at 06:12 Europe/Vienna. Retained toolbar actions now stay
+disabled while runner data reloads; the current menu is restored after loading.
+Earlier single actionable choices and compact Life Modules guidance remain.
+Android #740 merged normally with the identical tested tree; Core/UI unchanged.
+The focused regression fails on unchanged source and passes with the fix.
+Eleven dashboard states, dirty switch/save/recovery and the longer actual-Core/
+MAUI Life Modules completion, reader, illustration and EPUB/HTML route pass with
+synthetic provider data. This does not establish a complete live FirstBook book.
+Native214 entry/re-entry and verified new-process restore pass; the installed
+APK hash was independently matched and all fourteen saved files are unchanged.
+The pending disabled-toolbar interval has managed proof, not native capture.
+Initial SystemUI ANRs and slow restoration remain; no startup-speed claim.
+Local ARM64/Internal build, isolated original-key signing and independent keyless
+verification passed. One upload/confirmation yielded actual Console availability.
+Physical Play214 and complete current-release Creation/Origin remain unverified.
+Version214 is consumed; do not rebuild or re-upload it.
+
+Preview 213's [historical Internal availability](../play/evidence/preview213-internal-observation.json) was
 released on 13 October at 05:25 Europe/Vienna. Life Modules next-step guidance
 now appears once inside the tappable Continue row and its accessibility description.
 The duplicate paragraph is removed; earlier single actionable choices remain.
