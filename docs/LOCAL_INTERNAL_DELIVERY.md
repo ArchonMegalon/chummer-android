@@ -132,7 +132,24 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 211 is the latest [observed Internal availability](../play/evidence/preview211-internal-observation.json),
+Preview 212 is the latest [observed Internal availability](../play/evidence/preview212-internal-observation.json),
+released on 13 October at 04:45 Europe/Vienna. Final Creation review now keeps
+exact totals and carryover reductions visible, with all ordered changes available
+on demand. Confirm stays in a fixed footer; one save opens Career automatically.
+Earlier single actionable choices and compact controls remain included.
+Android #736 merged normally with the identical tested tree; Core/UI unchanged.
+Focused actual-Core/MAUI checks,27 source/driver checks and affected builds pass.
+Native review/disclosure/fixed Confirm, one save7/7→8/8 and new-process Career
+restore pass; all eleven saved files are identical across restart. This is a
+Core-seeded final-review fixture, not whole Creation or physical Play evidence.
+Two unrelated Priority dashboard-string failures reproduce on unchanged main.
+SystemUI boot/observer limitations remain recorded; no startup-speed claim.
+Local ARM64/Internal build, isolated original-key signing and independent keyless
+verification passed. One upload/confirmation yielded actual Console availability.
+Physical Play212, startup/reload and full Creation/Origin acceptance remain open.
+Version212 is consumed; do not rebuild or re-upload it.
+
+Preview 211's [historical Internal availability](../play/evidence/preview211-internal-observation.json) was
 released on 13 October at 03:30 Europe/Vienna. A saved funding change now retains
 the equipment basket and offers explicit review under the new budget. One save
 binds the retained basket and automatically opens Contacts; saved Gear also
