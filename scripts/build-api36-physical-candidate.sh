@@ -186,7 +186,7 @@ done
   || fail "android-candidate-not-clean"
 [[ "$CHUMMER_ANDROID_REVISION" == "$("$git_command" -C "$repo_dir" rev-parse HEAD)" ]] \
   || fail "android-source-head-mismatch"
-[[ "$CHUMMER_PRESENTATION_REVISION" == "7cbaeac8b46783bcfa22a37749081b894c333982" ]] \
+[[ "$CHUMMER_PRESENTATION_REVISION" == "10e76670b6c87f5f16ac41213b0f737b568118d0" ]] \
   || fail "presentation-revision-input-mismatch"
 [[ "$CHUMMER_CORE_ENGINE_REVISION" == "158b68c8919d04655f94a06f1caf8bb915f6de9b" ]] \
   || fail "core-runtime-revision-input-mismatch"
@@ -196,7 +196,7 @@ done
   || fail "ui-kit-revision-input-mismatch"
 [[ "$CHUMMER_HUB_REGISTRY_REVISION" == "af9a7e19c3bf331e96411dfb8f9e7820a98cab29" ]] \
   || fail "registry-revision-input-mismatch"
-[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse HEAD)" == "7cbaeac8b46783bcfa22a37749081b894c333982" ]] \
+[[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse HEAD)" == "10e76670b6c87f5f16ac41213b0f737b568118d0" ]] \
   || fail "current-presentation-commit-mismatch"
 [[ "$("$git_command" -C "$CHUMMER_PRESENTATION_ROOT" rev-parse 'HEAD^{tree}')" == "b070a1201091f5b39ed308e7901149ad224e4748" ]] \
   || fail "current-presentation-tree-mismatch"
