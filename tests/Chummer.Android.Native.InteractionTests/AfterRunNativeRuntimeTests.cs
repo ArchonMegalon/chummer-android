@@ -639,6 +639,7 @@ internal static partial class AfterRunAuthorityHarness
                         ?? _provider.GetRequiredService<IOwnerBoundCharacterCreationFinalizationService>()
                     : null;
                 Presenter = new CharacterOverviewPresenter(Client, shellPresenter: Shell,
+                    characterSourceDataResolver: _provider.GetRequiredService<ICharacterSourceDataResolver>(),
                     workspaceOverviewLoader: _provider.GetRequiredService<IWorkspaceOverviewLoader>(),
                     commandDispatcher: bootstrapCommandDispatcher,
                     workspaceOperationCoordinator: operations,
