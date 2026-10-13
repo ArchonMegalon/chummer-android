@@ -132,7 +132,24 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 217 is the latest [observed Internal availability](../play/evidence/preview217-internal-observation.json),
+Preview 218 is the latest [observed Internal availability](../play/evidence/preview218-internal-observation.json),
+released on 13 October at 14:59 Europe/Vienna. Life Modules contact/skill editors
+now retain rejected input with readable guidance before submit; corrected values
+return automatically to the current list without duplicating contacts. Android
+#748 merged normally with the exact tested tree; Core/UI inputs are unchanged.
+Fourteen actual-Core/MAUI scenarios and EN/DE/ES guidance/layout checks pass.
+Native API36 x64 Release/Internal smoke confirms rejection, correction, automatic
+return and exact saved-contact reopening in a verified new process; all24
+workspace files/two drafts are unchanged across restart. This is a separate
+SDK-test package and a synthetic completion tail, not a complete Creation/book
+journey. Local production ARM64/Internal build, isolated original-key signing
+and independent verification passed; one exact upload and final confirmation
+produced actual Internal availability. Physical218, startup/reload closure and
+full Creation/Origin remain open. SystemUI/observer failures and the original
+uncertain FirstBook fence remain retained. Version218 is consumed; do not
+rebuild or re-upload it.
+
+Preview 217's [historical Internal availability](../play/evidence/preview217-internal-observation.json) was
 released on 13 October at 13:26 Europe/Vienna. Successful Life Modules final
 confirmation now opens the restored Career root automatically, preserving
 navigation, owner and exact persisted-receipt guards. Android #746 merged
