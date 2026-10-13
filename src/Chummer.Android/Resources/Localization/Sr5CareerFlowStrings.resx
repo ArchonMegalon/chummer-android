@@ -1025,4 +1025,18 @@ Preview: {3}…</value></data>
   <data name="Discard the saved review for {0} (runner revision {1})? This removes only the local review, not runner data or proposal approvals." xml:space="preserve"><value>Discard the saved review for {0} (runner revision {1})? This removes only the local review, not runner data or proposal approvals.</value></data>
   <data name="The selected runner changed. Reopen After Run for the current saved runner." xml:space="preserve"><value>The selected runner changed. Reopen After Run for the current saved runner.</value></data>
   <data name="Record local rewards or review a governed run settlement. Resolve any pending transaction first." xml:space="preserve"><value>Record local rewards or review a governed run settlement. Resolve any pending transaction first.</value></data>
+  <data name="Change a quality" xml:space="preserve"><value>Change a quality</value></data>
+  <data name="Choose a quality, then check its Karma cost before applying the change." xml:space="preserve"><value>Choose a quality, then check its Karma cost before applying the change.</value></data>
+  <data name="Apply quality change" xml:space="preserve"><value>Apply quality change</value></data>
+  <data name="Saving your quality change…" xml:space="preserve"><value>Saving your quality change…</value></data>
+  <data name="Quality saved" xml:space="preserve"><value>Quality saved</value></data>
+  <data name="Back to Career" xml:space="preserve"><value>Back to Career</value></data>
+  <data name="Undo this quality change" xml:space="preserve"><value>Undo this quality change</value></data>
+  <data name="Undo restores your previous qualities and Karma." xml:space="preserve"><value>Undo restores your previous qualities and Karma.</value></data>
+  <data name="Why do you want to undo this change?" xml:space="preserve"><value>Why do you want to undo this change?</value></data>
+  <data name="Undo this quality change?" xml:space="preserve"><value>Undo this quality change?</value></data>
+  <data name="Your previous qualities and Karma will be restored." xml:space="preserve"><value>Your previous qualities and Karma will be restored.</value></data>
+  <data name="Your previous qualities and Karma have been restored." xml:space="preserve"><value>Your previous qualities and Karma have been restored.</value></data>
+  <data name="Your change is saved." xml:space="preserve"><value>Your change is saved.</value></data>
+  <data name="This runner has changed since this quality was saved." xml:space="preserve"><value>This runner has changed since this quality was saved.</value></data>
 </root>

@@ -8,7 +8,10 @@ namespace Chummer.Android.Sr5CareerQuality.Tests;
 
 internal static class Program
 {
-    private static readonly Guid OwnerId = Guid.Parse("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+    private const string CoreOwner = "local-single-user";
+    private static readonly Guid OwnerId = Sr5CareerQualityDraft.CheckpointOwnerId(CoreOwner);
+    private static readonly string CoreRuntime = new('a', 64);
+    private static readonly string CoreContent = new('b', 64);
     private static readonly Guid InternalId = Guid.Parse("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
     private static readonly Guid SourceId = Guid.Parse("cccccccc-cccc-4ccc-8ccc-cccccccccccc");
     private static readonly CharacterWorkspaceId WorkspaceId = new("quality-workspace");
@@ -16,14 +19,17 @@ internal static class Program
     public static async Task Main()
     {
         await ExactReviewBindsAllAuthorityAsync();
+        await OwnerScopeAndCoreAuthorityRemainDistinctAsync();
         await AtomicApplyAndRestartRecoveryNeverReplayAsync();
         await UnknownTransportOutcomesResolveWithoutRetryAsync();
         await UnsupportedAmbiguousAndDriftedAuthorityFailsClosedAsync();
         await CompensatingCorrectionRestoresAndRetiresAsync();
+        await CorrectionResponseDoesNotReviveRetiredOwnerAsync();
+        await LostCorrectionResponseRecoversWithoutReplayAsync();
         await RegisteredTypedPersistenceSeamFailsClosedOnAuthorityDriftAsync();
         await DurableQualityOwnerSurvivesRestartAndReconcilesResolvedJournalAsync();
         MalformedSchemaAndCasConflictsRemainReplayLocks();
-        Console.WriteLine("PASS: 8 SR5 Career quality phone authority behavior groups");
+        Console.WriteLine("PASS: 11 SR5 Career quality phone authority behavior groups");
     }
 
     private static async Task ExactReviewBindsAllAuthorityAsync()
@@ -57,7 +63,7 @@ internal static class Program
         foreach ((string core, string presentation) in new[]
         {
             ("880e5df8ace981e9a60264d835329dd32f54a158", "399cc0b4e0b70f678ebeb6a2fcc9d0e0659bf61d"),
-            ("8069140ade4c64ca1ff803144ccdff1c66999988", Sr5CareerQualityRuntimeAuthority.CurrentPresentationRevision)
+            ("bf757a688fa2070465d6b0122e7e715d6d563baa", Sr5CareerQualityRuntimeAuthority.CurrentPresentationRevision)
         })
         {
             Sr5CareerQualityRuntimeAuthority stale = draft.RuntimeAuthority with
@@ -187,15 +193,16 @@ internal static class Program
             "ambiguous duplicate candidates must close entire lane");
 
         FakeAtomicWorkspace runtimeDrift = new();
+        Sr5CareerQualityCoordinator runtimeCoordinator = new(new TestPresenter(runtimeDrift), new OwnerAuthority());
+        var originalRuntime = (await runtimeCoordinator.PrepareAsync())!;
         runtimeDrift.SetCandidate(runtimeDrift.Candidate with
         {
             Binding = runtimeDrift.Candidate.Binding with { RuntimeFingerprint = new string('d', 64) }
         });
         await RequireThrowsAsync<InvalidOperationException>(
-            async () => _ = await new Sr5CareerQualityCoordinator(
-                new TestPresenter(runtimeDrift),
-                new OwnerAuthority()).PrepareAsync(),
-            "runtime drift must fail closed");
+            async () => _ = await runtimeCoordinator.ReviewAsync(originalRuntime, originalRuntime.Quotes.Single(),
+                Guid.NewGuid(), DateTime.Now),
+            "runtime drift after selection must fail closed");
 
         Fixture stale = await Fixture.CreateAsync("40000000-0000-4000-8000-000000000004");
         stale.Presenter.OverrideBinding = stale.Presenter.Binding with { ContentRevision = 42, SavedRevision = 42 };
@@ -206,6 +213,29 @@ internal static class Program
                 Guid.NewGuid(),
                 DateTime.Now),
             "revision drift must block review");
+    }
+
+    private static async Task OwnerScopeAndCoreAuthorityRemainDistinctAsync()
+    {
+        Fixture f = await Fixture.CreateAsync("a0000000-0000-4000-8000-000000000001");
+        Require(f.Draft.Review.Draft.ExpectedOwnerId == CoreOwner, "Core owner scope must never become a device GUID.");
+        Require(f.Draft.Review.Quote.Binding.RuntimeFingerprint == CoreRuntime
+            && CoreRuntime != f.Draft.RuntimeAuthority.RuntimeDigest, "Core runtime and packaged app identities are separate.");
+        Require(f.Draft.Review.Quote.Binding.ContentDigest == CoreContent
+            && CoreContent != f.Draft.RuntimeAuthority.ContentDigest, "Source policy and packaged content identities are separate.");
+        Require(!f.Checkpoint.TryResume(f.Editor with { ContentDigest = new string('c', 64) }, out _, out _),
+            "A changed live Core policy must not resume an old review.");
+        Require(Sr5CareerQualityCoordinator.Resolve(f.Checkpoint, f.Presenter.Binding,
+            f.Editor with { RuntimeFingerprint = new string('c', 64) }).Status == Sr5CareerQualityRecoveryStatus.OutcomeUnknown,
+            "A changed live Core runtime must not clear a replay fence.");
+        foreach (string foreign in new[] { "install-account:other", " local-single-user ", "LOCAL-SINGLE-USER", "" })
+        {
+            FakeAtomicWorkspace workspace = new();
+            workspace.SetCandidate(workspace.Candidate with { Binding = workspace.Candidate.Binding with { OwnerId = foreign } });
+            await RequireThrowsAsync<InvalidOperationException>(async () =>
+                _ = await new Sr5CareerQualityCoordinator(new TestPresenter(workspace), new OwnerAuthority()).PrepareAsync(),
+                "A foreign/noncanonical Core owner must be rejected.");
+        }
     }
 
     private static async Task CompensatingCorrectionRestoresAndRetiresAsync()
@@ -245,6 +275,52 @@ internal static class Program
         Require(string.IsNullOrEmpty(fixture.Backend.Payload), "corrected checkpoint retired");
         Require(fixture.Workspace.CommitCount == 1, "correction does not replay original");
         Require(fixture.Workspace.CorrectionCount == 1, "single compensation");
+    }
+
+    private static async Task CorrectionResponseDoesNotReviveRetiredOwnerAsync()
+    {
+        Fixture fixture = await Fixture.CreateAsync("50000000-0000-4000-8000-000000000007");
+        Require(fixture.Store.TryBeginApply(Sr5CareerQualityCheckpointCas.From(fixture.Checkpoint),
+            out var applying, out string blocker), blocker);
+        var result = await fixture.Coordinator.ApplyAsync(fixture.Draft, applying, fixture.Store);
+        Require(fixture.Store.TryRecordAuthoritativeResolution(Sr5CareerQualityCheckpointCas.From(applying),
+            result.Resolution, out var applied, out blocker), blocker);
+        fixture.Presenter.AfterCorrection = () => fixture.Owner.CurrentOwnerId = Guid.Empty;
+        await RequireThrowsAsync<InvalidOperationException>(async () =>
+            _ = await fixture.Coordinator.CorrectAsync(applied, result.Receipt!, Guid.NewGuid(), "Accidental selection"),
+            "A durable correction must not be presented or retire the journal after its owner session ends.");
+        Require(fixture.Workspace.CorrectionCount == 1, "The original owner's committed correction is not replayed.");
+        Require(!string.IsNullOrEmpty(fixture.Backend.Payload), "Keep unresolved journal custody for its original owner.");
+    }
+
+    private static async Task LostCorrectionResponseRecoversWithoutReplayAsync()
+    {
+        Fixture f = await Fixture.CreateAsync("50000000-0000-4000-8000-000000000008");
+        Require(f.Store.TryBeginApply(Sr5CareerQualityCheckpointCas.From(f.Checkpoint),
+            out var applying, out string blocker), blocker);
+        var result = await f.Coordinator.ApplyAsync(f.Draft, applying, f.Store);
+        Require(f.Store.TryRecordAuthoritativeResolution(Sr5CareerQualityCheckpointCas.From(applying),
+            result.Resolution, out var applied, out blocker), blocker);
+        Require(await f.Coordinator.ResolveCorrectionAsync(applied) is null, "An uncorrected purchase is never retired.");
+        f.Presenter.AfterCorrection = () => throw new IOException("Lost correction response");
+        await RequireThrowsAsync<IOException>(async () =>
+            _ = await f.Coordinator.CorrectAsync(applied, result.Receipt!, Guid.NewGuid(), "Accidental selection"),
+            "The simulated lost response must remain visible.");
+        string retained = System.Text.Json.JsonSerializer.Serialize(f.Workspace.Snapshot);
+        var reopenedPresenter = new TestPresenter(f.Workspace);
+        var reopened = new Sr5CareerQualityCoordinator(reopenedPresenter, f.Owner);
+        var editor = (await reopened.PrepareAsync())!;
+        var live = new Sr5CareerQualityLiveCheckpointAuthority(f.Owner, editor, () => reopenedPresenter.Binding);
+        var store = new Sr5CareerQualityCheckpointStore(f.Backend, live, new Sr5CareerMutationOwnerStore(f.OwnerBackend));
+        Require(store.TryRead(out var restored, out blocker), blocker);
+        Require(live.OwnsCurrentRunner(restored), "Corrected target revision must admit read-only reconciliation.");
+        var corrected = await reopened.ResolveCorrectionAsync(restored);
+        Require(corrected is not null, "Actual retained correction must resolve after restart.");
+        Require(store.TryDeleteCorrected(Sr5CareerQualityCheckpointCas.From(restored),
+            corrected!.Receipt, corrected.Correction, out blocker), blocker);
+        Require(f.Backend.Payload.Length == 0 && f.Workspace.CorrectionCount == 1 && f.Workspace.CommitCount == 1,
+            "Read-only recovery retires only the verified journal without replay.");
+        Require(retained == System.Text.Json.JsonSerializer.Serialize(f.Workspace.Snapshot), "Recovery must leave saved state unchanged.");
     }
 
     private static async Task RegisteredTypedPersistenceSeamFailsClosedOnAuthorityDriftAsync()
@@ -466,7 +542,7 @@ internal static class Program
 
     private sealed class OwnerAuthority : ISr5CareerCheckpointOwnerAuthority
     {
-        public Guid CurrentOwnerId => OwnerId;
+        public Guid CurrentOwnerId { get; set; } = OwnerId;
     }
 
     private sealed class PlainClient : IChummerClient
@@ -580,6 +656,7 @@ internal static class Program
 
         public bool ThrowBeforeCommit { get; set; }
         public bool ThrowAfterCommit { get; set; }
+        public Action? AfterCorrection { get; set; }
         public Sr5CareerRunnerBinding? OverrideBinding { get; set; }
 
         public Sr5CareerRunnerBinding Binding => OverrideBinding ?? new(
@@ -593,6 +670,9 @@ internal static class Program
 
         public async Task<CareerQualityEditorState?> LoadAsync(CancellationToken cancellationToken)
             => await _interaction.ProjectAsync(WorkspaceId, cancellationToken);
+
+        public Task<CareerQualityAuthoritySnapshot?> ReadRecoverySnapshotAsync(CancellationToken cancellationToken)
+            => _workspace.ReadAsync(WorkspaceId, cancellationToken);
 
         public Task<CareerQualityReview> ReviewAsync(
             CareerQualityDraft draft,
@@ -622,10 +702,14 @@ internal static class Program
             return confirmation;
         }
 
-        public Task<CareerQualityCorrectionConfirmation> CorrectAndRefreshAsync(
+        public async Task<CareerQualityCorrectionConfirmation> CorrectAndRefreshAsync(
             CareerQualityCorrectionRequest request,
             CancellationToken cancellationToken)
-            => _interaction.CorrectAsync(request, cancellationToken);
+        {
+            var result = await _interaction.CorrectAsync(request, cancellationToken);
+            AfterCorrection?.Invoke();
+            return result;
+        }
     }
 
     private sealed class FakeAtomicWorkspace : ICareerQualityAtomicWorkspace
@@ -816,12 +900,12 @@ internal static class Program
                     DeltaDigest: new string('f', 64)),
                 MatchingInstances: [],
                 Binding: new CharacterCareerQualityExecutionBinding(
-                    OwnerId.ToString("D"),
+                    CoreOwner,
                     WorkspaceId.Value,
                     WorkspaceRevision: 41,
                     SavedRevision: 41,
-                    Sr5CareerQualityRuntimeAuthority.CurrentRuntimeDigest,
-                    Sr5CareerQualityRuntimeAuthority.CurrentContentDigest),
+                    CoreRuntime,
+                    CoreContent),
                 RawSourceState: "source-state",
                 RawRuleState: "rule-state");
 

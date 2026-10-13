@@ -335,7 +335,7 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
             "compileRunner": "serialized-package-plane-build",
             "disableBuildServers": True,
             "maxCpuCount": 1,
-            "minimumExpectedTests": 816,
+            "minimumExpectedTests": 834,
             "project": project,
             "runner": "direct-exact-assembly",
             "sdkVersion": receipt["sdkVersion"],
@@ -748,7 +748,7 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
         original = copy.deepcopy(receipt)
         self.assertEqual(receipt, self.validate_receipt_copy(receipt))
         self.assertEqual(original, receipt)
-        self.assertEqual(816, receipt["testExecutions"][0]["minimumExpectedTests"])
+        self.assertEqual(834, receipt["testExecutions"][0]["minimumExpectedTests"])
         self.assertEqual([19, 26, 74, 27, 80, 5, 23, 6, 1, 60],
                          [row["minimumExpectedTests"] for row in self.owner_execution_rows(receipt)])
         self.assertFalse(Path(receipt["testExecutions"][0]["coreProjectionContent"]["sourceRoot"]).exists())
@@ -762,6 +762,16 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
         # regressions. Old success, one new case, or an invented higher floor
         # cannot stand in for that recorded complete invocation.
         for floor in (814, 815, 817):
+            receipt = self.current_main_receipt_fixture()
+            receipt["testExecutions"][0]["minimumExpectedTests"] = floor
+            with self.subTest(floor=floor), self.assertRaises(ValueError):
+                self.validate_receipt_copy(receipt)
+
+    def test_career_quality_intake_rejects_previous_partial_and_invented_floors(self) -> None:
+        # The exact producer includes eight Career quality cases and ten
+        # content-root registration cases; older or invented invocations do
+        # not describe that producer, even if their observed totals are green.
+        for floor in (816, 833, 835):
             receipt = self.current_main_receipt_fixture()
             receipt["testExecutions"][0]["minimumExpectedTests"] = floor
             with self.subTest(floor=floor), self.assertRaises(ValueError):

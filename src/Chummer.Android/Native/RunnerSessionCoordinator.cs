@@ -366,7 +366,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     private readonly ICharacterCareerSkillGroupAdvanceService? _careerSkillGroupService;
     private readonly ICharacterAfterRunSettlementService? _afterRunSettlementService;
     private readonly IAndroidAfterRunProposalCatalog? _afterRunProposalCatalog;
-    private readonly CareerQualityInteractionPresenter? _careerQualityPresenter;
+    private readonly ICareerQualityAtomicWorkspace? _careerQualityWorkspace;
     private readonly IShellPresenter _shellPresenter;
     private readonly IShellSurfaceResolver _surfaceResolver;
     private readonly ICommandAvailabilityEvaluator _availability;
@@ -507,9 +507,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         _careerSkillGroupService = careerSkillGroupService;
         _afterRunSettlementService = afterRunSettlementService;
         _afterRunProposalCatalog = afterRunProposalCatalog;
-        _careerQualityPresenter = careerQualityWorkspace is null
-            ? null
-            : new CareerQualityInteractionPresenter(careerQualityWorkspace);
+        _careerQualityWorkspace = careerQualityWorkspace;
         _shellPresenter = shellPresenter;
         _surfaceResolver = surfaceResolver;
         _availability = availability;
@@ -5826,23 +5824,46 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         return persisted;
     }
 
-    public async Task<CareerQualityEditorState?> PrepareCareerQualityAsync(
-        CancellationToken cancellationToken = default)
+    internal bool IsCareerQualityOwnerCurrent(OwnerContextStamp? expectedOwner, CharacterWorkspaceId workspaceId)
     {
-        if (_careerQualityPresenter is null || State.WorkspaceId is not { } workspaceId)
-        {
-            return null;
-        }
-        return await _careerQualityPresenter.ProjectAsync(workspaceId, cancellationToken)
-            .ConfigureAwait(false);
+        // Same synchronous owner/session admission as the journal boundary.
+        // Dispose immediately: no UI lease crosses an await or Core's own lease.
+        if (!TryAcquireDamageJournalOwner(expectedOwner, workspaceId, out var lease)) return false;
+        using (lease) return true;
+    }
+
+    private CareerQualityInteractionPresenter? QualityPresenterForOwner(OwnerContextStamp? expectedOwner)
+        => expectedOwner is { IsValid: true } owner && State.WorkspaceId is { } workspaceId
+            && IsCareerQualityOwnerCurrent(owner, workspaceId)
+            && _careerQualityWorkspace is IOwnerBoundCareerQualityAtomicWorkspace bound
+                ? new CareerQualityInteractionPresenter(bound.ForOwner(owner)) : null;
+
+    public async Task<CareerQualityEditorState?> PrepareCareerQualityAsync(
+        CancellationToken cancellationToken = default, OwnerContextStamp? expectedOwner = null)
+    {
+        var quality = QualityPresenterForOwner(expectedOwner);
+        if (quality is null || State.WorkspaceId is not { } workspaceId) return null;
+        var editor = await quality.ProjectAsync(workspaceId, cancellationToken).ConfigureAwait(false);
+        return IsCareerQualityOwnerCurrent(expectedOwner, workspaceId) ? editor : null;
+    }
+
+    internal async Task<CareerQualityAuthoritySnapshot?> ReadCareerQualityRecoverySnapshotAsync(
+        CancellationToken cancellationToken, OwnerContextStamp? expectedOwner)
+    {
+        if (expectedOwner is not { IsValid: true } owner || State.WorkspaceId is not { } workspaceId
+            || !IsCareerQualityOwnerCurrent(owner, workspaceId)
+            || _careerQualityWorkspace is not IOwnerBoundCareerQualityAtomicWorkspace bound) return null;
+        var snapshot = await bound.ForOwner(owner).ReadAsync(workspaceId, cancellationToken).ConfigureAwait(false);
+        return IsCareerQualityOwnerCurrent(owner, workspaceId) ? snapshot : null;
     }
 
     public async Task<CareerQualityReview> ReviewCareerQualityAsync(
         CareerQualityDraft draft,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, OwnerContextStamp? expectedOwner = null)
     {
         ArgumentNullException.ThrowIfNull(draft);
-        if (_careerQualityPresenter is null
+        var quality = QualityPresenterForOwner(expectedOwner);
+        if (quality is null
             || State.WorkspaceId != draft.WorkspaceId
             || State.ContentRevision != draft.ExpectedWorkspaceRevision
             || State.SavedRevision != draft.ExpectedSavedRevision
@@ -5852,7 +5873,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             throw new InvalidOperationException(
                 "Exact atomic SR5 quality authority is unavailable or the runner revision changed.");
         }
-        return await _careerQualityPresenter.ReviewAsync(draft, cancellationToken)
+        return await quality.ReviewAsync(draft, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -5860,11 +5881,14 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         CareerQualityReview review,
         Guid transactionId,
         DateTime expenseDateLocal,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, OwnerContextStamp? expectedOwner = null)
     {
         ArgumentNullException.ThrowIfNull(review);
         CareerQualityDraft draft = review.Draft;
-        if (_careerQualityPresenter is null
+        var quality = QualityPresenterForOwner(expectedOwner);
+        if (quality is null
+            || expectedOwner is not { } owner
+            || _presenter is not IOwnerBoundWorkspaceRefreshPresenter refresh
             || State.WorkspaceId != draft.WorkspaceId
             || State.ContentRevision != draft.ExpectedWorkspaceRevision
             || State.SavedRevision != draft.ExpectedSavedRevision
@@ -5875,16 +5899,16 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 "The atomic quality transaction no longer owns this clean saved revision.");
         }
 
-        CareerQualityConfirmation confirmation = await _careerQualityPresenter.ConfirmAsync(
+        CareerQualityConfirmation confirmation = await quality.ConfirmAsync(
                 review,
                 confirmed: true,
                 transactionId,
                 expenseDateLocal,
                 cancellationToken)
             .ConfigureAwait(false);
-        await _presenter.LoadAsync(draft.WorkspaceId, cancellationToken)
+        await refresh.LoadAsync(owner, draft.WorkspaceId, cancellationToken)
             .ConfigureAwait(false);
-        bool exact = State.Error is null
+        bool exact = IsCareerQualityOwnerCurrent(owner, draft.WorkspaceId) && State.Error is null
             && State.WorkspaceId == draft.WorkspaceId
             && State.ContentRevision == confirmation.PersistedState.WorkspaceRevision
             && State.SavedRevision == confirmation.PersistedState.SavedRevision
@@ -5900,10 +5924,13 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
 
     public async Task<CareerQualityCorrectionConfirmation> CorrectCareerQualityAsync(
         CareerQualityCorrectionRequest request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, OwnerContextStamp? expectedOwner = null)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (_careerQualityPresenter is null
+        var quality = QualityPresenterForOwner(expectedOwner);
+        if (quality is null
+            || expectedOwner is not { } owner
+            || _presenter is not IOwnerBoundWorkspaceRefreshPresenter refresh
             || State.WorkspaceId != request.WorkspaceId
             || State.ContentRevision != request.ExpectedWorkspaceRevision
             || State.SavedRevision != request.ExpectedSavedRevision
@@ -5915,11 +5942,11 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         }
 
         CareerQualityCorrectionConfirmation confirmation =
-            await _careerQualityPresenter.CorrectAsync(request, cancellationToken)
+            await quality.CorrectAsync(request, cancellationToken)
                 .ConfigureAwait(false);
-        await _presenter.LoadAsync(request.WorkspaceId, cancellationToken)
+        await refresh.LoadAsync(owner, request.WorkspaceId, cancellationToken)
             .ConfigureAwait(false);
-        bool exact = State.Error is null
+        bool exact = IsCareerQualityOwnerCurrent(owner, request.WorkspaceId) && State.Error is null
             && State.WorkspaceId == request.WorkspaceId
             && State.ContentRevision == confirmation.PersistedState.WorkspaceRevision
             && State.SavedRevision == confirmation.PersistedState.SavedRevision

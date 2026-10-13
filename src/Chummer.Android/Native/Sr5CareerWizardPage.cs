@@ -617,9 +617,8 @@ public sealed class Sr5CareerActionFamilyPage : NativePageBase
 
     private async Task OpenQualityWizardAsync()
     {
-        Sr5CareerQualityCoordinator authority = new(
-            new RunnerSessionSr5CareerQualityPresenter(Coordinator),
-            new PreferencesSr5CareerCheckpointOwnerAuthority());
+        RunnerSessionSr5CareerQualityPresenter quality = new(Coordinator);
+        Sr5CareerQualityCoordinator authority = new(quality, quality);
         CareerQualityEditorState? editor = await authority.PrepareAsync();
         if (editor is not null)
         {

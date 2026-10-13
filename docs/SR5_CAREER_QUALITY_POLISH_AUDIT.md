@@ -1,7 +1,34 @@
 # SR5 Career Quality hardcoded-vs-generic audit
 
-Status: complete for the quality slice based on Android `1d2bd7c`, Core
-`b7a5f29f5`, and Presentation `37b4f048`.
+The original structural audit below used Android `1d2bd7c`, Core `b7a5f29f5`
+and Presentation `37b4f048`. It did not establish a working local runtime
+capability or complete Career coverage.
+
+## Local runtime integration — 13 October 2026
+
+The native route now consumes the actual owner-bound Core quality capability
+through the local Presentation client. It retains the original full owner stamp,
+selected-profile rule sources and saved revision. Android's build identity is
+separate from Core's exact loaded-runtime identity; a device preference GUID is
+not a Core owner identity or an authorization token.
+
+Core writes quality, effects, Karma, expense and receipt atomically. Explicit
+correction restores the original retained graph. Recovery reads actual durable
+state: an interrupted response never triggers an automatic mutation, including
+when correction succeeded before the phone journal could be retired.
+
+Actual Core/MAUI handler tests pass for local and linked owners: selection,
+review, one purchase (100→84 Karma), complete saved effect/receipt, reconstructed
+readback, explicit managed correction (84→100), interrupted-correction readback,
+and owner A→B→A rejection. Eleven phone authority behavior groups also pass.
+These are managed tests, not an Android device process-death or Play claim.
+
+Ordinary screens show localized quality names and costs instead of machine
+identities. Only implemented effect families and exact eligibility are admitted.
+Unsupported prompted/anatomy/variant effects and discretionary free-cost choices
+remain unavailable. Owner-managed local editing is not remote GM or campaign
+approval. Neither this integration nor the historical audit completes all Career
+actions or the entire quality catalogue.
 
 ## Kept reusable
 

@@ -57,8 +57,8 @@ class CareerQualityWizardSourceContractTests(unittest.TestCase):
         self.assertIsNotNone(content)
         self.assertIsNotNone(runtime)
         self.assertIsNotNone(contract)
-        self.assertEqual(core.group(1), "788c4a4908cdc94cf06167d536d951ea6fe08c96")
-        self.assertEqual(presentation.group(1), "277243c0214da495d47006e4d09ad2db3589eef6")
+        self.assertEqual(core.group(1), "1ee87c8458c3cd60cfd4f3c463cefd3c8499d03e")
+        self.assertEqual(presentation.group(1), "0b19d346e98cbfc906eb0fd0648987c7adb8986f")
         expected = hashlib.sha256(
             f"{contract.group(1)}\n{core.group(1)}\n{presentation.group(1)}\n{content.group(1)}\n".encode()
         ).hexdigest()
@@ -133,6 +133,17 @@ class CareerQualityWizardSourceContractTests(unittest.TestCase):
         self.assertNotIn("ReplaceWorkspaceDocumentAsync", combined)
         self.assertNotIn("ApplyCollectionMutation", combined)
 
+    def test_interrupted_correction_is_read_only_and_keeps_exact_owner_custody(self) -> None:
+        recovery = COORDINATOR.split("ResolveCorrectionAsync(", 1)[1].split(
+            "public async Task<CharacterCareerQualityCorrectionPlan> CorrectAsync(", 1)[0]
+        for token in ("ReadRecoverySnapshotAsync", "ReceiptMatchesDraft", "ValidateAtomicCorrection",
+                      "ownerAuthority.CurrentOwnerId != checkpoint.Draft.OwnerId", "before != after"):
+            self.assertIn(token, recovery)
+        self.assertNotIn("ConfirmAndRefreshAsync", recovery)
+        self.assertNotIn("CorrectAndRefreshAsync", recovery)
+        self.assertIn("await _authority.ResolveCorrectionAsync(_checkpoint)", PAGE)
+        self.assertIn("corrected.Receipt, corrected.Correction", PAGE)
+
     def test_production_registration_uses_only_the_typed_client_capability(self) -> None:
         self.assertIn(
             "AddSingleton<ICareerQualityAtomicWorkspace,\n"
@@ -188,20 +199,30 @@ class CareerQualityWizardSourceContractTests(unittest.TestCase):
         self.assertIn("OpenQualityWizardAsync", CAREER)
         self.assertIn("OpenSr5CareerQualityWizardAsync", BUILD)
 
-    def test_review_renders_prerequisites_effect_families_costs_and_all_digests(self) -> None:
-        for token in (
-            "quote.Prerequisites",
-            "Applied effect families",
-            "Unsupported effect families",
-            "Rule cost / delta",
-            "Logical revision",
-            "Source revision",
-            "Rule digest",
-            "Content digest",
-            "Runtime digest",
-            "GM policy",
-        ):
-            self.assertIn(token, PAGE)
+    def test_review_keeps_user_costs_but_not_machine_identifiers_visible(self) -> None:
+        self.assertIn('Text("Review quality")', PAGE)
+        self.assertIn('Text("Back to Career")', PAGE)
+        self.assertIn('QualityCatalogStrings.Name', PAGE)
+        self.assertIn('quote.RuleKarmaCost', PAGE)
+        self.assertIn('quote.AvailableKarma', PAGE)
+        for token in ('Text("Logical revision")', 'Text("Source revision")',
+                      'Text("Rule digest")', 'Text("Content digest")', 'Text("Runtime digest")',
+                      'Text("GM policy")', 'Text("InternalId")', 'Text("SourceId")'):
+            self.assertNotIn(token, PAGE)
+        # Removing diagnostic presentation never removes the mutation checks.
+        self.assertIn('quote.Authority.GmAllows', MODEL)
+        self.assertIn('quote.Authority.Effects.IsExact', MODEL)
+
+    def test_live_owner_and_core_authority_are_not_device_preference_or_app_hash_aliases(self) -> None:
+        self.assertNotIn('Guid.TryParseExact(draft.ExpectedOwnerId', MODEL)
+        self.assertNotIn('PreferencesSr5CareerCheckpointOwnerAuthority', PAGE)
+        self.assertIn('OwnerContextStamp', COORDINATOR)
+        self.assertIn('IsCareerQualityOwnerCurrent', COORDINATOR)
+        self.assertIn('bound.ForOwner(owner)', RUNNER)
+        self.assertIn('refresh.LoadAsync(owner,', RUNNER)
+        self.assertIn('owners.ForOwner(expectedOwner)', ATOMIC_WORKSPACE)
+        self.assertIn('quote.Binding.RuntimeFingerprint, StringComparison.Ordinal)', COORDINATOR)
+        self.assertNotIn('receipt.RuntimeFingerprint, draft.RuntimeAuthority.RuntimeDigest', COORDINATOR)
 
     def test_correction_is_compensating_and_receipt_bound(self) -> None:
         for token in (
@@ -223,9 +244,9 @@ class CareerQualityWizardSourceContractTests(unittest.TestCase):
             .read_text(encoding="utf-8")
         )
         self.assertEqual(
-            manifest["coreRevision"], "8069140ade4c64ca1ff803144ccdff1c66999988"
+            manifest["coreRevision"], "bf757a688fa2070465d6b0122e7e715d6d563baa"
         )
-        self.assertEqual(manifest["bundleDigest"], "c557735e1ddf93d820f66fad2adfe63bc0a1a36af66ad0042be436234de3f509")
+        self.assertEqual(manifest["bundleDigest"], "3e1139066b281b9ecfbc8385e627bedaff7f87acbf12303c41f293b3a2363a8d")
         self.assertEqual(len(manifest["files"]), 331)
         runtime_core = re.search(r'CurrentCoreRevision\s*=\s*\n?\s*"([0-9a-f]{40})"', MODEL)
         self.assertIsNotNone(runtime_core)

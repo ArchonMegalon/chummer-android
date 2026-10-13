@@ -22,13 +22,13 @@ public sealed record Sr5CareerQualityRuntimeAuthority(
     public const string CurrentContractName =
         "chummer.android.sr5-career-quality-runtime/v1";
     public const string CurrentCoreRevision =
-        "788c4a4908cdc94cf06167d536d951ea6fe08c96";
+        "1ee87c8458c3cd60cfd4f3c463cefd3c8499d03e";
     public const string CurrentPresentationRevision =
-        "277243c0214da495d47006e4d09ad2db3589eef6";
+        "0b19d346e98cbfc906eb0fd0648987c7adb8986f";
     public const string CurrentContentDigest =
-        "c557735e1ddf93d820f66fad2adfe63bc0a1a36af66ad0042be436234de3f509";
+        "3e1139066b281b9ecfbc8385e627bedaff7f87acbf12303c41f293b3a2363a8d";
     public const string CurrentRuntimeDigest =
-        "75f29297ade67a1d4f059dbe29e2457391d21ea8944f7d1f1c738db9c1a45177";
+        "53a8bdb555099f78fe5eb6df8991a08b00424e7a14bb89aa6ea8d7077cbb0bee";
 
     public static Sr5CareerQualityRuntimeAuthority Embedded { get; } = new(
         CurrentContractName,
@@ -105,8 +105,7 @@ public sealed record Sr5CareerQualityDraft(
         if (OwnerId == Guid.Empty
             || draft is null
             || quote is null
-            || !Guid.TryParseExact(draft.ExpectedOwnerId, "D", out Guid authorityOwner)
-            || authorityOwner != OwnerId
+            || CheckpointOwnerId(draft.ExpectedOwnerId) != OwnerId
             || string.IsNullOrWhiteSpace(draft.WorkspaceId.Value)
             || draft.ExpectedWorkspaceRevision <= 0
             || draft.ExpectedSavedRevision != draft.ExpectedWorkspaceRevision
@@ -124,8 +123,8 @@ public sealed record Sr5CareerQualityDraft(
             || !string.Equals(quote.Binding.WorkspaceId, draft.WorkspaceId.Value, StringComparison.Ordinal)
             || RuntimeAuthority is null
             || !RuntimeAuthority.IsCurrent()
-            || !string.Equals(quote.Binding.RuntimeFingerprint, RuntimeAuthority.RuntimeDigest, StringComparison.Ordinal)
-            || !string.Equals(quote.Binding.ContentDigest, RuntimeAuthority.ContentDigest, StringComparison.Ordinal)
+            || !IsAuthorityDigest(quote.Binding.RuntimeFingerprint)
+            || !IsAuthorityDigest(quote.Binding.ContentDigest)
             || TransactionId == Guid.Empty
             || DateTime.SpecifyKind(ExpenseDateLocal, DateTimeKind.Unspecified)
                 < CharacterCareerQualityRules.MinimumExpenseDate
@@ -164,6 +163,19 @@ public sealed record Sr5CareerQualityDraft(
             && string.Equals(action.CostQuote.LogicalRevision, quote.LogicalRevision, StringComparison.Ordinal)
             && string.IsNullOrEmpty(action.CostQuote.Blocker);
     }
+
+    // Stable journal namespace only, never an authorization token. Core retains
+    // the exact owner scope string; the live presenter additionally checks the
+    // complete issuing stamp, including A -> B -> A transitions.
+    internal static Guid CheckpointOwnerId(string? coreOwner)
+        => string.IsNullOrWhiteSpace(coreOwner) || coreOwner != coreOwner.Trim().ToLowerInvariant()
+            ? Guid.Empty
+            : new Guid(SHA256.HashData(Encoding.UTF8.GetBytes(
+                "chummer.android.career-quality-owner/v1\0" + coreOwner)).AsSpan(0, 16));
+
+    internal static bool IsAuthorityDigest(string? value)
+        => value is { Length: 64 } && value.All(static character =>
+            character is >= '0' and <= '9' or >= 'a' and <= 'f');
 
     public static bool TryCreate(
         CareerQualityEditorState? editor,
@@ -204,7 +216,8 @@ public sealed record Sr5CareerQualityDraft(
             .Take(2)
             .ToArray();
         if (matches.Length != 1
-            || !CharacterCareerQualityRules.IsCoherent(matches[0]))
+            || !Sr5CareerQualityCheckpoint.QuotesMatch(matches[0], review.Quote)
+            || !EditorMatchesQuote(editor, review.Quote))
         {
             blocker = "The selected quality is foreign, ambiguous, stale, or incoherent.";
             return false;
@@ -228,6 +241,14 @@ public sealed record Sr5CareerQualityDraft(
         draft = candidate;
         return true;
     }
+
+    internal static bool EditorMatchesQuote(CareerQualityEditorState editor, CharacterCareerQualityQuote quote)
+        => quote.Binding.OwnerId == editor.OwnerId
+            && quote.Binding.WorkspaceId == editor.WorkspaceId.Value
+            && quote.Binding.WorkspaceRevision == editor.WorkspaceRevision
+            && quote.Binding.SavedRevision == editor.SavedRevision
+            && quote.Binding.RuntimeFingerprint == editor.RuntimeFingerprint
+            && quote.Binding.ContentDigest == editor.ContentDigest;
 
     public static string BlockerText(CharacterCareerQualityBlocker blocker)
         => blocker switch
@@ -314,6 +335,7 @@ public sealed record Sr5CareerQualityCheckpoint(
             || editor.WorkspaceId != Draft.WorkspaceId
             || editor.WorkspaceRevision != Draft.ExpectedWorkspaceRevision
             || editor.SavedRevision != Draft.ExpectedSavedRevision
+            || !Sr5CareerQualityDraft.EditorMatchesQuote(editor, Draft.Review.Quote)
             || editor.OmittedCandidateCount != 0
             || editor.OmittedReceiptCount != 0)
         {
