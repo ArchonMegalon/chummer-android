@@ -191,9 +191,11 @@ internal static partial class AfterRunAuthorityHarness
                 Console.WriteLine("Exotic synthetic smoke fixture: " + id.Value);
             }
             await Click("life-open-review");
+            var completion = Session();
             Element<Switch>("life-completion-confirmed").IsToggled = true;
             await Click("life-confirm-completion");
-            Require(Session().Receipt is { CharacterCreated: true } && probe!.ConfirmCalls == 1,
+            Require(completion.Receipt is { CharacterCreated: true } && probe!.ConfirmCalls == 1
+                && navigation.Navigation.NavigationStack.Count == 1,
                 "Explicit final confirmation failed or dispatched more than once.");
             var saved = new FileWorkspaceStore(runtime.StateDirectory).Get(id).Value!;
             var xml = System.Xml.Linq.XDocument.Parse(saved.Document.Content);

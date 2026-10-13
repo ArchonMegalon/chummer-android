@@ -509,6 +509,12 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
         confirmButton.Clicked += async (_, _) => await RunAsync(async () =>
         {
             if (saving || !confirmed || !confirmButton.IsEnabled || !Current(render, currentAppearance) || !_session.CanConfirm) return;
+            var navigation = Navigation;
+            var originalStack = navigation.NavigationStack.ToArray();
+            bool OwnsNavigation() => _render == render && IsCurrentAppearanceGeneration(currentAppearance)
+                && ReferenceEquals(originalStack.LastOrDefault(), this)
+                && navigation.NavigationStack.SequenceEqual(originalStack) && navigation.ModalStack.Count == 0;
+            if (!OwnsNavigation()) return;
             // Update the actual tapped controls before yielding to the Core write.
             // RunAsync already prevents overlapping actions, but that alone does
             // not show Android users that a lengthy save is in progress.
@@ -523,8 +529,21 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
             try
             {
                 await Task.Yield();
-                if (Current(render, currentAppearance))
+                if (Current(render, currentAppearance) && OwnsNavigation())
                     await _session.ConfirmAsync(default, () => IsCurrentAppearanceGeneration(currentAppearance));
+                // ConfirmAsync retains the once-applied receipt before this
+                // optional navigation. Only the exact restored Career may retire
+                // the wizard; a late result must not redirect a different screen.
+                if (OwnsNavigation() && _session.FrameCurrent && _session.Blockers.Count == 0
+                    && _session.Receipt is { } receipt && Coordinator.IsLifeModuleCompletionReceiptCurrent(receipt))
+                {
+                    try { await navigation.PopToRootAsync(animated: false); }
+                    catch (Exception error) when (error is not OutOfMemoryException)
+                    {
+                        // Keep the known receipt and its read-only Open Career
+                        // fallback. A navigation failure is never a write retry.
+                    }
+                }
             }
             finally
             {
