@@ -163,12 +163,20 @@ internal static partial class AfterRunAuthorityHarness
             {
                 int reads = availability!.Reads;
                 availability.FailIfRead = true;
+                bool loadingToolbarDisabled = false;
                 try
                 {
-                    await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"))
-                        .WaitAsync(TimeSpan.FromSeconds(30));
+                    Task appearance = ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+                    loadingToolbarDisabled = page.ToolbarItems.All(item => !item.IsEnabled);
+                    // Join the real appearance before asserting: a failure must
+                    // not dispose the UI pump under its pending callbacks.
+                    await appearance.WaitAsync(TimeSpan.FromSeconds(30));
                 }
                 finally { availability.FailIfRead = false; }
+                Require(loadingToolbarDisabled,
+                    "Runner loading kept a stale toolbar action enabled: " + scenario);
+                Require(page.ToolbarItems.Single(item => item.AutomationId == "creation-rules-summary").IsEnabled,
+                    "The current creation rules menu did not recover after loading: " + scenario);
                 Require(availability.Reads == reads,
                     "Story readiness unnecessarily queried next-module availability: " + scenario);
                 var elements = IssuedElements(page).ToArray();
