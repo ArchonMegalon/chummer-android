@@ -313,22 +313,43 @@ public sealed class CreationContactEditPage : NativePageBase
         await RunAsync(async () =>
         {
             long appearance = CaptureAppearanceGeneration();
-            var result = await Coordinator.PrepareCreationContactForDisplayAsync(input, Coordinator.State, default);
-            if (!IsCurrentAppearanceGeneration(appearance)) return;
-            if (!string.Equals(result.Outcome, CharacterCreationContactOutcomes.Available, StringComparison.Ordinal)
-                || result.State is not { } preparedState
-                || result.PreparedPreview is not { } prepared
-                || result.Blockers.Count > 0
-                || !CreationContactsPhoneAuthority.PreparedMatches(prepared, preparedState, Coordinator.State))
+            if (!ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), this)) return;
+            Button? button = _previewButton;
+            string? label = button?.Text;
+            bool enabled = button?.IsEnabled == true;
+            _body.IsEnabled = false;
+            if (button is not null)
             {
-                _prepareBlockers = result.Blockers.Count > 0
-                    ? result.Blockers
-                    : [CharacterCreationContactsBlockers.AuthorityUnavailable];
-                Refresh();
-                return;
+                button.IsEnabled = false;
+                button.Text = Copy("Checking", "Checking contact…");
             }
+            try
+            {
+                var result = await Coordinator.PrepareCreationContactForDisplayAsync(input, Coordinator.State, default);
+                if (!IsCurrentAppearanceGeneration(appearance)) return;
+                if (!string.Equals(result.Outcome, CharacterCreationContactOutcomes.Available, StringComparison.Ordinal)
+                    || result.State is not { } preparedState
+                    || result.PreparedPreview is not { } prepared
+                    || result.Blockers.Count > 0
+                    || !CreationContactsPhoneAuthority.PreparedMatches(prepared, preparedState, Coordinator.State))
+                {
+                    _prepareBlockers = result.Blockers.Count > 0
+                        ? result.Blockers
+                        : [CharacterCreationContactsBlockers.AuthorityUnavailable];
+                    return;
+                }
 
-            await Navigation.PushAsync(new CreationContactPreviewPage(Coordinator, prepared));
+                await Navigation.PushAsync(new CreationContactPreviewPage(Coordinator, prepared));
+            }
+            finally
+            {
+                _body.IsEnabled = true;
+                if (button is not null)
+                {
+                    button.Text = label;
+                    button.IsEnabled = enabled;
+                }
+            }
         });
     }
 

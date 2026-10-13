@@ -3460,6 +3460,7 @@
   <data name="Contacts.NeedsReview" xml:space="preserve"><value>Contact points are not ready. Review and save the earlier creation steps before adding contacts.</value></data>
   <data name="Contacts.Edit" xml:space="preserve"><value>Edit contact</value></data>
   <data name="Contacts.Review" xml:space="preserve"><value>Review changes</value></data>
+  <data name="Contacts.Checking" xml:space="preserve"><value>Checking contact…</value></data>
   <data name="Contacts.Changes" xml:space="preserve"><value>Contact details</value></data>
   <data name="Contacts.DraftHelp" xml:space="preserve"><value>Nothing is saved until you review and confirm the change.</value></data>
   <data name="Contacts.ConfirmHelp" xml:space="preserve"><value>I have reviewed these details and costs and want to save this change.</value></data>
