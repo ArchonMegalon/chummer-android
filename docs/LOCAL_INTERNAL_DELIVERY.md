@@ -132,7 +132,26 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 218 is the latest [observed Internal availability](../play/evidence/preview218-internal-observation.json),
+Preview 219 is the latest [observed Internal availability](../play/evidence/preview219-internal-observation.json),
+released on 13 October at 16:24 Europe/Vienna. Life Modules completion now leads
+forward through the next valid section to Career; invalid input stays editable
+with guidance. Unchanged reviewed steps avoid repeated calculation; final Career
+confirmation remains explicit. Android #750 merged normally with the tested
+tree; Core/UI inputs are unchanged. Four actual-Core/MAUI wizard cases and the
+related affected commands pass, with an earlier shell-wrapper failure retained
+rather than called green. Native API36 x64 Release/Internal testing confirms
+all completion-section transitions, missing-native-language correction, exactly
+one Career commit and verified new-process restoration of the same saved runner.
+All27 workspace files/three drafts are identical across restart; all24 older
+files/two drafts remain unchanged. This is a synthetic completion tail in a
+separate SDK-test package, not a complete balanced character or live book journey.
+Local production ARM64 build, isolated original-key signing and independent
+verification passed; one upload and final confirmation produced actual Internal
+availability. Physical219, slow startup/finalization, reload closure and full
+Creation/Origin remain open. SystemUI/observer failures and the original uncertain
+FirstBook fence remain retained. Version219 is consumed; do not rebuild/re-upload.
+
+Preview 218's [historical Internal availability](../play/evidence/preview218-internal-observation.json) was
 released on 13 October at 14:59 Europe/Vienna. Life Modules contact/skill editors
 now retain rejected input with readable guidance before submit; corrected values
 return automatically to the current list without duplicating contacts. Android
