@@ -166,7 +166,8 @@
   <data name="Career.ChooseFamily" xml:space="preserve"><value>Was möchtest du tun?</value></data>
   <data name="Career.Eyebrow" xml:space="preserve"><value>Shadowrun Fünfte Edition</value></data>
   <data name="Career.FamilyBoundary" xml:space="preserve"><value>Die Auswahl einer Zeile schreibt nur einen Digest-gebundenen Navigations-Checkpoint. Das Ziel muss seine eigene typisierte Instanz erneut laden und prüfen.</value></data>
-  <data name="Career.FamilyStale" xml:space="preserve"><value>Der Runner wurde nach der Projektion dieser Aktionsgruppe geändert. Zurückkehren und die Karriereinstanz neu laden.</value></data>
+  <data name="Career.FamilyStale" xml:space="preserve"><value>Der Runner wurde geändert. Lade die verfügbaren Aktionen neu, um fortzufahren.</value></data>
+  <data name="Career.FamilyChanged" xml:space="preserve"><value>Runner oder Konto haben sich geändert. Öffne die Karriere erneut.</value></data>
   <data name="Career.Heading" xml:space="preserve"><value>Karriere</value></data>
   <data name="Career.LastSelection" xml:space="preserve"><value> · letzte Auswahl</value></data>
   <data name="Career.Loading" xml:space="preserve"><value>Verfügbare Karriereaktionen werden geladen…</value></data>

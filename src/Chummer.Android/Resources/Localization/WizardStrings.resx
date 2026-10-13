@@ -166,7 +166,8 @@
   <data name="Career.ChooseFamily" xml:space="preserve"><value>What would you like to do?</value></data>
   <data name="Career.Eyebrow" xml:space="preserve"><value>Shadowrun Fifth Edition</value></data>
   <data name="Career.FamilyBoundary" xml:space="preserve"><value>Selecting a row writes only a digest-bound navigation checkpoint. The destination must load and validate its own typed authority again.</value></data>
-  <data name="Career.FamilyStale" xml:space="preserve"><value>The runner changed after this action family was projected. Return and reload Career authority.</value></data>
+  <data name="Career.FamilyStale" xml:space="preserve"><value>The runner changed. Refresh the available actions to continue.</value></data>
+  <data name="Career.FamilyChanged" xml:space="preserve"><value>The runner or account changed. Open Career again.</value></data>
   <data name="Career.Heading" xml:space="preserve"><value>Career</value></data>
   <data name="Career.LastSelection" xml:space="preserve"><value> · last selection</value></data>
   <data name="Career.Loading" xml:space="preserve"><value>Loading available Career actions…</value></data>
