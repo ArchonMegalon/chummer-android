@@ -212,8 +212,8 @@ package_args=(
   "-p:RestoreLockedMode=true"
   "-p:RestorePackagesWithLockFile=true"
   "-p:NuGetAudit=false"
-  "-p:ChummerContractsPackageVersion=0.0.0-packageplane.candidate.v20261013.5.sh1ee87c8458c3c"
-  "-p:ChummerCoreRuntimePackageVersion=0.0.0-packageplane.candidate.v20261013.5.sh1ee87c8458c3c"
+  "-p:ChummerContractsPackageVersion=0.0.0-packageplane.candidate.v20261013.6.she836b7e1dc7fd"
+  "-p:ChummerCoreRuntimePackageVersion=0.0.0-packageplane.candidate.v20261013.6.she836b7e1dc7fd"
   "-p:ChummerCampaignContractsPackageVersion=0.1.0-preview"
   "-p:ChummerRunContractsPackageVersion=0.1.1-packageplane.20260927.1"
   "-p:ChummerHubRegistryContractsPackageVersion=0.1.1-packageplane.20260927.1"
@@ -289,9 +289,9 @@ jq -n \
   --arg androidTree "$android_tree" \
   --arg presentationCommit "$presentation_commit" \
   --arg presentationTree "$presentation_tree" \
-  --arg authorityReceiptSha256 "d7b034c5da28abf19be886d29770878cc6d7bbc9acfb5b19c3ddee0d456c749b" \
-  --arg authorityCacheManifestSha256 "dc9dfe7567bba32c2de12a26a2a7df5851190e6a7e334e6dff081ca40fde7604" \
-  --arg packageAuthoritySha256 "3e3eed52614efbb8cb68b71f295ccd1d20b4dd835b0ef00d281a4f046467f8f1" \
+  --arg authorityReceiptSha256 "f86598f7682086d17b55bc4adb6b6306592aea53695fb1f61074429de205b64a" \
+  --arg authorityCacheManifestSha256 "972ef00bfd7179203bd80213e28593af82ec02a380aa1a020e8d6ef64783ee8c" \
+  --arg packageAuthoritySha256 "ac46c633d75dbbcaaaa6c9124d5d4d5912aca9427790c92ce42c0a294915a2b0" \
   --arg authorityBindingSha256 "$authority_binding_sha256" \
   --arg journalSha256 "$journal_sha256" \
   --argjson journalSizeBytes "$journal_size" \
