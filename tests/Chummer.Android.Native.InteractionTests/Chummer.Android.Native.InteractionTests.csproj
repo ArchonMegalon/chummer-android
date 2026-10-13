@@ -56,6 +56,7 @@
     <Compile Include="CreationKarmaNativeRuntimeTests.cs" />
     <Compile Include="LifeModuleCompletionNativeTests.cs" />
     <Compile Include="LifeModuleCompletionForwardRuntimeTests.cs" />
+    <Compile Include="LifeModuleInputReturnTests.cs" />
     <Compile Include="LifeModuleDashboardGuidanceTests.cs" />
     <Compile Include="LifeModuleApprenticeNativeTests.cs" />
     <Compile Include="LifeModuleExoticSkillsNativeTests.cs" />

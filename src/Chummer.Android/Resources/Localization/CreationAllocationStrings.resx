@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="LifeCompletion.ContactLimit" xml:space="preserve"><value>Lower this contact's Connection or Loyalty to fit the current contact limits.</value></data>
+  <data name="LifeCompletion.ContactInvalid" xml:space="preserve"><value>Check the contact details and ratings. Group contacts need Loyalty 1.</value></data>
+  <data name="LifeCompletion.KarmaExceeded" xml:space="preserve"><value>Not enough Karma remains. Lower a purchase before continuing.</value></data>
   <data name="SkillsPreview.Saving" xml:space="preserve"><value>Saving…</value></data>
   <data name="SkillsPreview.OpeningQualities" xml:space="preserve"><value>Opening qualities…</value></data>
   <data name="SkillsPreview.ContinueQualities" xml:space="preserve"><value>Continue to qualities</value></data>
