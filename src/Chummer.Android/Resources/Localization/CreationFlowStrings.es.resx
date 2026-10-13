@@ -2148,6 +2148,7 @@
   <data name="Contacts.NeedsReview" xml:space="preserve"><value>Los puntos de contacto aún no están disponibles. Revisa y guarda primero los pasos anteriores de creación.</value></data>
   <data name="Contacts.Edit" xml:space="preserve"><value>Editar contacto</value></data>
   <data name="Contacts.Review" xml:space="preserve"><value>Revisar cambios</value></data>
+  <data name="Contacts.Checking" xml:space="preserve"><value>Comprobando contacto…</value></data>
   <data name="Contacts.Changes" xml:space="preserve"><value>Datos del contacto</value></data>
   <data name="Contacts.DraftHelp" xml:space="preserve"><value>Nada se guarda hasta que revises y confirmes el cambio.</value></data>
   <data name="Contacts.ConfirmHelp" xml:space="preserve"><value>He revisado estos datos y costes y quiero guardar el cambio.</value></data>

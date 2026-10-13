@@ -517,7 +517,9 @@ internal static partial class AfterRunAuthorityHarness
                 System.Globalization.CultureInfo.CurrentUICulture = new(language);
                 var owners = new ControlledLinkedOwner();
                 owners.Set(ContactsOwnerA);
-                await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners, creationContacts: true);
+                ContactsBoundaryProbe? probe = null;
+                await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners, creationContacts: true,
+                    contactsDecorator: service => probe = new(service));
                 await runtime.Coordinator.InitializeAsync();
                 await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
                 var imported = await runtime.Client.ImportAsync(new WorkspaceImportDocument(ContactsCreationXml, "sr5"), default);
@@ -546,7 +548,34 @@ internal static partial class AfterRunAuthorityHarness
                 IssuedElements(edit).OfType<InputView>().Single(x => x.AutomationId == "creation-contact-field-role").Text = "Street doc";
                 var reviewButton = IssuedElements(edit).OfType<Button>().Single(x => x.AutomationId == "creation-contact-preview");
                 Require(reviewButton.IsEnabled, "Edited Contact cannot be reviewed.");
+                string checkingText = language switch
+                {
+                    "de" => "Kontakt wird geprüft…",
+                    "es" => "Comprobando contacto…",
+                    _ => "Checking contact…"
+                };
+                bool previewFeedbackObserved = false;
+                int previewCalls = 0;
+                probe!.ForbiddenContext = ui;
+                probe.BeforePreview = () =>
+                {
+                    previewCalls++;
+                    var observed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    ui.Post(_ =>
+                    {
+                        previewFeedbackObserved = !reviewButton.IsEnabled
+                            && reviewButton.Text == checkingText
+                            && !((ScrollView)edit.Content!).Content.IsEnabled;
+                        // Even an already queued second gesture must not start another read.
+                        ((IButtonController)reviewButton).SendClicked();
+                        observed.SetResult();
+                    }, null);
+                    Require(observed.Task.Wait(TimeSpan.FromSeconds(5)), "Contact preview blocked the UI context.");
+                };
                 await ui.BeginAsyncVoid(() => ((IButtonController)reviewButton).SendClicked());
+                probe.BeforePreview = null;
+                Require(previewFeedbackObserved && previewCalls == 1,
+                    "Contact review lacks immediate localized busy feedback or repeats the pending read.");
                 Require(navigation.Navigation.NavigationStack.Last() is CreationContactPreviewPage,
                     "Actual edit gesture did not open the preview.");
                 var preview = (CreationContactPreviewPage)navigation.Navigation.NavigationStack.Last();
@@ -643,6 +672,7 @@ internal static partial class AfterRunAuthorityHarness
     {
         public readonly List<OwnerContextStamp> Stamps = [];
         public readonly List<OwnerContextStamp> MutationStamps = [];
+        public Action? BeforePreview;
         public Action? BeforeConfirm;
         public Action? AfterConfirm;
         public int ConfirmCalls;
@@ -662,7 +692,7 @@ internal static partial class AfterRunAuthorityHarness
         }
         public CharacterCreationContactResult<CharacterCreationContactPreview> Preview(
             OwnerContextStamp owner, CharacterCreationContactPreviewRequest request)
-        { RequireOffUiContext(); Stamps.Add(owner); return inner.Preview(owner, request); }
+        { RequireOffUiContext(); Stamps.Add(owner); BeforePreview?.Invoke(); return inner.Preview(owner, request); }
         public CharacterCreationContactResult<CharacterCreationContactReceipt> Confirm(
             OwnerContextStamp owner, CharacterCreationContactConfirmRequest request)
         {

@@ -2236,6 +2236,7 @@
   <data name="Contacts.NeedsReview" xml:space="preserve"><value>Die Kontaktpunkte stehen noch nicht fest. Prüfe und speichere zuerst die vorherigen Erschaffungsschritte.</value></data>
   <data name="Contacts.Edit" xml:space="preserve"><value>Kontakt bearbeiten</value></data>
   <data name="Contacts.Review" xml:space="preserve"><value>Änderungen prüfen</value></data>
+  <data name="Contacts.Checking" xml:space="preserve"><value>Kontakt wird geprüft…</value></data>
   <data name="Contacts.Changes" xml:space="preserve"><value>Kontaktdaten</value></data>
   <data name="Contacts.DraftHelp" xml:space="preserve"><value>Erst nach Prüfung und Bestätigung wird die Änderung gespeichert.</value></data>
   <data name="Contacts.ConfirmHelp" xml:space="preserve"><value>Ich habe diese Angaben und Kosten geprüft und möchte die Änderung speichern.</value></data>
