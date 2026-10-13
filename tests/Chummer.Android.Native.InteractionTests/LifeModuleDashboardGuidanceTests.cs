@@ -105,16 +105,17 @@ internal static partial class AfterRunAuthorityHarness
             // its only explanation was below the entire creation dashboard.
             var previousRunner = runtime.Coordinator.State.WorkspaceId;
             await CreateRunner(save: false);
+            await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
             // Reproduce the native ordering: opening Life Modules can precede
             // the user's explicit Save. A save-only change must not strand
             // this untouched first choice after the phone runtime is recreated.
             var opening = await runtime.Coordinator.OpenSr5LifeModuleOriginAsync();
             Require(opening.IsSuccess && opening.State?.Choices.Count > 0
                 && opening.State.Timeline.Count == 0 && opening.StoryCheckpoint?.PendingPreview is null,
-                "SETUP: the unsaved runner needs an undecided opening.");
+                "SETUP: the loaded unsaved runner needs an undecided opening: "
+                    + opening.Outcome + " / " + string.Join(", ", opening.Blockers));
             var openingCheckpoint = opening.StoryCheckpoint
                 ?? throw new InvalidOperationException("SETUP: opening checkpoint was not retained.");
-            await ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
             var dirty = runtime.Coordinator.State;
             Require(dirty.Session.ActiveWorkspace?.IsDirty == true, "SETUP: expected unsaved runner.");
             int target = dirty.OpenWorkspaces.ToList().FindIndex(w => w.Id == previousRunner);
