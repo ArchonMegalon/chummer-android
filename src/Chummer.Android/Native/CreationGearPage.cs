@@ -224,6 +224,8 @@ public sealed class CreationGearPage : NativePageBase
         card.Add(NativeTheme.Body(
             state.PendingDraft is null
                 ? _copy["Gear.NoConfirmedBasket"]
+                : !CreationGearPhoneBasket.HasCurrentResourcesBinding(state.PendingDraft, state.Binding)
+                ? CreationFlowStrings.Get("Gear.BudgetChanged", "Your budget changed. Review your retained equipment to continue.")
                 : CreationFlowStrings.Get("Gear.SavedBasket", "Your equipment choices are saved."),
             NativeTheme.Muted));
         _technicalDetails.Add(ExactValue("creation-gear-saved-basket-cost", state.Budget.BasketCost));
@@ -269,7 +271,8 @@ public sealed class CreationGearPage : NativePageBase
             }
         }
 
-        bool differs = CreationGearPhoneBasket.DiffersFromPersisted(_basket, state.PendingDraft);
+        bool differs = CreationGearPhoneBasket.DiffersFromPersisted(_basket, state.PendingDraft)
+            || !CreationGearPhoneBasket.HasCurrentResourcesBinding(state.PendingDraft, state.Binding);
         if (!differs && state.PendingDraft is not null)
         {
             var next = NativeTheme.PrimaryButton(CreationFlowStrings.Get("Gear.ContinueNext", "Continue to contacts"));
@@ -607,6 +610,7 @@ public sealed class CreationGearPage : NativePageBase
             && ReferenceEquals(state, _loaded?.State) && state.PendingDraft is not null
             && ReferenceEquals(next.Parent, _basketBody)
             && !CreationGearPhoneBasket.DiffersFromPersisted(_basket, state.PendingDraft)
+            && CreationGearPhoneBasket.HasCurrentResourcesBinding(state.PendingDraft, state.Binding)
             && Coordinator.IsCreationCatalogDisplayCurrent(display)
             && ReferenceEquals(stack.LastOrDefault(), this) && navigation.NavigationStack.SequenceEqual(stack);
         if (!Current()) return;
@@ -1021,6 +1025,14 @@ public sealed class CreationGearPreviewPage : NativePageBase
 
 public static class CreationGearPhoneBasket
 {
+    public static bool HasCurrentResourcesBinding(
+        CharacterCreationGearDraft? persisted,
+        CharacterCreationGearBinding binding) => persisted is not null
+        && binding.ResourcesDraftRevision > 0
+        && persisted.ResourcesDraftRevision == binding.ResourcesDraftRevision
+        && CharacterCreationGearRules.DigestsEqual(
+            persisted.ResourcesDraftDigest, binding.ResourcesDraftDigest);
+
     public static bool TrySetQuantity(
         IReadOnlyDictionary<string, int> current,
         string optionId,

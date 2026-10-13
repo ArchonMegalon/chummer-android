@@ -303,6 +303,7 @@
   <data name="Resources.SavingDetail" xml:space="preserve"><value>Guardando tu presupuesto de recursos. Espera, por favor…</value></data>
   <data name="Gear.SavingDetail" xml:space="preserve"><value>Guardando tus elecciones de equipo. Espera, por favor…</value></data>
   <data name="Gear.SavedBasket" xml:space="preserve"><value>Tu selección de equipo está guardada.</value></data>
+  <data name="Gear.BudgetChanged" xml:space="preserve"><value>Tu presupuesto ha cambiado. Revisa el equipo que conservas para continuar.</value></data>
   <data name="Dashboard.Unavailable" xml:space="preserve"><value>No se pudieron cargar tus elecciones de creación. Vuelve a abrir este runner para intentarlo de nuevo.</value></data>
   <data name="Dashboard.Loading" xml:space="preserve"><value>Cargando tus elecciones de creación…</value></data>
   <data name="Dashboard.LoadFailed" xml:space="preserve"><value>No se pudieron cargar algunas opciones. Vuelve a cargarlas o abre de nuevo este runner.</value></data>

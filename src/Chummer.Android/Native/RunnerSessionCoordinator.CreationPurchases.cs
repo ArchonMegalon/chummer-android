@@ -264,9 +264,11 @@ public sealed partial class RunnerSessionCoordinator
         CharacterCreationGearInteractionState issued, CancellationToken ct)
     {
         if (!IsCreationCatalogDisplayCurrent(display) || issued.PendingDraft is null) return null;
+        if (!CreationGearPhoneBasket.HasCurrentResourcesBinding(issued.PendingDraft, issued.Binding)) return null;
         var reopened = await LoadCreationGearForDisplayAsync(gear, display, ct);
         if (!reopened.Ready || reopened.Load.Outcome != CharacterCreationGearOutcomes.Available
             || reopened.Load.State is not { PendingDraft: not null } current
+            || !CreationGearPhoneBasket.HasCurrentResourcesBinding(current.PendingDraft, current.Binding)
             || current.Binding != issued.Binding
             || !CharacterCreationGearRules.DigestsEqual(current.SnapshotDigest, issued.SnapshotDigest)
             || !IsCreationCatalogDisplayCurrent(display)) return null;

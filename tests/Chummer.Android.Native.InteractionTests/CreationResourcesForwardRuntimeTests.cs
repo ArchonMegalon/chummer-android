@@ -142,9 +142,107 @@ internal static partial class AfterRunAuthorityHarness
                     Console.WriteLine("PASS Resources forward: " + scenario);
                 }
                 await RunSavedResourcesForwardAsync(contentRoot, ui);
+                await RunFundingChangedGearForwardAsync(contentRoot, ui);
             }
             finally { CultureInfo.CurrentUICulture = culture; }
         });
+    }
+
+    private static async Task RunFundingChangedGearForwardAsync(string contentRoot, IssuedPageUiContext ui)
+    {
+        foreach (bool nonempty in new[] { false, true })
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(nonempty ? "en-GB" : "de-AT");
+            var owners = new ControlledLinkedOwner();
+            await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+                creationFinalization: true, productionCreationOverview: true, creationContacts: true);
+            var before = PrepareActualFinalizationReadyContext(runtime, stopBeforeGear: true);
+            var store = new FileWorkspaceStore(runtime.StateDirectory);
+            var coreGear = runtime.Services.GetRequiredService<ICharacterCreationGearService>();
+            var initial = coreGear.Load(new(runtime.Id)).Value!;
+            CharacterCreationGearSelection[] basket = nonempty
+                ? [new("gear:c49a893a-d445-4aac-bec0-c8501cba4c2c", 1)] : [];
+            var firstPreview = coreGear.Preview(new(initial.Binding, basket)).Value!;
+            Require(firstPreview.CanConfirm, "SETUP: initial Gear basket unavailable.");
+            Require(coreGear.Confirm(new(initial.Binding, basket, firstPreview.PreviewDigest,
+                "gear-before-funding-rereview", true)).Outcome == CharacterCreationGearOutcomes.Applied,
+                "SETUP: initial Gear save failed.");
+            before = store.Get(runtime.Id).Value!;
+            var oldGear = before.Document.AuxiliaryState.CharacterCreationGearDraft!;
+            var coordinator = runtime.Coordinator;
+            await HydrateFinalizationOwnerAsync(runtime, owners, before);
+            await coordinator.InitializeAsync();
+            await HydrateFinalizationOwnerAsync(runtime, owners, before);
+            var resources = new ResourcesForwardProbe(new CharacterCreationResourcesInteractionPresenter(
+                runtime.Services.GetRequiredService<ICharacterCreationResourcesService>(),
+                runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationResourcesService>()));
+            var gear = new GearForwardProbe(new CharacterCreationGearInteractionPresenter(coreGear,
+                runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationGearService>()));
+            var original = coordinator.State;
+            var resourcePreview = resources.Prepare(original, "karma:1").PreparedPreview!;
+            Require(resourcePreview is not null, "SETUP: changed funding unavailable.");
+            var editor = new CreationResourcesPage(coordinator, resources, runtime.Presenter, gear);
+            var navigation = new NavigationPage(editor);
+            var review = new CreationResourcesPreviewPage(coordinator, resources, runtime.Presenter,
+                resourcePreview!, AndroidSurfaceStrings.Resolve(), original);
+            await navigation.PushAsync(review, animated: false);
+            var window = new Window(navigation);
+            using var alerts = new IssuedPageAlerts(review, window);
+            await alerts.PreflightAsync();
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(review, "OnAppearing")));
+            var saveResources = MinimalVisible(review).OfType<Button>().Single(x => x.AutomationId == "creation-resources-confirm");
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)saveResources).SendClicked()));
+            Require(navigation.Navigation.NavigationStack.Last() is CreationGearPage,
+                "Changed funding must advance to the retained Gear basket.");
+            var gearPage = (CreationGearPage)navigation.Navigation.NavigationStack.Last();
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(gearPage, "OnAppearing")));
+            var awaitingReview = store.Get(runtime.Id).Value!;
+            Require(awaitingReview.ContentRevision == before.ContentRevision + 1
+                && awaitingReview.Document.AuxiliaryState.CharacterCreationGearDraft!.DraftDigest == oldGear.DraftDigest,
+                "Opening Gear silently rebound or saved the basket.");
+            var views = MinimalVisible(gearPage).ToArray();
+            Require(!views.Any(x => x.AutomationId == "creation-gear-saved-continue")
+                && views.OfType<Label>().Any(x => x.Text == CreationFlowStrings.Get("Gear.BudgetChanged", "missing")),
+                "Changed funding must request review, not claim the basket is current.");
+            var state = gear.Load(coordinator.State).State!;
+            Require(!CreationGearPhoneBasket.HasCurrentResourcesBinding(state.PendingDraft, state.Binding)
+                && await coordinator.PrepareSavedCreationGearNextPageAsync(gear, coordinator.State, state, default) is null,
+                "Unreviewed funding bypassed the saved-basket continuation guard.");
+            var preview = views.OfType<Button>().Single(x => x.AutomationId == "creation-gear-preview");
+            Require(preview.IsEnabled, "An unchanged basket must allow a changed-budget review.");
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)preview).SendClicked()));
+            Require(navigation.Navigation.NavigationStack.Last() is CreationGearPreviewPage,
+                "Retained basket review did not open.");
+            var gearReview = (CreationGearPreviewPage)navigation.Navigation.NavigationStack.Last();
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(gearReview, "OnAppearing")));
+            RequireSameRewardDocument(awaitingReview, store.Get(runtime.Id).Value!);
+            var confirm = MinimalVisible(gearReview).OfType<Button>().Single(x => x.AutomationId == "creation-gear-confirm");
+            Require(confirm.IsEnabled, "Current-budget confirmation is disabled.");
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)confirm).SendClicked()));
+            var saved = store.Get(runtime.Id).Value!;
+            var currentGear = saved.Document.AuxiliaryState.CharacterCreationGearDraft!;
+            Require(navigation.Navigation.NavigationStack.Last() is CreationContactsPage
+                && saved.ContentRevision == before.ContentRevision + 2 && saved.SavedRevision == saved.ContentRevision
+                && saved.Document.Content == before.Document.Content
+                && saved.Document.AuxiliaryState.CharacterCreationGearReceipts!.Count == 2
+                && saved.Document.AuxiliaryState.CharacterCreationResourcesReceipts!.Count == 2
+                && currentGear.ResourcesDraftDigest == saved.Document.AuxiliaryState.CharacterCreationResourcesDraft!.DraftDigest
+                && currentGear.Budget.BasketCost == oldGear.Budget.BasketCost
+                && System.Text.Json.JsonSerializer.Serialize(currentGear.Lines)
+                    == System.Text.Json.JsonSerializer.Serialize(oldGear.Lines),
+                "Funding re-review lost equipment, saved twice or failed to advance to Contacts.");
+            ((IButtonController)confirm).SendClicked();
+            await ui.DrainDispatchedAsyncVoidAsync();
+            RequireSameRewardDocument(saved, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+            await HydrateFinalizationOwnerAsync(runtime, owners, saved);
+            var cold = gear.Load(coordinator.State).State!;
+            Require(CreationGearPhoneBasket.HasCurrentResourcesBinding(cold.PendingDraft, cold.Binding)
+                && cold.PendingDraft!.DraftDigest == currentGear.DraftDigest && alerts.Titles.Count == 0,
+                "Cold reopen lost the reviewed resource binding or exposed an error.");
+            IssuedPageLifecycle(gearReview, "OnDisappearing");
+            IssuedPageLifecycle(gearPage, "OnDisappearing");
+            Console.WriteLine("PASS Resources funding re-review: " + (nonempty ? "retained item" : "empty basket"));
+        }
     }
 
     private static async Task RunSavedResourcesForwardAsync(string contentRoot, IssuedPageUiContext ui)

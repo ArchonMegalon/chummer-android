@@ -41,14 +41,29 @@ class CreationGearSourceContractTests(unittest.TestCase):
         continuation = continuation.split("internal Task<CharacterCreationGearInteractionConfirmResult>", 1)[0]
         self.assertNotIn(".Confirm(", continuation)
         for guard in ("LoadCreationGearForDisplayAsync", "current.Binding != issued.Binding",
-                      "current.SnapshotDigest, issued.SnapshotDigest", "issued.PendingDraft is null"):
+                      "current.SnapshotDigest, issued.SnapshotDigest", "issued.PendingDraft is null",
+                      "HasCurrentResourcesBinding(issued.PendingDraft, issued.Binding)",
+                      "HasCurrentResourcesBinding(current.PendingDraft, current.Binding)"):
             self.assertIn(guard, continuation)
         page = source(PAGE)
         continuation = page.split("private async Task ContinueSavedAsync(", 1)[1].split("private void AddAuthority(", 1)[0]
         for guard in ("ReferenceEquals(next.Parent, _basketBody)", "IsCurrentAppearanceGeneration(appearance)",
-                      "DiffersFromPersisted(_basket, state.PendingDraft)", "navigation.NavigationStack.SequenceEqual(stack)"):
+                      "DiffersFromPersisted(_basket, state.PendingDraft)", "navigation.NavigationStack.SequenceEqual(stack)",
+                      "HasCurrentResourcesBinding(state.PendingDraft, state.Binding)"):
             self.assertIn(guard, continuation)
         self.assertNotIn("ConfirmCreationGearPurchaseAsync", continuation)
+
+    def test_changed_funding_keeps_basket_review_visible_and_localized(self) -> None:
+        page = source(PAGE)
+        basket = page.split("private void AddBasket(", 1)[1].split("private Border BasketLine(", 1)[0]
+        self.assertIn("|| !CreationGearPhoneBasket.HasCurrentResourcesBinding(state.PendingDraft, state.Binding)", basket)
+        self.assertIn("preview.IsEnabled = differs", basket)
+        import xml.etree.ElementTree as ET
+        for suffix in ("", ".de", ".es"):
+            rows = ET.parse(ROOT / f"src/Chummer.Android/Resources/Localization/CreationFlowStrings{suffix}.resx").getroot()
+            matches = [row.findtext("value") for row in rows.findall("data") if row.attrib["name"] == "Gear.BudgetChanged"]
+            self.assertEqual(1, len(matches), suffix)
+            self.assertTrue(matches[0].strip(), suffix)
 
     def test_saved_gear_continuation_is_read_only_and_uses_exact_contacts(self) -> None:
         coordinator = source(ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPurchases.cs")
@@ -231,7 +246,13 @@ class CreationGearSourceContractTests(unittest.TestCase):
     def test_resources_entry_is_gated_by_confirmed_resources_and_typed_presenter(self) -> None:
         page = source(RESOURCES_PAGE)
         self.assertIn("state.PendingDraft is not null && _gear is not null", page)
-        self.assertIn("new CreationGearPage(Coordinator, _gear!, _overview)", page)
+        self.assertIn("Coordinator.PrepareSavedCreationResourcesNextPageAsync", page)
+        coordinator = source(ROOT / "src/Chummer.Android/Native/RunnerSessionCoordinator.CreationPurchases.cs")
+        continuation = coordinator.split("PrepareSavedCreationResourcesNextPageAsync(", 1)[1].split(
+            "internal async Task<CreationGearContinuation?>", 1)[0]
+        self.assertIn("CreationResourcesPhoneAuthority.IsReady(current, display)", continuation)
+        self.assertIn("prepared.Ready", continuation)
+        self.assertIn("new CreationGearPage(this, gear, _presenter, display, prepared.Load)", continuation)
         self.assertIn("creation-resources-open-gear", page)
 
     def test_dependency_injection_registers_real_typed_service(self) -> None:
