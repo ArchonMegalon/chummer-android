@@ -39,7 +39,7 @@ internal static partial class AfterRunAuthorityHarness
             await Click("life-open-qualities");
             foreach (var entry in IssuedElements(Current()).OfType<Entry>().Where(x => x.AutomationId?.StartsWith("life-quality-", StringComparison.Ordinal) == true))
                 entry.Text = "Renraku";
-            await Click("life-review-qualities"); await Back();
+            await Click("life-review-qualities"); await Back(); await Back();
             await Click("life-open-talent"); await Click("life-talent-mundane"); await Back();
             await Click("life-open-attributes"); await Click("life-begin-attributes"); await Back();
             await Click("life-open-skills"); await Click("life-begin-skills");

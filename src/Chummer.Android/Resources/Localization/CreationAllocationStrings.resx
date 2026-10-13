@@ -840,12 +840,13 @@ Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
   <data name="Sr6.EquipmentTrait.separate-launch-tubes" xml:space="preserve"><value>Separate launch tubes; normally fired individually</value></data>
   <data name="Sr6.EquipmentTrait.dual-launch-override-risk" xml:space="preserve"><value>Offline dual-launch override splits the pool; wielder must resist this fire damage</value></data>
   <data name="LifeCompletion.Title" xml:space="preserve"><value>Complete Life Modules</value></data>
-  <data name="LifeCompletion.Pending" xml:space="preserve"><value>Input changed. Save and review again; the runner has not changed.</value></data>
+  <data name="LifeCompletion.Pending" xml:space="preserve"><value>Input changed; not yet checked. The runner is unchanged.</value></data>
   <data name="LifeCompletion.Saved" xml:space="preserve"><value>Input draft saved. The runner changes only after final confirmation.</value></data>
   <data name="LifeCompletion.Help" xml:space="preserve"><value>Review your module grants and choose additional allocations. Saved chapters stay attached. Costs and Career readiness are checked before confirmation.</value></data>
-  <data name="LifeCompletion.ResourcesRequired" xml:space="preserve"><value>Open Resources, choose how much Karma to spend (0 is allowed), then save and review.</value></data>
+  <data name="LifeCompletion.ResourcesRequired" xml:space="preserve"><value>Open Resources, choose how much Karma to spend (0 is allowed), then continue.</value></data>
   <data name="LifeCompletion.Book" xml:space="preserve"><value>Read your book</value></data>
   <data name="LifeCompletion.SaveReview" xml:space="preserve"><value>Save inputs and review</value></data>
+  <data name="LifeCompletion.ContinueTo" xml:space="preserve"><value>Continue: {0}</value></data>
   <data name="LifeCompletion.ReviewGrants" xml:space="preserve"><value>Review granted values before adding purchases</value></data>
   <data name="LifeCompletion.StartSelection" xml:space="preserve"><value>Review this selection (empty is allowed)</value></data>
   <data name="LifeCompletion.AttributeValue" xml:space="preserve"><value>{0}: {1} · module levels {2} · purchase cost {3} Karma</value></data>
@@ -963,8 +964,8 @@ Attack Rating (Close / Near / Medium / Far / Extreme): {3}</value></data>
   <data name="Finalization.CashDiceTotal" xml:space="preserve"><value>Starting-cash dice total</value></data>
   <data name="LifeCompletion.SpellCategory" xml:space="preserve"><value>Spell category</value></data>
   <data name="LifeCompletion.SpiritCategory" xml:space="preserve"><value>Spirit category</value></data>
-  <data name="LifeCompletion.TalentRestrictionsHelp" xml:space="preserve"><value>Choose both categories for this talent, then save and review. Nothing is chosen automatically.</value></data>
-  <data name="LifeCompletion.TalentRestrictionsRequired" xml:space="preserve"><value>Choose a spell category and a spirit category for this talent, then save and review.</value></data>
+  <data name="LifeCompletion.TalentRestrictionsHelp" xml:space="preserve"><value>Choose both categories for this talent, then continue. Nothing is chosen automatically.</value></data>
+  <data name="LifeCompletion.TalentRestrictionsRequired" xml:space="preserve"><value>Choose a spell category and a spirit category for this talent, then continue.</value></data>
   <data name="LifeCompletion.TalentSelectionInvalid" xml:space="preserve"><value>Review this talent and its choices using the currently available options.</value></data>
   <data name="LifeCompletion.RemoveSpecialization" xml:space="preserve"><value>Remove specialization</value></data>
   <data name="LifeCompletion.RemoveSkill" xml:space="preserve"><value>Remove skill choices</value></data>

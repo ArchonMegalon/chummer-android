@@ -840,12 +840,13 @@ Angriffswert (Sehr nah / Nah / Mittel / Weit / Sehr weit): {3}</value></data>
   <data name="Sr6.EquipmentTrait.separate-launch-tubes" xml:space="preserve"><value>Separate Startrohre; normalerweise einzeln abgefeuert</value></data>
   <data name="Sr6.EquipmentTrait.dual-launch-override-risk" xml:space="preserve"><value>Offline-Doppelstart teilt den Pool; Schütze muss diesem Feuerschaden widerstehen</value></data>
   <data name="LifeCompletion.Title" xml:space="preserve"><value>Lebensmodule abschließen</value></data>
-  <data name="LifeCompletion.Pending" xml:space="preserve"><value>Eingabe geändert. Erneut speichern und prüfen; der Runner ist unverändert.</value></data>
+  <data name="LifeCompletion.Pending" xml:space="preserve"><value>Eingabe geändert; noch nicht geprüft. Der Runner ist unverändert.</value></data>
   <data name="LifeCompletion.Saved" xml:space="preserve"><value>Eingabeentwurf gespeichert. Der Runner ändert sich erst nach der endgültigen Bestätigung.</value></data>
   <data name="LifeCompletion.Help" xml:space="preserve"><value>Prüfe deine Modulboni und verteile zusätzliche Werte. Gespeicherte Kapitel bleiben erhalten. Kosten und Voraussetzungen für die Karriere werden vor der Bestätigung geprüft.</value></data>
-  <data name="LifeCompletion.ResourcesRequired" xml:space="preserve"><value>Öffne Ressourcen, wähle deinen Karma-Einsatz (auch 0 ist erlaubt) und speichere die Eingaben zur Prüfung.</value></data>
+  <data name="LifeCompletion.ResourcesRequired" xml:space="preserve"><value>Öffne Ressourcen, wähle deinen Karma-Einsatz (auch 0 ist erlaubt) und gehe weiter.</value></data>
   <data name="LifeCompletion.Book" xml:space="preserve"><value>Dein Buch lesen</value></data>
   <data name="LifeCompletion.SaveReview" xml:space="preserve"><value>Eingaben speichern und prüfen</value></data>
+  <data name="LifeCompletion.ContinueTo" xml:space="preserve"><value>Weiter: {0}</value></data>
   <data name="LifeCompletion.ReviewGrants" xml:space="preserve"><value>Gewährte Werte vor zusätzlichen Käufen prüfen</value></data>
   <data name="LifeCompletion.StartSelection" xml:space="preserve"><value>Diese Auswahl prüfen (darf leer bleiben)</value></data>
   <data name="LifeCompletion.AttributeValue" xml:space="preserve"><value>{0}: {1} · Modulstufen {2} · Kaufkosten {3} Karma</value></data>
@@ -963,8 +964,8 @@ Angriffswert (Sehr nah / Nah / Mittel / Weit / Sehr weit): {3}</value></data>
   <data name="Finalization.CashDiceTotal" xml:space="preserve"><value>Würfelsumme für das Startgeld</value></data>
   <data name="LifeCompletion.SpellCategory" xml:space="preserve"><value>Zauberkategorie</value></data>
   <data name="LifeCompletion.SpiritCategory" xml:space="preserve"><value>Geisterkategorie</value></data>
-  <data name="LifeCompletion.TalentRestrictionsHelp" xml:space="preserve"><value>Wähle beide Kategorien für dieses Talent und speichere zur Prüfung. Es wird nichts automatisch ausgewählt.</value></data>
-  <data name="LifeCompletion.TalentRestrictionsRequired" xml:space="preserve"><value>Wähle eine Zauber- und eine Geisterkategorie für dieses Talent und speichere zur Prüfung.</value></data>
+  <data name="LifeCompletion.TalentRestrictionsHelp" xml:space="preserve"><value>Wähle beide Kategorien für dieses Talent und gehe dann weiter. Es wird nichts automatisch ausgewählt.</value></data>
+  <data name="LifeCompletion.TalentRestrictionsRequired" xml:space="preserve"><value>Wähle eine Zauber- und eine Geisterkategorie für dieses Talent und gehe weiter.</value></data>
   <data name="LifeCompletion.TalentSelectionInvalid" xml:space="preserve"><value>Prüfe dieses Talent und seine Auswahl anhand der aktuell verfügbaren Optionen.</value></data>
   <data name="LifeCompletion.RemoveSpecialization" xml:space="preserve"><value>Spezialisierung entfernen</value></data>
   <data name="LifeCompletion.RemoveSkill" xml:space="preserve"><value>Fertigkeitsauswahl entfernen</value></data>

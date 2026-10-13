@@ -840,12 +840,13 @@ Valor de ataque (Muy cerca / Cerca / Media / Lejos / Muy lejos): {3}</value></da
   <data name="Sr6.EquipmentTrait.separate-launch-tubes" xml:space="preserve"><value>Tubos separados; normalmente disparados individualmente</value></data>
   <data name="Sr6.EquipmentTrait.dual-launch-override-risk" xml:space="preserve"><value>El lanzamiento doble sin conexión divide la reserva; el usuario debe resistir este daño de fuego</value></data>
   <data name="LifeCompletion.Title" xml:space="preserve"><value>Completar módulos de vida</value></data>
-  <data name="LifeCompletion.Pending" xml:space="preserve"><value>Datos modificados. Guarda y revisa de nuevo; el runner no ha cambiado.</value></data>
+  <data name="LifeCompletion.Pending" xml:space="preserve"><value>Datos modificados; aún no comprobados. El runner no ha cambiado.</value></data>
   <data name="LifeCompletion.Saved" xml:space="preserve"><value>Borrador guardado. El runner solo cambia tras la confirmación final.</value></data>
   <data name="LifeCompletion.Help" xml:space="preserve"><value>Revisa lo otorgado por los módulos y elige asignaciones adicionales. Los capítulos guardados se conservan. Los costes y requisitos para la carrera se comprueban antes de confirmar.</value></data>
-  <data name="LifeCompletion.ResourcesRequired" xml:space="preserve"><value>Abre Recursos, elige cuánto Karma gastar (se permite 0), guarda los datos y revísalos.</value></data>
+  <data name="LifeCompletion.ResourcesRequired" xml:space="preserve"><value>Abre Recursos, elige cuánto Karma gastar (se permite 0) y continúa.</value></data>
   <data name="LifeCompletion.Book" xml:space="preserve"><value>Leer tu libro</value></data>
   <data name="LifeCompletion.SaveReview" xml:space="preserve"><value>Guardar datos y revisar</value></data>
+  <data name="LifeCompletion.ContinueTo" xml:space="preserve"><value>Continuar: {0}</value></data>
   <data name="LifeCompletion.ReviewGrants" xml:space="preserve"><value>Revisar valores otorgados antes de comprar más</value></data>
   <data name="LifeCompletion.StartSelection" xml:space="preserve"><value>Revisar esta selección (puede quedar vacía)</value></data>
   <data name="LifeCompletion.AttributeValue" xml:space="preserve"><value>{0}: {1} · niveles de módulos {2} · coste de compra {3} Karma</value></data>
@@ -963,8 +964,8 @@ Valor de ataque (Muy cerca / Cerca / Media / Lejos / Muy lejos): {3}</value></da
   <data name="Finalization.CashDiceTotal" xml:space="preserve"><value>Total de dados para el dinero inicial</value></data>
   <data name="LifeCompletion.SpellCategory" xml:space="preserve"><value>Categoría de hechizos</value></data>
   <data name="LifeCompletion.SpiritCategory" xml:space="preserve"><value>Categoría de espíritus</value></data>
-  <data name="LifeCompletion.TalentRestrictionsHelp" xml:space="preserve"><value>Elige ambas categorías para este talento y guarda para revisarlas. No se selecciona nada automáticamente.</value></data>
-  <data name="LifeCompletion.TalentRestrictionsRequired" xml:space="preserve"><value>Elige una categoría de hechizos y otra de espíritus para este talento y guarda para revisarlas.</value></data>
+  <data name="LifeCompletion.TalentRestrictionsHelp" xml:space="preserve"><value>Elige ambas categorías para este talento y continúa. No se selecciona nada automáticamente.</value></data>
+  <data name="LifeCompletion.TalentRestrictionsRequired" xml:space="preserve"><value>Elige una categoría de hechizos y otra de espíritus para este talento y continúa.</value></data>
   <data name="LifeCompletion.TalentSelectionInvalid" xml:space="preserve"><value>Revisa este talento y sus elecciones entre las opciones disponibles actualmente.</value></data>
   <data name="Skills.NativeLanguage" xml:space="preserve"><value>Lengua materna</value></data>
   <data name="Skills.ChooseNativeLanguage" xml:space="preserve"><value>Elegir lengua materna</value></data>

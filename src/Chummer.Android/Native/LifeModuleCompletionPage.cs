@@ -92,7 +92,7 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
     private void Change(CharacterCreationFoundationFinalizationPreviewRequest input)
     {
         _session.Change(input);
-        if (_pending is not null) _pending.Text = LifeCopy("Pending", "Input changed. Save and review again; the runner has not changed.");
+        if (_pending is not null) _pending.Text = LifeCopy("Pending", "Input changed; not yet checked. The runner is unchanged.");
     }
     private async Task Review()
     {
@@ -101,6 +101,66 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
         await _session.ReviewAsync(default, () => IsCurrentAppearanceGeneration(appearance));
     }
     private async Task ChangeReview(CharacterCreationFoundationFinalizationPreviewRequest input) { Change(input); await Review(); }
+
+    private static LifeCompletionStep? NextStep(LifeCompletionStep step) => step switch
+    {
+        LifeCompletionStep.Qualities => LifeCompletionStep.Talent,
+        LifeCompletionStep.Talent => LifeCompletionStep.Attributes,
+        LifeCompletionStep.Attributes => LifeCompletionStep.Skills,
+        LifeCompletionStep.Skills => LifeCompletionStep.Resources,
+        LifeCompletionStep.Resources => LifeCompletionStep.Gear,
+        LifeCompletionStep.Gear => LifeCompletionStep.Lifestyles,
+        LifeCompletionStep.Lifestyles => LifeCompletionStep.Contacts,
+        LifeCompletionStep.Contacts => LifeCompletionStep.Magic,
+        LifeCompletionStep.Magic => LifeCompletionStep.Review,
+        _ => null
+    };
+
+    // Core-issued section results, not client-side rule decisions. Later
+    // unanswered sections may block finalization without blocking this step.
+    // Explicit final confirmation still requires the complete admitted plan.
+    private bool SectionAccepted(CharacterCreationFoundationFinalizationPreview quote) => _step switch
+    {
+        // The legacy compiler can retain runtime-authority markers even after
+        // Core's complete write planner resolves them. Use that admitted plan.
+        LifeCompletionStep.Qualities => quote.EffectWriteSummary is not null && quote.MetatypeWriteSummary is not null,
+        LifeCompletionStep.Talent => quote.TalentWriteSummary is not null,
+        LifeCompletionStep.Attributes => quote.AttributeQuote is { Blockers.Count: 0 },
+        LifeCompletionStep.Skills => quote.SkillsQuote is { Blockers.Count: 0 },
+        LifeCompletionStep.Resources => quote.ResourcesQuote is { Blockers.Count: 0 },
+        LifeCompletionStep.Gear => quote.GearQuote is { Blockers.Count: 0 },
+        LifeCompletionStep.Lifestyles => quote.LifestylesQuote is { Blockers.Count: 0 },
+        LifeCompletionStep.Contacts => quote.ContactsQuote is { Blockers.Count: 0 },
+        LifeCompletionStep.Magic => quote.MagicQuote is { Blockers.Count: 0 },
+        _ => false
+    };
+
+    private Button? _continueAction;
+    private void ContinueButton(string id, Func<Task>? action = null)
+    {
+        if (NextStep(_step) is not { } next) return;
+        _continueAction = Button(CreationAllocationStrings.Format("LifeCompletion.ContinueTo", "Continue: {0}", Caption(next)),
+            id, action ?? ContinueStep);
+    }
+
+    private async Task ContinueStep()
+    {
+        if (NextStep(_step) is not { } next) return;
+        long render = _render, appearance = CaptureAppearanceGeneration();
+        var navigation = Navigation;
+        var stack = navigation.NavigationStack.ToArray();
+        bool OwnsNavigation() => Current(render, appearance) && ReferenceEquals(stack.LastOrDefault(), this)
+            && navigation.NavigationStack.SequenceEqual(stack) && navigation.ModalStack.Count == 0;
+        if (!OwnsNavigation()) return;
+        if (!_session.Reviewed || !_session.Saved)
+        {
+            _body.IsEnabled = false;
+            if (_pending is not null) _pending.Text = CreationKarmaCopy.Loading;
+            await _session.ReviewAsync(default, OwnsNavigation);
+        }
+        if (OwnsNavigation() && _session.Reviewed && _session.Saved && Quote is { } quote && SectionAccepted(quote))
+            await Open(next);
+    }
     private async Task ReviewInputAndReturn(CharacterCreationFoundationFinalizationPreviewRequest input,
         Func<CharacterCreationFoundationFinalizationPreview, bool> acceptsSelection)
     {
@@ -191,7 +251,7 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
 
     protected override void Refresh()
     {
-        _render++; _body.Clear(); _body.IsEnabled = _session.FrameCurrent;
+        _render++; _body.Clear(); _continueAction = null; _body.IsEnabled = _session.FrameCurrent;
         _body.Add(NativeTheme.Title(Title));
         if (!_session.FrameCurrent) { Body(CreationKarmaCopy.Stale); return; }
         if (_session.Receipt is { } receipt)
@@ -235,7 +295,7 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
         }
         Body(CreationKarmaCopy.Binding(_session.State!.Binding.ContentRevision, _session.State.Binding.SavedRevision), "life-completion-binding");
         _pending = NativeTheme.Body(_session.Saved ? LifeCopy("Saved", "Input draft saved. The runner changes only after final confirmation.")
-            : LifeCopy("Pending", "Input changed. Save and review again; the runner has not changed."));
+            : LifeCopy("Pending", "Input changed; not yet checked. The runner is unchanged."));
         _pending.AutomationId = "life-completion-input-status"; _body.Add(_pending);
         switch (_step)
         {
@@ -257,7 +317,7 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
         }
         // Keep rejected-input guidance beside the action just used, not below
         // the remove action where the bottom navigation can hide it.
-        var inputSubmit = _body.Children.OfType<Button>().FirstOrDefault(button =>
+        var inputSubmit = _continueAction ?? _body.Children.OfType<Button>().FirstOrDefault(button =>
             button.AutomationId is "life-use-contact" or "life-use-skill");
         int blockerIndex = inputSubmit is null ? _body.Count : _body.Children.IndexOf(inputSubmit);
         foreach (string reason in _session.Blockers.Distinct())
@@ -297,7 +357,7 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
         }
         foreach (var row in Quote?.ModuleSequence?.DependentQualityInstances ?? [])
             QualityInput(row.InstancePrompt, row.InstanceValue);
-        Button(LifeCopy("SaveReview", "Save inputs and review"), "life-review-qualities", Review);
+        ContinueButton("life-review-qualities");
 
         void QualityInput(LifeModuleFollowUpPromptDto prompt, string? currentValue)
         {
@@ -328,9 +388,10 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
             foreach (string unlock in unlocks)
                 Button(unlock, "life-talent-unlock-" + unlock, () => ChangeReview(Input with { TalentSelection = selected with { SkillUnlock = unlock } }));
         if (Input.TalentSelection is not { } selection
-            || Quote?.TalentCatalog?.Options.SingleOrDefault(row => row.OptionId == selection.OptionId)?.Restrictions is not { } restrictions) return;
+            || Quote?.TalentCatalog?.Options.SingleOrDefault(row => row.OptionId == selection.OptionId)?.Restrictions is not { } restrictions)
+        { ContinueButton("life-continue-talent"); return; }
 
-        Body(LifeCopy("TalentRestrictionsHelp", "Choose both categories for this talent, then save and review. Nothing is chosen automatically."));
+        Body(LifeCopy("TalentRestrictionsHelp", "Choose both categories for this talent, then continue. Nothing is chosen automatically."));
         var spells = restrictions.SpellCategories.ToArray();
         var spirits = restrictions.SpiritCategories.ToArray();
         Category(LifeCopy("SpellCategory", "Spell category"), "life-talent-spell-category",
@@ -339,7 +400,7 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
         Category(LifeCopy("SpiritCategory", "Spirit category"), "life-talent-spirit-category",
             spirits.Select(row => row.Label).ToArray(), Array.FindIndex(spirits, row => row.SourceId == selection.Restrictions?.SpiritSourceId),
             index => Set(null, spirits[index].SourceId));
-        Button(LifeCopy("SaveReview", "Save inputs and review"), "life-review-talent", Review);
+        ContinueButton("life-review-talent");
 
         void Set(string? spell, string? spirit)
         {
@@ -380,7 +441,7 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
                 { AttributePurchases = Input.AttributePurchases.Where(x => x.AttributeId != row.AttributeId)
                     .Concat(value > 0 ? [new CharacterCreationLifeModuleAttributePurchase(row.AttributeId, value)] : []).ToArray() }));
         }
-        Button(LifeCopy("SaveReview", "Save inputs and review"), "life-review-attributes", Review);
+        ContinueButton("life-review-attributes");
     }
 
     private void Skills()
@@ -398,6 +459,7 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
             Button(name, "life-selected-skill-" + selected.Kind + "-" + selected.SourceSkillId + "-" + selected.SpecializationOptionId,
                 () => Open(LifeCompletionStep.Skill, selected.SourceSkillId, selected.Kind, selected.SpecializationOptionId), multiline: true);
         }
+        ContinueButton("life-continue-skills");
         Search();
         foreach (var row in Page(catalog.ActiveSkills.Concat(catalog.KnowledgeSkills)
                      .Where(x => x.Name.Contains(_search, StringComparison.CurrentCultureIgnoreCase))))
@@ -488,10 +550,13 @@ internal sealed partial class LifeModuleCompletionPage : NativePageBase
             Body(CreationKarmaCopy.ResourceLimit(resources.MaximumKarmaInvestment));
         Body(policy.FundingExpression);
         var amount = Text(CreationKarmaCopy.ResourceInvestment, "life-resource-investment", Input.KarmaResourceInvestment?.ToString(CultureInfo.CurrentCulture) ?? "", numeric: true);
-        Button(LifeCopy("SaveReview", "Save inputs and review"), "life-use-resources", async () =>
+        ContinueButton("life-use-resources", async () =>
         {
             if (decimal.TryParse(amount.Text, NumberStyles.AllowDecimalPoint, CultureInfo.CurrentCulture, out decimal value) && value >= 0)
-                await ChangeReview(Input with { KarmaResourceInvestment = value });
+            {
+                if (Input.KarmaResourceInvestment != value) Change(Input with { KarmaResourceInvestment = value });
+                await ContinueStep();
+            }
             else await DisplayAlertAsync(Title, CreationKarmaCopy.InvalidNumber, "OK");
         });
     }
