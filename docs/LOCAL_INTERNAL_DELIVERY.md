@@ -132,7 +132,21 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 222 is the latest [observed Internal availability](../play/evidence/preview222-internal-observation.json),
+Preview 223 is the latest [observed Internal availability](../play/evidence/preview223-internal-observation.json),
+released on 14 October at 01:01 Europe/Vienna. Career now resolves the exact
+saved Core profile, including numeric XML booleans. Core #161, UI #458 and
+Android #757 merged normally with the tested trees. Native API36 x64
+Release/Internal testing imported and saved an app-finalized synthetic Life
+Modules runner, recorded Karma7to37, advanced Body2to3 for15 and reopened the
+same saved receipt/balance22 after a verified process restart. Granted effects
+and old runner/draft bytes stayed unchanged. Local ARM64 build, isolated
+original-key signing and independent keyless verification passed; one upload
+and final confirmation produced observed Internal availability. Physical223,
+startup/reload closure and full Creation/Career/Origin remain unverified.
+Free-grant skills/groups and the stale family page after a successful booking
+remain open. Version223 is consumed; retain it and prior rollback packets.
+
+Preview 222's historical [observed Internal availability](../play/evidence/preview222-internal-observation.json),
 released on 13 October at 22:59 Europe/Vienna. Career quality labels now show the
 actual Karma change and resulting balance; negative qualities with no Career
 grant say so. The hub retains the original owner stamp and admits the quality
