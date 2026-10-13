@@ -1,0 +1,93 @@
+{
+  "status": "Available on Play Internal; physical Play218 installation not yet verified",
+  "readbackRecordedAtUtc": "2026-10-13T12:59:00Z",
+  "playDisplayedReleaseTime": "13 Oct 14:59 Europe/Vienna",
+  "packageId": "com.myexternalbrain.chummer",
+  "versionName": "0.1.0-preview.218",
+  "versionCode": 218,
+  "track": "internal",
+  "playReleaseId": "212",
+  "standingUploadApproval": "Owner2026-10-05: verified builds to existing Internal track and tester audience only",
+  "change": "Life Modules contact/skill editors retain rejected input with readable guidance before submit. Accepted corrections return automatically to the current list, preserving stable contact identity, owner, appearance and navigation guards.",
+  "androidProducerCommit": "346b823015fb64ceea20946b0fe5e8234b357711",
+  "androidProducerTree": "a9858dddf0fbba8d6871dcc18ec11a6456818000",
+  "testedReviewCommit": "32da5a767a346e1999d2bc295d86a8e32619110f",
+  "productPullRequests": [
+    "https://github.com/ArchonMegalon/chummer-android/pull/748"
+  ],
+  "mergeTreeEqualsReviewedTree": true,
+  "dependencyMode": "locked_package_closure_with_pinned_presentation_source_and_core_content",
+  "sourceCheckoutsPresent": true,
+  "ambientSiblingRootsAllowed": false,
+  "presentationCommit": "af0a8049cb66e22d50b5c2756464a4e21fc8004e",
+  "coreRecipeCommit": "f2e0f5df28b2c2afae830f309e99bfab7b63b93e",
+  "coreRuntimeCommit": "3d54228d606a487076abe446ff076ac43e4bef73",
+  "packageBindingSha256": "5b4c421e4963e6d9b59e878afff1a124c7179ca1bcb0457f04b55d311d3e41ed",
+  "uiVerificationSha256": "b479e51a573a97637aa3d211c0b7b57eb23021ca818cac4b513799d904968824",
+  "diagnosticsContractSha256": "a0f59210e35abb9e88eda2b6b4f4ad497ea27577f77c294876120773e6aed7a2",
+  "diagnosticsContractDistribution": "Exact retained local package; published package authority absent",
+  "execution": "local offline Docker build, isolated original-key signer, independent keyless verifier",
+  "distributionChannel": "internal",
+  "buildImage": "sha256:9ce8fdc9a9e55bbf4c5893694f85949f9639de9ebd95545ea93588e602596f9e",
+  "toolchain": "Local .NET10.0.112/JDK17.0.20.1/API36; locked restore/ARM64 publish/bundle passed; non-concurrent SGen retained",
+  "unsignedAabSha256": "e1905363d172a8d85bf5e3fa223925264dd1d244451bd314369990638b10455b",
+  "unsignedAabBytes": 36114958,
+  "signedAabSha256": "8c1bfee0b013a98d61697dc0985daadaf5cff3e62e38d5effd345f42f071d261",
+  "signedAabBytes": 36288023,
+  "uploadCertificateSha256": "d9c4b635121544d5522abf1ec2dfda3c1938aab93d6726bb93c9871ec9ed1d15",
+  "verification": {
+    "unsignedSourceContentAndPackages": "passed;1546 Android/28679 Presentation archive files,331 Core content files;18 packages and13 authority files checked",
+    "unsignedInputsReceiptSha256": "cf126cadb41bc70a2d15aee58c4d39f97dbc3fb65aa1429029304c8b88195cfc",
+    "bundleManifest": "package/version/ARM64/minimum24/target36 passed",
+    "proofExclusionAndCredentialHygiene": "passed",
+    "strictJarSignature": "passed",
+    "unchangedNonSignaturePayloadEntries": 1787,
+    "signedVerificationSha256": "f1752ff917b09b44306d8fd3e839f36745aa1afdcca70cac74c83fe6cd88a551",
+    "buildLogSha256": "4ac9eb5911f3f9c4a33e55798aad3b8b4871d7f703a08d9ee8b5c28a733fb8a2"
+  },
+  "affectedChecks": {
+    "focusedReceiptSha256": "460e59a12a3998887076dbe631a3965cc58213221a11dbc2ddb743572fd59e9e",
+    "managedLogSha256": "14ae38fc1940d2ba494deb750e134220c5f677950756b171716f0bf9b7743a37",
+    "managed": "Actual Core/MAUI:14 contact/skill current, rejected/corrected, removal with remaining blockers, stack change, departure/re-entry and owner ABA cases pass; EN/DE/ES guidance and blocker-before-submit order pass; compile zero warnings/errors.",
+    "relatedUnchangedRoutes": "Life Modules pages/reader/export, Apprentice Career and Exotic Skills reused from pre-layout source only for unchanged logic",
+    "relatedLogSha256": "6efd09c3b04d88ba2dc11f1d737819f2d09782dd0cebc2ab14acd7bbf541390f",
+    "nativeScope": "API36 x64 Release/Internal separate SDK-test package/key; retained Core-created synthetic draft and outbound-network fence; not production ARM64 or Play-installed",
+    "nativeApkSha256": "9f4a36fe58a11e1da5726470fa4e341188be5e707e5948ac313c2152e5afd8fb",
+    "nativeBuildLogSha256": "bee9b858c5080e49747256031b038afa7afcb9af5346699fe865d25d70ed8a94",
+    "installedApkBytesIndependentlyHashed": true,
+    "nativeSavedDraftSha256": "00ba120cfd59d22982caf7f94adf6d0ba5ab6e24a655adf0aee1cf4d9f3f10ad",
+    "nativeCanonicalRunnerSha256": "1311cbf78faf71bbb9a3a9327e9e3c0eb0d4437ce3f57fec09fb56b5dc6174f8",
+    "contactScreenshotSha256": "a503688f8d8092df27ddddb724e08df2a68c8af3e37ebd8316edde0d38032309",
+    "skillScreenshotSha256": "1e74fc86b238141764ec3d77db43303f3b41c691c4218ec65bc13dca493a743a",
+    "native": "Contact Connection12/Loyalty1 rejects in place with visible guidance; corrected1/1 returns to Contacts with same single identity. Anishinaabe native language with purchased Karma level1 rejects, corrected0 returns to Skills. Verified force-stop/new process reopens exact corrected contact. All24 workspace files/two drafts identical across restart; all21 older files/older draft untouched. Canonical runner remains revision7/7; no finalization requested.",
+    "limits": [
+      "Skills draft equality checked after restart; its editor not separately reopened",
+      "Known SystemUI boot ANR and two null-root observations retained; no startup-speed claim",
+      "Synthetic completion tail, not full Creation or a live multi-chapter book",
+      "Original Contacts read-failure cause, startup/reload reliability and physical Play218 remain unverified",
+      "Original uncertain FirstBook successor remains fenced; no provider replay; diagnostics-contract portability remains open"
+    ]
+  },
+  "play": {
+    "transport": "authenticated scoped Play Console browser, not Publisher API",
+    "uploadCount": 1,
+    "finalConfirmationCount": 1,
+    "status": "Available to internal testers",
+    "supportedPhoneCount": 8738,
+    "newlyUnsupportedPhoneCount": 0,
+    "submittedReleaseNoteLocales": [
+      "en-US"
+    ],
+    "warnings": [
+      "No deobfuscation mapping uploaded",
+      "No native debug symbols uploaded"
+    ],
+    "executionReceiptSha256": "6d85391981b1c9ed9024a5e185f71955fd5c51be2bb51cae727cca96fb0ab9f2",
+    "availabilityScreenshotSha256": "eea9e54ae6feaf19d731aa5cdd73e6b6c333f7455a61097f90239ae4c2c37cb5",
+    "internalTestLink": "https://play.google.com/apps/internaltest/4700678198570024687"
+  },
+  "retention": "Private source/build/signature/native/readback packet and prior217 rollback artifacts retained.218 consumed; no rebuild/re-upload.",
+  "physicalPlayInstallationVerified": false,
+  "fullCreationCareerOrBetaCompletionClaimed": false,
+  "publicTrackOrAudienceChanged": false
+}
