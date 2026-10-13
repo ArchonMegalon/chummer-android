@@ -42,11 +42,13 @@ public sealed class CreationGearPage : NativePageBase
     private VerticalStackLayout _basketDetails = new() { Spacing = 6 };
     private readonly List<(CharacterCreationGearCatalogOption Option, Border Row)> _catalogRows = [];
     private CancellationTokenSource? _continueLifetime;
+    private CharacterCreationGearInteractionState? _continueUnavailableState;
 
     protected override void OnDisappearing()
     {
         _catalogRefreshGeneration++;
         _continueLifetime?.Cancel();
+        _continueUnavailableState = null;
         base.OnDisappearing();
     }
 
@@ -82,6 +84,7 @@ public sealed class CreationGearPage : NativePageBase
 
     protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
     {
+        _continueUnavailableState = null;
         _loaded = null;
         _loadedDisplay = null;
         _ready = false;
@@ -275,6 +278,16 @@ public sealed class CreationGearPage : NativePageBase
             || !CreationGearPhoneBasket.HasCurrentResourcesBinding(state.PendingDraft, state.Binding);
         if (!differs && state.PendingDraft is not null)
         {
+            // RunAsync refreshes the page after the read completes. Retain the
+            // failure against this exact displayed snapshot, not a disposable
+            // label that the refresh would immediately remove.
+            if (ReferenceEquals(_continueUnavailableState, state))
+            {
+                var feedback = NativeTheme.Body(CreationFlowStrings.Get("Gear.NextUnavailable",
+                    "Your equipment is saved. Try Continue again."), NativeTheme.Muted);
+                feedback.AutomationId = "creation-gear-saved-next-unavailable";
+                _basketBody.Add(feedback);
+            }
             var next = NativeTheme.PrimaryButton(CreationFlowStrings.Get("Gear.ContinueNext", "Continue to contacts"));
             next.AutomationId = "creation-gear-saved-continue";
             long appearance = CaptureAppearanceGeneration();
@@ -282,6 +295,7 @@ public sealed class CreationGearPage : NativePageBase
             _basketBody.Add(next);
             return;
         }
+        _continueUnavailableState = null;
         Button preview = NativeTheme.PrimaryButton(_copy["Gear.ReviewBasket"]);
         preview.AutomationId = "creation-gear-preview";
         preview.IsEnabled = differs;
@@ -614,6 +628,7 @@ public sealed class CreationGearPage : NativePageBase
             && Coordinator.IsCreationCatalogDisplayCurrent(display)
             && ReferenceEquals(stack.LastOrDefault(), this) && navigation.NavigationStack.SequenceEqual(stack);
         if (!Current()) return;
+        _continueUnavailableState = null;
         using var lifetime = new CancellationTokenSource();
         _continueLifetime = lifetime;
         next.IsEnabled = false;
@@ -636,16 +651,7 @@ public sealed class CreationGearPage : NativePageBase
             {
                 next.IsEnabled = true;
                 next.Text = CreationFlowStrings.Get("Gear.ContinueNext", "Continue to contacts");
-                if (unavailable)
-                {
-                    const string id = "creation-gear-saved-next-unavailable";
-                    if (!_basketBody.Children.OfType<Label>().Any(x => x.AutomationId == id))
-                    {
-                        var feedback = NativeTheme.Body(CreationFlowStrings.Get("Gear.NextUnavailable", "Your equipment is saved. Try Continue again."), NativeTheme.Muted);
-                        feedback.AutomationId = id;
-                        _basketBody.Add(feedback);
-                    }
-                }
+                _continueUnavailableState = unavailable ? state : null;
             }
         }
     }
