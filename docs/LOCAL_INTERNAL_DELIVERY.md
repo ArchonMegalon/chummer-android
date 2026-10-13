@@ -132,7 +132,24 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 215 is the latest [observed Internal availability](../play/evidence/preview215-internal-observation.json),
+Preview 216 is the latest [observed Internal availability](../play/evidence/preview216-internal-observation.json),
+released on 13 October at 12:28 Europe/Vienna. Contact review now immediately
+shows localized checking feedback and disables fields while preparing. Existing
+action, owner, revision and explicit-save guards remain. Android #744 merged
+normally with the tested tree; Core/UI inputs are unchanged. The regression fails
+on old source, then EN/DE/ES review/save/cold-checkpoint and owner checks plus
+12 Contacts-forward cases pass. Native216 observed pending disabled controls,
+the exact preview and one save returning to the contact list; all16 prior files
+remain unchanged. The separate native215 Contacts-to-Lifestyle-to-starting-cash
+to-Career route passes with exact values, one finalization and new-process reopen;
+that unchanged-tail evidence is not a test of new216 feedback. Local ARM64 build,
+original-key isolated signing and independent verification passed. One upload
+and final confirmation produced actual Play Internal availability. Physical216,
+startup improvement and full Creation/Origin remain unverified; the user's exact
+original read-failure cause remains unconfirmed. SystemUI boot ANR/observer
+failures are retained. Version216 is consumed; do not rebuild or re-upload it.
+
+Preview 215's [historical Internal availability](../play/evidence/preview215-internal-observation.json) was
 released on 13 October at 11:28 Europe/Vienna. Saved-Gear Contacts loading errors
 now remain visible after action refresh, with safe retry. Core explicitly reopens
 an unchanged pristine Origin opening after Save without relaxing pending/accepted
