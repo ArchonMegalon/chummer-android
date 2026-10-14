@@ -299,6 +299,11 @@ internal static partial class AfterRunAuthorityHarness
         await NativeRewardGovernedConsequencesPersistOnceAsync(contentRoot);
         await NativeRewardDowntimePlansWithoutRecreditAsync(contentRoot);
         Console.WriteLine("PASS 6 actual native/runtime/file-store integration cases");
+        await RunNativeReputationCasesAsync(contentRoot);
+    }
+
+    public static async Task RunNativeReputationCasesAsync(string contentRoot)
+    {
         await NativeReputationContinuationPersistsAndReturnsAsync(contentRoot);
         await NativeReputationEntryLifecycleFencesAsync(contentRoot);
         await NativeReputationRefreshInterruptionRecoversAsync(contentRoot, cancel: false);

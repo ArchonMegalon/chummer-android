@@ -10,6 +10,7 @@ public sealed class Sr5CareerReputationView : ContentView
     private readonly Sr5CareerReputationPhoneModel _model;
     private readonly Func<Func<Task>, Task> _run;
     private readonly Func<Task> _finish;
+    private readonly VerticalStackLayout _inputs;
     private readonly Entry _streetCred, _notoriety, _awareness;
     private readonly Editor _reason;
     private readonly Label _status, _facts, _review, _receipt;
@@ -35,16 +36,18 @@ public sealed class Sr5CareerReputationView : ContentView
         _status = NativeTheme.Body(""); _status.AutomationId = "sr5-reputation-status"; body.Add(_status);
         _working = new() { AutomationId = "sr5-reputation-working", Color = NativeTheme.Success }; body.Add(_working);
         _facts = NativeTheme.Body(""); _facts.AutomationId = "sr5-reputation-facts"; body.Add(_facts);
-        body.Add(NativeTheme.Body(T("InputHelp"), NativeTheme.Muted));
-        _streetCred = Field(body, "street-cred", "StreetCred");
-        _notoriety = Field(body, "notoriety", "Notoriety");
-        _awareness = Field(body, "awareness", "Awareness");
+        _inputs = new() { AutomationId = "sr5-reputation-inputs", Spacing = 14 };
+        body.Add(_inputs);
+        _inputs.Add(NativeTheme.Body(T("InputHelp"), NativeTheme.Muted));
+        _streetCred = Field(_inputs, "street-cred", "StreetCred");
+        _notoriety = Field(_inputs, "notoriety", "Notoriety");
+        _awareness = Field(_inputs, "awareness", "Awareness");
         _reason = NativeTheme.TextArea("sr5-reputation-reason", model.Draft.Reason);
         _reason.MaxLength = CharacterCareerReputationTransaction.MaximumReasonLength;
-        body.Add(NativeTheme.FieldLabel(T("Reason"))); SemanticProperties.SetDescription(_reason, T("Reason")); body.Add(_reason);
+        _inputs.Add(NativeTheme.FieldLabel(T("Reason"))); SemanticProperties.SetDescription(_reason, T("Reason")); _inputs.Add(_reason);
         _reason.TextChanged += (_, _) => DraftChanged();
-        _preview = AddButton(body, "preview", "Preview", t => model.PreviewAsync(culture: CultureInfo.CurrentCulture, token: t));
-        _burn = AddButton(body, "burn", "Burn", t => model.PreviewAsync(burnStreetCred: true, token: t));
+        _preview = AddButton(_inputs, "preview", "Preview", t => model.PreviewAsync(culture: CultureInfo.CurrentCulture, token: t));
+        _burn = AddButton(_inputs, "burn", "Burn", t => model.PreviewAsync(burnStreetCred: true, token: t));
         _review = NativeTheme.Body(""); _review.AutomationId = "sr5-reputation-review"; body.Add(_review);
         _confirm = AddButton(body, "confirm", "Confirm", model.ConfirmAsync);
         _recover = AddButton(body, "recover", "Recover", model.RecoverAsync);
@@ -123,6 +126,9 @@ public sealed class Sr5CareerReputationView : ContentView
             bool busy = _actionActive || _model.IsBusy;
             bool active = !_lifetime.IsCancellationRequested;
             bool edit = active && !busy && _model.CanEdit;
+            // Keep the original controls/draft for unresolved recovery, but
+            // present only the result once the saved runner is freshly reloaded.
+            _inputs.IsVisible = !_model.CanFinish;
             _working.IsVisible = _working.IsRunning = busy || _model.Status == Sr5CareerReputationPhoneStatus.Loading;
             _status.Text = !_model.HasCurrentSelection ? T("RunnerChanged") : busy ? T("Working") : T(_model.Status.ToString());
             if (_streetCred.Text != _model.Draft.StreetCred) _streetCred.Text = _model.Draft.StreetCred;

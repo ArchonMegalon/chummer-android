@@ -41,18 +41,19 @@ internal static partial class AfterRunAuthorityHarness
         var reputationPage = (Sr5CareerReputationWizardPage)navigation.CurrentPage;
         var model = ReputationField<Sr5CareerReputationPhoneModel>(reputationPage, "_model");
         var view = ReputationField<Sr5CareerReputationView>(reputationPage, "_view");
-        var body = (VerticalStackLayout)view.Content!;
+        var inputs = ReputationElement<VerticalStackLayout>(view, "inputs");
         Require(!ReputationButton(reputationPage, "preview").IsEnabled, "Unattached page enabled actions.");
         using var lifetime = InstallManagedReputationLifetime(reputationPage);
         await InvokeTokenPageActionAsync(reputationPage, "PrepareForAppearanceRefreshAsync", lifetime.Token);
         var coreRead = runtime.ReputationService.Read(runtime.Id);
         Require(model.CanEdit && ReputationButton(reputationPage, "preview").IsEnabled,
             $"Actual saved runner reputation projection unavailable: {model.Status}; {coreRead.Outcome}: {coreRead.Error}");
-        var cred = body.Children.OfType<Entry>().Single(entry => entry.AutomationId == "sr5-reputation-street-cred");
-        var notoriety = body.Children.OfType<Entry>().Single(entry => entry.AutomationId == "sr5-reputation-notoriety");
+        Require(inputs.IsVisible, "Fresh reputation entry hid its input form.");
+        var cred = ReputationElement<Entry>(view, "street-cred");
+        var notoriety = ReputationElement<Entry>(view, "notoriety");
         cred.Text = "1";
         notoriety.Text = "-1";
-        body.Children.OfType<Editor>().Single().Text = "Local after-run reputation decision";
+        ReputationElement<Editor>(view, "reason").Text = "Local after-run reputation decision";
         Require(model.Draft.StreetCred == "1" && model.Draft.Notoriety == "-1" && model.Draft.PublicAwareness == "",
             "Native controls changed signed input intent or made an empty field a zero.");
         await model.PreviewAsync(culture: CultureInfo.InvariantCulture);
@@ -64,6 +65,9 @@ internal static partial class AfterRunAuthorityHarness
         view.Refresh();
         Require(model.CanFinish && model.Status == Sr5CareerReputationPhoneStatus.Recorded,
             "Reputation commit failed to reload actual presenter/shell: " + model.Status);
+        Require(!inputs.IsVisible && ReputationButton(reputationPage, "done").IsVisible
+            && ReputationButton(reputationPage, "done").IsEnabled,
+            "Saved reputation did not replace its disabled form with the finish action.");
         var saved = store.Get(runtime.Id).Value!;
         var xml = XDocument.Parse(saved.Document.Content).Root!;
         Require(saved.ContentRevision == rewarded.ContentRevision + 1 && saved.SavedRevision == saved.ContentRevision
@@ -127,7 +131,7 @@ internal static partial class AfterRunAuthorityHarness
         var detachedModel = ReputationField<Sr5CareerReputationPhoneModel>(replaced, "_model");
         var beforeDraft = detachedModel.Draft;
         var detachedView = ReputationField<Sr5CareerReputationView>(replaced, "_view");
-        ((VerticalStackLayout)detachedView.Content!).Children.OfType<Entry>().First().Text = "9";
+        ReputationElement<Entry>(detachedView, "street-cred").Text = "9";
         Require(detachedModel.Draft == beforeDraft, "A late detached editor callback changed retained intent.");
         using var nextLifetime = InstallManagedReputationLifetime(replaced);
         await InvokeTokenPageActionAsync(replaced, "PrepareForAppearanceRefreshAsync", nextLifetime.Token);
@@ -189,8 +193,18 @@ internal static partial class AfterRunAuthorityHarness
     }
 
     private static Button ReputationButton(Sr5CareerReputationWizardPage page, string id)
-        => ((VerticalStackLayout)ReputationField<Sr5CareerReputationView>(page, "_view").Content!).Children
-            .OfType<Button>().Single(button => button.AutomationId == "sr5-reputation-" + id);
+        => ReputationElement<Button>(ReputationField<Sr5CareerReputationView>(page, "_view"), id);
+
+    private static T ReputationElement<T>(Element root, string id) where T : View
+        => ReputationElements(root).OfType<T>().Single(control => control.AutomationId == "sr5-reputation-" + id);
+
+    private static IEnumerable<Element> ReputationElements(Element root)
+    {
+        yield return root;
+        if (root is IElementController element)
+            foreach (var child in element.LogicalChildren)
+                foreach (var nested in ReputationElements(child)) yield return nested;
+    }
 
     private static async Task NativeReputationOverlappingAppearancesAsync(string contentRoot)
     {
