@@ -184,7 +184,8 @@ internal static partial class AfterRunAuthorityHarness
             var departedSelection = session.Selection;
             int departedReads = probe.QualityBatchCalls;
             departedPicker.SelectedIndex = admitted.FindIndex(option => option.Rating == 1);
-            ((IButtonController)departedAction).SendClicked();
+            await ui.BeginAsyncVoid(() => ((IButtonController)departedAction).SendClicked());
+            await ui.DrainDispatchedAsyncVoidAsync();
             Require(ReferenceEquals(departedSelection, session.Selection) && probe.QualityBatchCalls == departedReads,
                 "A departed rating picker or action changed the active draft.");
             RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(workspaceId).Value!);
@@ -241,10 +242,17 @@ internal static partial class AfterRunAuthorityHarness
             var ownerSelection = session.Selection;
             var beforeOwnerChange = new FileWorkspaceStore(runtime.StateDirectory).Get(workspaceId).Value!;
             int ownerReads = probe.QualityBatchCalls, confirmations = probe.ConfirmCalls;
-            owners.Set(ContactsOwnerB);
-            owners.Set(OwnerScope.LocalSingleUser);
-            ownerPicker.SelectedIndex = admitted.FindIndex(option => option.Rating == 1);
-            ((IButtonController)ownerAction).SendClicked();
+            // Even a rejected Add callback first yields out of the native event.
+            // Join that actual async-void operation and owner-triggered dispatches
+            // before examining either the draft or the durable document.
+            await ui.BeginAsyncVoid(() =>
+            {
+                owners.Set(ContactsOwnerB);
+                owners.Set(OwnerScope.LocalSingleUser);
+                ownerPicker.SelectedIndex = admitted.FindIndex(option => option.Rating == 1);
+                ((IButtonController)ownerAction).SendClicked();
+            });
+            await ui.DrainDispatchedAsyncVoidAsync();
             Require(ReferenceEquals(ownerSelection, session.Selection) && probe.QualityBatchCalls == ownerReads
                 && probe.ConfirmCalls == confirmations && owners.ActiveLeases == 0,
                 "Owner A-to-B-to-A reactivated a stale rating offer or leaked an owner lease.");
