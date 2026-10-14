@@ -159,7 +159,7 @@ internal static partial class AfterRunAuthorityHarness
                 }
                 Require(navigation.CurrentPage is Sr5CareerQualityReviewPage, "Selected level did not reach review.");
                 IssuedPageLifecycle(page, "OnDisappearing");
-                var reviewPage = navigation.CurrentPage;
+                var reviewPage = (Sr5CareerQualityReviewPage)navigation.CurrentPage;
                 using (var alerts = new IssuedPageAlerts(reviewPage, window))
                 {
                     await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(reviewPage, "OnAppearing")));
