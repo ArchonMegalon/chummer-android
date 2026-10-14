@@ -1029,4 +1029,13 @@ Preview: {3}…</value></data>
   <data name="The amount, percentage, or exchange multiple does not permit this gain." xml:space="preserve"><value>The amount, percentage, or exchange multiple does not permit this gain.</value></data>
   <data name="Working for the People records {0} Nuyen in the expense and changes the balance by {1}. Working for the Man uses {1} for both." xml:space="preserve"><value>Working for the People records {0} Nuyen in the expense and changes the balance by {1}. Working for the Man uses {1} for both.</value></data>
   <data name="Exchange uses multiples of {0} Nuyen. Working for the Man uses {1} Nuyen per Karma." xml:space="preserve"><value>Exchange uses multiples of {0} Nuyen. Working for the Man uses {1} Nuyen per Karma.</value></data>
+  <data name="Edit Karma entry" xml:space="preserve"><value>Edit Karma entry</value></data>
+  <data name="Edit Nuyen entry" xml:space="preserve"><value>Edit Nuyen entry</value></data>
+  <data name="{0} Karma available" xml:space="preserve"><value>{0} Karma available</value></data>
+  <data name="{0} Nuyen available" xml:space="preserve"><value>{0} Nuyen available</value></data>
+  <data name="Saved entry" xml:space="preserve"><value>Saved entry</value></data>
+  <data name="Save entry" xml:space="preserve"><value>Save entry</value></data>
+  <data name="No reason" xml:space="preserve"><value>No reason</value></data>
+  <data name="Only manually recorded amounts can be changed." xml:space="preserve"><value>Only manually recorded amounts can be changed.</value></data>
+  <data name="Check the amount, reason and date before saving." xml:space="preserve"><value>Check the amount, reason and date before saving.</value></data>
 </root>

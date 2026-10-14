@@ -202,6 +202,8 @@ static string[] TargetPages()
     [
         "CareerManualKarmaPage.cs",
         "CareerManualNuyenPage.cs",
+        "CareerKarmaExpensePage.cs",
+        "CareerNuyenExpensePage.cs",
         "Sr5CareerAttributeWizardPage.cs",
         "Sr5CareerActiveSkillWizardPage.cs",
         "Sr5CareerSkillGroupWizardPage.cs",

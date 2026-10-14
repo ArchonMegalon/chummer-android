@@ -211,7 +211,9 @@ def require_atomic_saved_transition(
 
 def select_locked_expense(device: shared.Device) -> None:
     device.tap("career-karma-expense-picker", timeout=60, scroll=True, max_scrolls=12)
-    device.tap(LOCKED_ID, timeout=60, scroll=True, max_scrolls=8)
+    # The picker exposes the fixture's unique player-facing label; saved-byte
+    # assertions below still identify the exact expense by LOCKED_ID.
+    device.tap("2081-05-10 10:00 · 3.5 Karma · Locked quality", timeout=60, scroll=True, max_scrolls=8)
     time.sleep(0.5)
 
 
