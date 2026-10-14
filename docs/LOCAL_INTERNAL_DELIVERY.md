@@ -132,7 +132,24 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 230 is the latest [observed Internal availability](../play/evidence/preview230-internal-observation.json),
+Preview 231 is the latest [observed Internal availability](../play/evidence/preview231-internal-observation.json),
+released on 14 October at 12:00 Europe/Vienna. Android #773 separates Calendar
+input, immutable review and saved stages. Readable week labels replace machine
+IDs in ordinary ready-state UI; changing a preview requires a fresh review, and
+Save change opens native confirmation with exact page/session/journal checks.
+Core/UI are unchanged. Actual Core/native button/dialog tests, stale-review
+recovery, 19 Python driver cases, appearance cancellation and 901-key EN/DE/ES
+parity passed. The API 36 x64 Release/Internal route passed cancel, revised
+preview recovery, fresh confirmation, one notes-only save (revision 21 to 22) and
+two process restarts. All 37 files were byte-identical before save and across the
+final restart. Local ARM64 build, isolated original-key signing, independent
+keyless verification and one Play upload/final confirmation passed.
+Physical Preview 231, startup/reload reliability, full Career and live Origin remain
+unverified. SystemUI boot trouble and emulator quota adjustment are recorded,
+not presented as a performance fix. Version 231 is consumed; retain its exact
+packet and prior rollback artifacts, and do not rebuild/re-upload it.
+
+Preview 230's historical [observed Internal availability](../play/evidence/preview230-internal-observation.json),
 released on 14 October at 10:57 Europe/Vienna. Android #771 fixes recovery from
 an unapplied Calendar preview made stale by another saved change. Explicit
 discard preserves the runner; a fresh preview and confirmation are required.
