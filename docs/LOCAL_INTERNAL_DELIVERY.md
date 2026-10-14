@@ -132,7 +132,23 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 227 is the latest [observed Internal availability](../play/evidence/preview227-internal-observation.json),
+Preview 228 is the latest [observed Internal availability](../play/evidence/preview228-internal-observation.json),
+released on 14 October at 07:15 Europe/Vienna. Career saved Karma/Nuyen entry
+editors now use readable picker labels, clear locked/invalid amount guidance,
+optional date/time controls and visible saving feedback with automatic return.
+Android #767 merged normally with the exact tested tree; Core/UI are unchanged.
+Eight actual Core/MAUI scenarios, 882 EN/DE/ES keys and six focused checks passed.
+Native API36 x64 Release/Internal editing and cold reopen passed: two existing
+amounts changed, totals 12 Karma/230 Nuyen, revision 17 and unchanged expense
+identities/metadata; all 37 saved files identical after restart. Local ARM64
+build, original-key isolated signing, independent keyless verification and one
+Play upload/confirmation passed. Physical228 and full Career remain unverified.
+SystemUI/installer trouble was reconciled before a bounded retry; slow startup
+and post-commit refresh remain open, not performance fixes. Continue with
+measured refresh latency and remaining Career actions.228 is consumed; retain
+the exact packet and previous rollback artifacts.
+
+Preview 227's historical [observed Internal availability](../play/evidence/preview227-internal-observation.json),
 released on 14 October at 06:29 Europe/Vienna. Career Karma/Nuyen entry forms
 keep amount/reason/actions visible, place optional fields under More options,
 show pending feedback and prevent repeated submission. Android #765 merged
@@ -143,8 +159,8 @@ four new expenses,revision15;all37 saved files identical after restart. Local
 ARM64 build, isolated original-key signing, independent keyless checks and one
 Play upload/confirmation passed. Physical227 and full Career remain unverified.
 SystemUI boot/install trouble, slow restoration and post-commit return remain
-explicit limitations, not resolved performance claims. Expense-editor UX and
-the remaining Career actions are next.227 is consumed; retain rollback packets.
+explicit limitations, not resolved performance claims. Expense-editor UX is
+addressed separately in228.227 is consumed; retain rollback packets.
 
 Preview 226's historical [observed Internal availability](../play/evidence/preview226-internal-observation.json),
 released on 14 October at 05:29 Europe/Vienna. Five Career advancement review/
