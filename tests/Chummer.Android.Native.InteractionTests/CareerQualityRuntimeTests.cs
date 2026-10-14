@@ -80,21 +80,18 @@ internal static partial class AfterRunAuthorityHarness
                 using (var alerts = new IssuedPageAlerts(choose, window))
                 {
                     await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(choose, "OnAppearing")));
-                    var picker = MinimalVisible(choose).OfType<Picker>().Single();
                     var negative = editor.Quotes.First(x => x.CanApply && x.RuleKarmaCost < 0
                         && x.CharacterKarmaDelta == 0
                         && x.Operation == CharacterCareerQualityOperation.AcquireLevel);
-                    picker.SelectedIndex = editor.Quotes.ToList().IndexOf(negative);
+                    SelectCareerQualityQuote(choose, editor, negative);
                     var summary = MinimalVisible(choose).OfType<Label>()
                         .Single(x => x.AutomationId == "sr5-career-quality-summary");
                     string unchanged = linked ? "Karma unverändert" : "No Karma change";
-                    Require(picker.Items[picker.SelectedIndex].Contains(unchanged, StringComparison.Ordinal)
-                        && summary.Text == $"{unchanged} · Karma 100 → 100",
+                    Require(summary.Text == $"{unchanged} · Karma 100 → 100",
                         "The real negative-quality rule value was presented as spendable Career Karma.");
-                    picker.SelectedIndex = editor.Quotes.ToList().IndexOf(eligible);
+                    SelectCareerQualityQuote(choose, editor, eligible);
                     string spend = linked ? "16 Karma ausgeben" : "Spend 16 Karma";
-                    Require(picker.Items[picker.SelectedIndex].Contains(spend, StringComparison.Ordinal)
-                        && summary.Text == $"{spend} · Karma 100 → 84",
+                    Require(summary.Text == $"{spend} · Karma 100 → 84",
                         "Positive quality display does not match the actual Core Karma delta.");
                     AssertQualityCopy(choose);
                     var review = MinimalVisible(choose).OfType<Button>().Single(x => x.AutomationId == "sr5-career-quality-review");
