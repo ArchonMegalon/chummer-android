@@ -132,7 +132,21 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 226 is the latest [observed Internal availability](../play/evidence/preview226-internal-observation.json),
+Preview 227 is the latest [observed Internal availability](../play/evidence/preview227-internal-observation.json),
+released on 14 October at 06:29 Europe/Vienna. Career Karma/Nuyen entry forms
+keep amount/reason/actions visible, place optional fields under More options,
+show pending feedback and prevent repeated submission. Android #765 merged
+normally with the exact tested tree; Core/UI are unchanged. Eight actual
+Core/MAUI scenarios and EN/DE/ES checks passed. Native API36 x64 Release/Internal
+gain/spend/options/automatic return and cold reopen passed:11 Karma,220 Nuyen,
+four new expenses,revision15;all37 saved files identical after restart. Local
+ARM64 build, isolated original-key signing, independent keyless checks and one
+Play upload/confirmation passed. Physical227 and full Career remain unverified.
+SystemUI boot/install trouble, slow restoration and post-commit return remain
+explicit limitations, not resolved performance claims. Expense-editor UX and
+the remaining Career actions are next.227 is consumed; retain rollback packets.
+
+Preview 226's historical [observed Internal availability](../play/evidence/preview226-internal-observation.json),
 released on 14 October at 05:29 Europe/Vienna. Five Career advancement review/
 receipt pages keep effective values, costs and balances visible and technical
 details collapsed. Android #763 merged normally with the tested tree; Core/UI
