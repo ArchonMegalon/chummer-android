@@ -12,6 +12,12 @@
     <Compile Include="Program.cs" />
     <Compile Include="AuthorityCompileStubs.cs" />
     <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCreationQualitiesRules.cs" Link="Core/CharacterCreationQualitiesRules.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CreationDigestBufferWriter.cs" Link="Core/CreationDigestBufferWriter.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCreationKarmaQualitiesModels.cs" Link="Core/CharacterCreationKarmaQualitiesModels.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCreationQualityCostRules.cs" Link="Core/CharacterCreationQualityCostRules.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCreationQualitiesReReviewModels.cs" Link="Core/CharacterCreationQualitiesReReviewModels.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Owners/OwnerScope.cs" Link="Core/OwnerScope.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Application/Owners/OwnerContextStamp.cs" Link="Core/OwnerContextStamp.cs" />
     <Compile Include="$(ChummerPresentationRoot)/Chummer.Presentation/Overview/CharacterCreationQualitiesWorkflow.cs" Link="Presentation/CharacterCreationQualitiesWorkflow.cs" />
     <Compile Include="../../src/Chummer.Android/Native/CreationQualitiesPhoneAuthority.cs" Link="Native/CreationQualitiesPhoneAuthority.cs" />
     <Compile Include="../../src/Chummer.Android/Native/CreationQualitiesPhoneDraft.cs" Link="Native/CreationQualitiesPhoneDraft.cs" />

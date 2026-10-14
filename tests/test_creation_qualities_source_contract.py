@@ -8,6 +8,21 @@ NATIVE = REPO / "src" / "Chummer.Android" / "Native"
 
 
 class CreationQualitiesSourceContractTests(unittest.TestCase):
+    def test_inline_catalog_summaries_are_prepared_off_the_ui_thread(self) -> None:
+        page = (NATIVE / "CreationQualitiesPage.cs").read_text(encoding="utf-8")
+        prepare = page[page.index("protected override async Task PrepareForAppearanceRefreshAsync"):
+                       page.index("protected override void Refresh()")]
+        worker = prepare[prepare.index("var prepared = await Task.Run(() =>"):
+                         prepare.index("_loadedDisplay = original;")]
+        self.assertIn("_inlineSummaries = new Dictionary<string, string>();", prepare)
+        self.assertIn("CreationQualityInfo.Effects(source.SourceNodeXml, source.Rating)", worker)
+        self.assertIn("availableIds.Contains(source.OptionId)", worker)
+        self.assertIn("_inlineSummaries = prepared.Summaries;", prepare)
+        catalog = page[page.index("private void RenderCatalog("):
+                       page.index("internal static string RatingLabel(")]
+        self.assertIn("_inlineSummaries.GetValueOrDefault(option.OptionId, string.Empty)", catalog)
+        self.assertNotIn("CreationQualityInfo.Effects(", catalog)
+
     def test_chooser_precedes_background_details_with_separate_forward_action(self) -> None:
         page = (NATIVE / "CreationQualitiesPage.cs").read_text(encoding="utf-8")
         refresh = page[page.index("protected override void Refresh()"):page.index("private void AddBinding(")]
@@ -52,7 +67,7 @@ class CreationQualitiesSourceContractTests(unittest.TestCase):
         configure = page[page.index("public sealed class CreationQualityConfigurePage"):
                          page.index("public sealed class CreationQualitiesReviewPage")]
         self.assertIn("_state.Authority.Options.SingleOrDefault(item => item.OptionId == _option.OptionId)", configure)
-        self.assertIn("CreationQualityInfoPage.AddEffects(_body", configure)
+        self.assertIn("CreationQualityInfoPage.AddEffects(_details", configure)
         self.assertIn("CreationQualityInfo.Effects(source.SourceNodeXml, _option.Rating)", configure)
         self.assertLess(configure.index("CreationQualityInfoPage.AddEffects"), configure.index('"creation-quality-configure-toggle"'))
 

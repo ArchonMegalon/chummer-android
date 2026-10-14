@@ -8,6 +8,7 @@ namespace Chummer.Contracts.Characters
     public static class CharacterCreationBuildMethods
     {
         public const string Priority = "Priority";
+        public const string SumToTen = "SumToTen";
     }
 
     public static class CharacterCreationFoundationOutcomes
