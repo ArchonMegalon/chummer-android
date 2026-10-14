@@ -132,7 +132,25 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 228 is the latest [observed Internal availability](../play/evidence/preview228-internal-observation.json),
+Preview 229 is the latest [observed Internal availability](../play/evidence/preview229-internal-observation.json),
+released on 14 October at 08:53 Europe/Vienna. Four nonstructural Career
+Karma/Nuyen gain/edit saves avoid a redundant full refresh only when the exact
+durable owner/revision/SR5/roster/catalog state matches the initialized shell;
+full-refresh fallback and mutation/recovery checks remain. Android #769 merged
+normally with the tested tree; Core/UI are unchanged. Local checks passed:
+324 native sources, 20 actual Core/MAUI scenarios, 25 negative reuse guards per
+currency and six focused checks. Unchanged localization results were reused.
+The native API36 x64 Release/Internal route saved Karma and edited Nuyen, returned
+automatically and reopened the same runner in a new process: 13 Karma/240 Nuyen,
+revision 19, all 37 files byte-identical across restart. Local ARM64 build,
+original-key isolated signing, independent keyless verification and one Play
+upload/final confirmation passed. Physical229 and full Career remain unverified.
+Sparse emulator observations are upper bounds, not precise speed measurements;
+SystemUI boot trouble and native startup/reload closure remain open. Continue
+with remaining Career actions and device-level acceptance.229 is consumed;
+retain the exact packet and previous rollback artifacts.
+
+Preview 228's historical [observed Internal availability](../play/evidence/preview228-internal-observation.json),
 released on 14 October at 07:15 Europe/Vienna. Career saved Karma/Nuyen entry
 editors now use readable picker labels, clear locked/invalid amount guidance,
 optional date/time controls and visible saving feedback with automatic return.
