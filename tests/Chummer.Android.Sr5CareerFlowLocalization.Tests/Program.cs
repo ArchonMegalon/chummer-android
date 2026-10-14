@@ -200,6 +200,8 @@ static string[] Placeholders(string value)
 static string[] TargetPages()
     =>
     [
+        "CareerManualKarmaPage.cs",
+        "CareerManualNuyenPage.cs",
         "Sr5CareerAttributeWizardPage.cs",
         "Sr5CareerActiveSkillWizardPage.cs",
         "Sr5CareerSkillGroupWizardPage.cs",

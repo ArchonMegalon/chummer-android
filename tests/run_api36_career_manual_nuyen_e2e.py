@@ -98,7 +98,7 @@ def expense_rows(root: ET.Element) -> list[ET.Element]:
 def assert_summary(device: shared.Device, karma: str, nuyen: str) -> None:
     node = device.wait("career-manual-nuyen-summary", timeout=45)
     text = node.attributes.get("text", "")
-    expected = f"{nuyen} Nuyen · {karma} Karma"
+    expected = f"{karma} Karma · {nuyen} Nuyen"
     if expected not in text:
         device.capture("career-manual-nuyen-summary-mismatch")
         raise RuntimeError(f"Expected {expected!r}; observed {text!r}")
@@ -110,9 +110,11 @@ def prove(device: shared.Device, fixture: Path) -> None:
     open_page(device)
     assert_summary(device, "5", "10000")
     device.set_text("career-manual-nuyen-amount", "Amount", "100")
-    device.set_text("career-manual-nuyen-percent", "Percent", "150")
     device.set_text("career-manual-nuyen-reason", "Reason", "Run payment", scroll=True)
+    device.tap("career-manual-nuyen-options-toggle", scroll=True, timeout=90, max_scrolls=20)
+    device.set_text("career-manual-nuyen-percent", "Percent", "150", scroll=True)
     device.tap("career-manual-nuyen-refund", scroll=True, timeout=90, max_scrolls=20)
+    shared.reset_scroll_to_top(device, swipes=6)
     device.tap("career-manual-nuyen-gain", scroll=True, timeout=120, max_scrolls=20)
     device.wait("build-career-manual-nuyen", timeout=180, scroll=True, max_scrolls=30)
     gained = matching_root(device, "5", "10150")
@@ -135,11 +137,13 @@ def prove(device: shared.Device, fixture: Path) -> None:
     open_page(device)
     assert_summary(device, "5", "10150")
 
-    device.tap("career-manual-nuyen-exchange", scroll=True, timeout=90, max_scrolls=20)
-    device.set_text("career-manual-nuyen-amount", "Amount", "3000")
     device.set_text("career-manual-nuyen-reason", "Reason", "Conversion", scroll=True)
+    device.tap("career-manual-nuyen-options-toggle", scroll=True, timeout=90, max_scrolls=20)
+    device.tap("career-manual-nuyen-exchange", scroll=True, timeout=90, max_scrolls=20)
     device.tap("career-manual-nuyen-refund", scroll=True, timeout=90, max_scrolls=20)
     device.tap("career-manual-nuyen-force-career-visible", scroll=True, timeout=90, max_scrolls=20)
+    shared.reset_scroll_to_top(device, swipes=6)
+    device.set_text("career-manual-nuyen-amount", "Amount", "3000")
     device.tap("career-manual-nuyen-spend", scroll=True, timeout=120, max_scrolls=20)
     device.wait("build-career-manual-nuyen", timeout=180, scroll=True, max_scrolls=30)
     spent = matching_root(device, "7", "7150")

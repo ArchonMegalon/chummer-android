@@ -133,9 +133,11 @@ def prove(device: shared.Device, fixture: Path) -> None:
 
     device.set_text("career-manual-karma-amount", "Amount", "3")
     device.set_text("career-manual-karma-reason", "Reason", "Conversion", scroll=True)
+    device.tap("career-manual-karma-options-toggle", scroll=True, timeout=90, max_scrolls=20)
     device.tap("career-manual-karma-exchange", scroll=True, timeout=90, max_scrolls=20)
     device.tap("career-manual-karma-refund", scroll=True, timeout=90, max_scrolls=20)
     device.tap("career-manual-karma-force-career-visible", scroll=True, timeout=90, max_scrolls=20)
+    shared.reset_scroll_to_top(device, swipes=6)
     device.tap("career-manual-karma-spend", scroll=True, timeout=120, max_scrolls=20)
     device.wait("build-career-manual-karma", timeout=180, scroll=True, max_scrolls=30)
     spent = matching_root(device, "4", "16000")

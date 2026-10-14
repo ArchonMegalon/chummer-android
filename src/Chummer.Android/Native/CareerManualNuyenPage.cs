@@ -1,4 +1,6 @@
 using System.Globalization;
+using Chummer.Application.Owners;
+using static Chummer.Android.Native.Sr5CareerFlowStrings;
 using Chummer.Contracts.Characters;
 using Chummer.Presentation.Overview;
 
@@ -17,13 +19,22 @@ public sealed class CareerManualNuyenPage : NativePageBase
     private readonly Switch _forceCareerVisible;
     private readonly Button _gain;
     private readonly Button _spend;
+    private readonly Button _options;
+    private readonly VerticalStackLayout _optionsBody;
+    private readonly ActivityIndicator _progress;
+    private readonly Label _saveStatus;
+    private readonly OwnerContextStamp? _ownerContext;
+    private bool _saving;
+    private bool _attempted;
+    private bool _recorded;
 
     public CareerManualNuyenPage(
         RunnerSessionCoordinator coordinator,
         CareerManualNuyenEditorState editor) : base(coordinator)
     {
         _editor = editor ?? throw new ArgumentNullException(nameof(editor));
-        Title = "Manual Nuyen";
+        _ownerContext = coordinator.State.DisplayOwnerContext;
+        Title = Text("Record Nuyen");
         AutomationId = "career-manual-nuyen-page";
 
         VerticalStackLayout body = new()
@@ -31,16 +42,14 @@ public sealed class CareerManualNuyenPage : NativePageBase
             Padding = new Thickness(20, 18, 20, 40),
             Spacing = 14
         };
-        body.Add(NativeTheme.Eyebrow("Career runner"));
-        body.Add(NativeTheme.Title("Manual Nuyen entry"));
+        body.Add(NativeTheme.Title(Text("Record Nuyen")));
         Label summary = NativeTheme.Body(
-            $"{editor.Nuyen.AvailableNuyen.ToString(CultureInfo.InvariantCulture)} Nuyen · "
-            + $"{editor.Nuyen.AvailableKarma.ToString(CultureInfo.InvariantCulture)} Karma",
+            Format("{0} Karma · {1} Nuyen", editor.Nuyen.AvailableKarma, editor.Nuyen.AvailableNuyen),
             NativeTheme.Muted);
         summary.AutomationId = "career-manual-nuyen-summary";
         body.Add(NativeTheme.Card(summary));
 
-        body.Add(NativeTheme.FieldLabel("Amount"));
+        body.Add(NativeTheme.FieldLabel(Text("Amount")));
         _amount = new Entry
         {
             Text = "1",
@@ -53,7 +62,17 @@ public sealed class CareerManualNuyenPage : NativePageBase
         _amount.TextChanged += (_, _) => RefreshEnabledState();
         body.Add(_amount);
 
-        body.Add(NativeTheme.FieldLabel("Percent"));
+        body.Add(NativeTheme.FieldLabel(Text("Reason")));
+        _reason = NativeTheme.TextArea(
+            "career-manual-nuyen-reason",
+            Text("Expense"),
+            Text("Reason"));
+        _reason.MaxLength = CharacterCareerManualNuyenRules.MaximumReasonLength;
+        body.Add(_reason);
+
+        _optionsBody = new VerticalStackLayout { Spacing = 10, IsVisible = false,
+            AutomationId = "career-manual-nuyen-options" };
+        _optionsBody.Add(NativeTheme.FieldLabel(Text("Percent")));
         _percent = new Entry
         {
             Text = "100",
@@ -64,17 +83,9 @@ public sealed class CareerManualNuyenPage : NativePageBase
             MaxLength = 7
         };
         _percent.TextChanged += (_, _) => RefreshEnabledState();
-        body.Add(_percent);
+        _optionsBody.Add(_percent);
 
-        body.Add(NativeTheme.FieldLabel("Reason"));
-        _reason = NativeTheme.TextArea(
-            "career-manual-nuyen-reason",
-            "Expense",
-            "Reason");
-        _reason.MaxLength = CharacterCareerManualNuyenRules.MaximumReasonLength;
-        body.Add(_reason);
-
-        body.Add(NativeTheme.FieldLabel("Local expense date"));
+        _optionsBody.Add(NativeTheme.FieldLabel(Text("Date")));
         _date = new DatePicker
         {
             AutomationId = "career-manual-nuyen-date",
@@ -84,7 +95,7 @@ public sealed class CareerManualNuyenPage : NativePageBase
             BackgroundColor = NativeTheme.Surface,
             TextColor = NativeTheme.Text
         };
-        body.Add(_date);
+        _optionsBody.Add(_date);
         _time = new TimePicker
         {
             AutomationId = "career-manual-nuyen-time",
@@ -92,13 +103,13 @@ public sealed class CareerManualNuyenPage : NativePageBase
             BackgroundColor = NativeTheme.Surface,
             TextColor = NativeTheme.Text
         };
-        body.Add(_time);
+        _optionsBody.Add(_time);
 
-        _refund = ToggleRow(body, "Refund", "career-manual-nuyen-refund");
-        _exchange = ToggleRow(body, "Karma/Nuyen exchange", "career-manual-nuyen-exchange");
+        _refund = ToggleRow(_optionsBody, Text("Refund"), "career-manual-nuyen-refund");
+        _exchange = ToggleRow(_optionsBody, Text("Karma/Nuyen exchange"), "career-manual-nuyen-exchange");
         _forceCareerVisible = ToggleRow(
-            body,
-            "Force Career visibility",
+            _optionsBody,
+            Text("Force Career visibility"),
             "career-manual-nuyen-force-career-visible");
         _exchange.Toggled += (_, args) =>
         {
@@ -117,18 +128,39 @@ public sealed class CareerManualNuyenPage : NativePageBase
             }
             RefreshEnabledState();
         };
-        body.Add(NativeTheme.Body(
-            $"Exchange multiples are validated at {editor.Nuyen.NuyenPerKarmaWorkingForPeople.ToString(CultureInfo.InvariantCulture)} Nuyen. Gained Nuyen converts with the {editor.Nuyen.NuyenPerKarmaWorkingForMan.ToString(CultureInfo.InvariantCulture)} Working for the Man rate; spent Nuyen converts with the Working for the People rate, matching Chummer5.",
+        _optionsBody.Add(NativeTheme.Body(
+            Format("Exchange uses multiples of {0} Nuyen. Working for the Man uses {1} Nuyen per Karma.", editor.Nuyen.NuyenPerKarmaWorkingForPeople, editor.Nuyen.NuyenPerKarmaWorkingForMan),
             NativeTheme.Muted));
 
-        _gain = NativeTheme.PrimaryButton("Record Nuyen gained");
+        _gain = NativeTheme.PrimaryButton(Text("Record Nuyen gained"));
         _gain.AutomationId = "career-manual-nuyen-gain";
         _gain.Clicked += async (_, _) => await RunAsync(() => ApplyAsync(CharacterCareerManualNuyenAction.Gain));
         body.Add(_gain);
-        _spend = NativeTheme.SecondaryButton("Record Nuyen spent");
+        _spend = NativeTheme.SecondaryButton(Text("Record Nuyen spent"));
         _spend.AutomationId = "career-manual-nuyen-spend";
         _spend.Clicked += async (_, _) => await RunAsync(() => ApplyAsync(CharacterCareerManualNuyenAction.Spend));
         body.Add(_spend);
+
+        _progress = new ActivityIndicator
+        {
+            AutomationId = "career-manual-nuyen-save-progress",
+            IsVisible = false, IsRunning = false, Color = NativeTheme.Signal
+        };
+        _saveStatus = NativeTheme.Body(Text("Saving entry…"), NativeTheme.Muted);
+        _saveStatus.AutomationId = "career-manual-nuyen-save-status";
+        _saveStatus.IsVisible = false;
+        body.Add(_progress);
+        body.Add(_saveStatus);
+        _options = NativeTheme.ReadingButton(Text("More options"));
+        _options.AutomationId = "career-manual-nuyen-options-toggle";
+        _options.Clicked += (_, _) =>
+        {
+            if (_attempted || !MatchesRunner()) return;
+            _optionsBody.IsVisible = !_optionsBody.IsVisible;
+            _options.Text = Text(_optionsBody.IsVisible ? "Fewer options" : "More options");
+        };
+        body.Add(_options);
+        body.Add(_optionsBody);
 
         Content = new ScrollView { Content = body };
         RefreshEnabledState();
@@ -157,10 +189,14 @@ public sealed class CareerManualNuyenPage : NativePageBase
         return toggle;
     }
 
+    private bool MatchesRunner()
+        => Coordinator.IsCareerNavigationOwnerCurrent(_ownerContext)
+           && Coordinator.State.WorkspaceId == _editor.WorkspaceId
+           && Coordinator.State.ContentRevision == _editor.ContentRevision;
+
     private void RefreshEnabledState()
     {
-        bool revisionMatches = Coordinator.State.WorkspaceId == _editor.WorkspaceId
-            && Coordinator.State.ContentRevision == _editor.ContentRevision;
+        bool revisionMatches = !_attempted && MatchesRunner();
         bool inputsValid = TryReadInputs(out int amount, out decimal percent);
         bool gainValid = inputsValid
             && CharacterCareerManualNuyenRules.TryQuote(
@@ -179,6 +215,13 @@ public sealed class CareerManualNuyenPage : NativePageBase
                 _exchange.IsToggled,
                 out _);
 
+        _options.IsEnabled = revisionMatches;
+        _progress.IsVisible = _saving;
+        _progress.IsRunning = _saving;
+        _saveStatus.IsVisible = _attempted || !MatchesRunner();
+        _saveStatus.Text = Text(_saving ? "Saving entry…"
+            : _recorded ? "Entry saved. Return to Career to continue."
+            : "Reopen the runner and check its balance before trying again.");
         _amount.IsEnabled = revisionMatches;
         _percent.IsEnabled = revisionMatches && !_exchange.IsToggled;
         _reason.IsEnabled = revisionMatches;
@@ -187,6 +230,8 @@ public sealed class CareerManualNuyenPage : NativePageBase
         _refund.IsEnabled = revisionMatches;
         _exchange.IsEnabled = revisionMatches;
         _forceCareerVisible.IsEnabled = revisionMatches && _exchange.IsToggled;
+        _gain.Text = Text(_saving ? "Saving entry…" : "Record Nuyen gained");
+        _spend.Text = Text(_saving ? "Saving entry…" : "Record Nuyen spent");
         _gain.IsEnabled = revisionMatches && gainValid;
         _spend.IsEnabled = revisionMatches && spendValid;
     }
@@ -213,6 +258,7 @@ public sealed class CareerManualNuyenPage : NativePageBase
 
     private async Task ApplyAsync(CharacterCareerManualNuyenAction action)
     {
+        if (_attempted || !MatchesRunner()) return;
         if (!TryReadInputs(out int amount, out decimal percent)
             || !CharacterCareerManualNuyenRules.TryQuote(
                 _editor.Nuyen,
@@ -223,11 +269,11 @@ public sealed class CareerManualNuyenPage : NativePageBase
                 out _))
         {
             await DisplayAlertAsync(
-                "Invalid Nuyen entry",
-                action == CharacterCareerManualNuyenAction.Spend
+                Text("Invalid Nuyen entry"),
+                Text(action == CharacterCareerManualNuyenAction.Spend
                     ? "The amount, percentage, exchange multiple, or available Nuyen does not permit this spend."
-                    : "The amount, percentage, or exchange multiple does not permit this gain.",
-                "OK");
+                    : "The amount, percentage, or exchange multiple does not permit this gain."),
+                Text("OK"));
             return;
         }
 
@@ -239,7 +285,7 @@ public sealed class CareerManualNuyenPage : NativePageBase
                 ? "Working for the Man"
                 : "Working for the People";
         }
-        await Coordinator.ApplyCareerManualNuyenEditAsync(new CareerManualNuyenEditRequest(
+        var request = new CareerManualNuyenEditRequest(
             _editor.WorkspaceId,
             _editor.ContentRevision,
             _editor.Nuyen,
@@ -250,10 +296,28 @@ public sealed class CareerManualNuyenPage : NativePageBase
             localDate,
             _refund.IsToggled,
             _exchange.IsToggled,
-            _forceCareerVisible.IsToggled));
-        if (Coordinator.State.Error is null)
+            _forceCareerVisible.IsToggled);
+        long appearance = CaptureAppearanceGeneration();
+        _attempted = true;
+        _saving = true;
+        RefreshEnabledState();
+        try
         {
-            await Navigation.PopAsync();
+            // Keep the original request immutable while the action is pending.
+            // The existing coordinator/presenter retains owner and save admission.
+            await Coordinator.ApplyCareerManualNuyenEditAsync(request);
+            _recorded = Coordinator.State.Error is null && !Coordinator.State.IsDirty
+                && Coordinator.State.WorkspaceId == _editor.WorkspaceId
+                && Coordinator.State.ContentRevision > _editor.ContentRevision;
+            if (_recorded && IsCurrentAppearanceGeneration(appearance)
+                && Coordinator.IsCareerNavigationOwnerCurrent(_ownerContext)
+                && ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), this))
+                await Navigation.PopAsync();
+        }
+        finally
+        {
+            _saving = false;
+            RefreshEnabledState();
         }
     }
 }

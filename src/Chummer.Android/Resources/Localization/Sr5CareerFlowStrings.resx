@@ -1003,4 +1003,30 @@ Preview: {3}…</value></data>
   <data name="Gain {0} Karma" xml:space="preserve"><value>Gain {0} Karma</value></data>
   <data name="No Karma change" xml:space="preserve"><value>No Karma change</value></data>
   <data name="{0} · Karma {1} → {2}" xml:space="preserve"><value>{0} · Karma {1} → {2}</value></data>
+  <data name="Amount" xml:space="preserve"><value>Amount</value></data>
+  <data name="Reason" xml:space="preserve"><value>Reason</value></data>
+  <data name="Percent" xml:space="preserve"><value>Percent</value></data>
+  <data name="Record Karma" xml:space="preserve"><value>Record Karma</value></data>
+  <data name="Record Nuyen" xml:space="preserve"><value>Record Nuyen</value></data>
+  <data name="Record Karma gained" xml:space="preserve"><value>Record Karma gained</value></data>
+  <data name="Record Karma spent" xml:space="preserve"><value>Record Karma spent</value></data>
+  <data name="Record Nuyen gained" xml:space="preserve"><value>Record Nuyen gained</value></data>
+  <data name="Record Nuyen spent" xml:space="preserve"><value>Record Nuyen spent</value></data>
+  <data name="More options" xml:space="preserve"><value>More options</value></data>
+  <data name="Fewer options" xml:space="preserve"><value>Fewer options</value></data>
+  <data name="Saving entry…" xml:space="preserve"><value>Saving entry…</value></data>
+  <data name="Entry saved. Return to Career to continue." xml:space="preserve"><value>Entry saved. Return to Career to continue.</value></data>
+  <data name="Reopen the runner and check its balance before trying again." xml:space="preserve"><value>Reopen the runner and check its balance before trying again.</value></data>
+  <data name="Karma/Nuyen exchange" xml:space="preserve"><value>Karma/Nuyen exchange</value></data>
+  <data name="Force Career visibility" xml:space="preserve"><value>Force Career visibility</value></data>
+  <data name="{0} Karma · {1} Nuyen" xml:space="preserve"><value>{0} Karma · {1} Nuyen</value></data>
+  <data name="Invalid amount" xml:space="preserve"><value>Invalid amount</value></data>
+  <data name="Enter a whole Karma amount from {0} to {1}." xml:space="preserve"><value>Enter a whole Karma amount from {0} to {1}.</value></data>
+  <data name="Not enough Karma" xml:space="preserve"><value>Not enough Karma</value></data>
+  <data name="Only {0} Karma is available." xml:space="preserve"><value>Only {0} Karma is available.</value></data>
+  <data name="Invalid Nuyen entry" xml:space="preserve"><value>Invalid Nuyen entry</value></data>
+  <data name="The amount, percentage, exchange multiple, or available Nuyen does not permit this spend." xml:space="preserve"><value>The amount, percentage, exchange multiple, or available Nuyen does not permit this spend.</value></data>
+  <data name="The amount, percentage, or exchange multiple does not permit this gain." xml:space="preserve"><value>The amount, percentage, or exchange multiple does not permit this gain.</value></data>
+  <data name="Working for the People records {0} Nuyen in the expense and changes the balance by {1}. Working for the Man uses {1} for both." xml:space="preserve"><value>Working for the People records {0} Nuyen in the expense and changes the balance by {1}. Working for the Man uses {1} for both.</value></data>
+  <data name="Exchange uses multiples of {0} Nuyen. Working for the Man uses {1} Nuyen per Karma." xml:space="preserve"><value>Exchange uses multiples of {0} Nuyen. Working for the Man uses {1} Nuyen per Karma.</value></data>
 </root>
