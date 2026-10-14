@@ -132,7 +132,30 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 237 is the latest [observed Internal availability](../play/evidence/preview237-internal-observation.json),
+Preview 238 is the latest [observed Internal availability](../play/evidence/preview238-internal-observation.json).
+Play Console records release on 14 October at 18:59 Europe/Vienna; availability
+was observed at 17:00:15 UTC (19:00:15 Europe/Vienna). Its exact local ARM64 build,
+original-key isolated signing, independent keyless verification and one Play
+upload/save-and-publish/final confirmation completed under the standing approval.
+Android #787 adds visible Career quality review progress and retires stale review
+results. Dependencies are unchanged from Preview237.
+Focused managed run 01 compiled 324 native sources with zero warnings/errors;
+delayed-review checks cover exact choice capture, duplicate actions, failure retry
+and leaving/returning without accepting late checkpoints or navigation. Thirteen
+source tests and key hygiene also passed. The actual native route showed Checking
+text, a visible spinner and disabled controls, then one level 1-to-2 acquisition
+at 20 Karma (980 to 960, revision 2 to 3). A new process reopened the same saved
+receipt without reapply; all 49 captured saved/restarted files matched, and 46
+unrelated before/saved files were unchanged. This closes visible feedback for the
+observed route, not slow underlying admission: the first immediate capture
+preceded the updated frame, while later captures established painted feedback.
+SystemUI startup limitations remain. Physical installation, full Creation/Career,
+live Origin and general startup/performance improvements are not claimed.
+Play reported 8749 supported phones, zero newly unsupported phones and only
+missing mapping/native-symbol warnings. Version238 is consumed; retain its exact
+packet and prior rollback artifacts without rebuilding, re-uploading or replay.
+
+Preview 237 was previously [observed on Internal](../play/evidence/preview237-internal-observation.json),
 released on 14 October at 18:14 Europe/Vienna. Its exact local ARM64 build,
 original-key isolated signing, independent keyless verification and one Play
 upload/save-and-publish/final confirmation completed under the standing approval.
