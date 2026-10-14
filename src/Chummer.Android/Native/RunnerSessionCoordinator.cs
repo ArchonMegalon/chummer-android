@@ -1900,12 +1900,24 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     internal async Task<Page?> PrepareCreationAfterQualitiesPageAsync(
         CharacterOverviewState display, CancellationToken cancellationToken)
     {
+        if (!IsCreationCatalogDisplayCurrent(display)) return null;
         var magic = await LoadCreationMagicResonanceForDisplayAsync(display, cancellationToken);
         var talent = await Task.Run(() =>
             magic.Outcome == CharacterCreationFoundationOutcomes.Success
                 && CreationMagicResonancePhoneAuthority.TryProjectForOverview(magic.Value, display, out var editor)
                     ? editor!.Talent.Kind : null, cancellationToken);
-        if (!IsCreationCatalogDisplayCurrent(display) || talent is null) return null;
+        if (!IsCreationCatalogDisplayCurrent(display)) return null;
+        if (talent is null)
+        {
+            // An earlier Attributes save can invalidate the binding of otherwise
+            // unchanged Magic choices. Use Core's explicit re-review, never infer
+            // Mundane from an unavailable editor or discard the historical draft.
+            var review = await LoadCreationMagicReReviewForDisplayAsync(display, cancellationToken);
+            return IsCreationCatalogDisplayCurrent(display)
+                && review is { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } state }
+                && IsCreationMagicReReviewCurrent(state)
+                ? new CreationMagicReReviewPage(this, state) : null;
+        }
         // Only the exact Core talent makes Magic inapplicable. Missing authority
         // is not evidence of a mundane runner and must not skip a required step.
         if (talent != CharacterCreationMagicResonanceKinds.Mundane)

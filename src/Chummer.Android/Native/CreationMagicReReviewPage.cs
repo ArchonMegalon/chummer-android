@@ -9,6 +9,9 @@ public sealed class CreationMagicReReviewPage : NativePageBase
     private CreationMagicReReviewConfirmResult? _confirmation;
     private bool _attached;
     private bool _saving;
+    private bool _advancing;
+    private bool _nextUnavailable;
+    private CancellationTokenSource? _forwardLifetime;
     private long _generation;
 
     internal CreationMagicReReviewPage(RunnerSessionCoordinator coordinator,
@@ -25,6 +28,7 @@ public sealed class CreationMagicReReviewPage : NativePageBase
     {
         _attached = false;
         Interlocked.Increment(ref _generation);
+        _forwardLifetime?.Cancel();
         base.OnDisappearing();
     }
 
@@ -45,6 +49,20 @@ public sealed class CreationMagicReReviewPage : NativePageBase
             var identity = NativeTheme.Body(receipt.ReceiptDigest, NativeTheme.Muted);
             identity.AutomationId = "creation-magic-rereview-receipt";
             _body.Add(NativeTheme.TechnicalDetails(identity, "creation-magic-rereview-receipt-details"));
+            if (_confirmation.Outcome == CharacterCreationFoundationOutcomes.Success && _confirmation.Blockers.Count == 0)
+            {
+                var next = NativeTheme.PrimaryButton(CreationFlowStrings.Get(
+                    _advancing ? "Magic.Review.OpeningNext" : "Magic.Review.ContinueNext",
+                    _advancing ? "Opening Resources…" : "Continue to Resources"));
+                next.AutomationId = "creation-magic-rereview-continue-next";
+                next.IsEnabled = _attached && !_advancing;
+                next.Clicked += async (_, _) => await RunAsync(
+                    () => ContinueToNextAsync(Volatile.Read(ref _generation)));
+                _body.Add(next);
+                if (_nextUnavailable)
+                    _body.Add(NativeTheme.Body(CreationFlowStrings.Get("Magic.Review.NextUnavailable",
+                        "Your choices are saved. Resources could not be opened. Try Continue again; this will not save twice."), NativeTheme.Danger));
+            }
             AddExit();
             return;
         }
@@ -92,11 +110,57 @@ public sealed class CreationMagicReReviewPage : NativePageBase
             progress.IsVisible = progress.IsRunning = true;
             try { _confirmation = await Coordinator.ConfirmCreationMagicReReviewAsync(_state, explicitlyReviewed: true); }
             finally { _saving = false; }
+            if (_confirmation is { Outcome: CharacterCreationFoundationOutcomes.Success, Receipt: not null, Blockers.Count: 0 })
+                await ContinueToNextAsync(generation);
         });
         _body.Add(confirm);
         _body.Add(progress);
         AddExit();
         _body.Add(NativeTheme.TechnicalDetails(binding, "creation-magic-rereview-details"));
+    }
+
+    private async Task ContinueToNextAsync(long generation)
+    {
+        var navigation = Navigation;
+        var stack = navigation.NavigationStack.ToArray();
+        bool IsCurrentPage() => _attached && generation == Volatile.Read(ref _generation)
+            && ReferenceEquals(stack.LastOrDefault(), this)
+            && navigation.NavigationStack.SequenceEqual(stack)
+            && navigation.ModalStack.Count == 0;
+        if (_advancing || !IsCurrentPage()
+            || _confirmation is not { Outcome: CharacterCreationFoundationOutcomes.Success,
+                Receipt: { } receipt, Blockers.Count: 0 } confirmation) return;
+        var display = Coordinator.State;
+        if (!Coordinator.CanDisplayCreationMagicReReviewReceipt(receipt)
+            || !Coordinator.IsCreationCatalogDisplayCurrent(display)) return;
+        _advancing = true;
+        _nextUnavailable = false;
+        using var lifetime = new CancellationTokenSource();
+        _forwardLifetime = lifetime;
+        Refresh();
+        try
+        {
+            var next = await Coordinator.PrepareCreationAfterMagicReReviewPageAsync(_state, receipt, lifetime.Token);
+            if (!IsCurrentPage() || lifetime.IsCancellationRequested || !ReferenceEquals(_confirmation, confirmation)
+                || !Coordinator.IsCreationCatalogDisplayCurrent(display)
+                || !Coordinator.CanDisplayCreationMagicReReviewReceipt(receipt)) return;
+            if (next is null) { _nextUnavailable = true; return; }
+            await navigation.PushAsync(next, animated: false);
+            if (navigation.NavigationStack.SequenceEqual(stack.Append(next)))
+                navigation.RemovePage(this);
+        }
+        catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            // A read/navigation failure must never replay the confirmed write.
+            if (IsCurrentPage()) _nextUnavailable = true;
+        }
+        finally
+        {
+            _advancing = false;
+            if (ReferenceEquals(_forwardLifetime, lifetime)) _forwardLifetime = null;
+            if (IsCurrentPage()) Refresh();
+        }
     }
 
     private void AddChoice(CharacterCreationMagicResonanceOptionIdentity? identity, int? levels = null)

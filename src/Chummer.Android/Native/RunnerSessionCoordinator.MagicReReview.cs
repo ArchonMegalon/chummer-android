@@ -28,9 +28,14 @@ public sealed partial class RunnerSessionCoordinator
         _magicReviewReceipts.TryGetValue(receipt, out var original)
         && IsCreationMagicOwnerCurrent(original.DisplayOwnerContext) && State.WorkspaceId == receipt.WorkspaceId;
 
-    internal CharacterCreationFoundationResult<CharacterCreationMagicResonanceReReviewState> LoadCreationMagicReReview()
+    internal Task<CharacterCreationFoundationResult<CharacterCreationMagicResonanceReReviewState>>
+        LoadCreationMagicReReviewForDisplayAsync(CharacterOverviewState display, CancellationToken token = default)
+        => WithCreationMagicReadAsync(display, () => LoadCreationMagicReReview(display), token);
+
+    internal CharacterCreationFoundationResult<CharacterCreationMagicResonanceReReviewState> LoadCreationMagicReReview(
+        CharacterOverviewState? display = null)
     {
-        var before = State;
+        var before = display ?? State;
         if (!IsCreationCatalogDisplayCurrent(before) || before.WorkspaceId is not { } id
             || before.DisplayOwnerContext is not { } owner
             || _ownerBoundMagicResonanceService is not IOwnerBoundCharacterCreationMagicResonanceReReviewService service)
@@ -43,6 +48,30 @@ public sealed partial class RunnerSessionCoordinator
         if (result is { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } state })
             _magicReviewLoads.GetValue(state, _ => new(before, state));
         return result;
+    }
+
+    internal async Task<Page?> PrepareCreationAfterMagicReReviewPageAsync(
+        CharacterCreationMagicResonanceReReviewState review, CharacterCreationMagicResonanceReceipt receipt,
+        CancellationToken token = default)
+    {
+        var display = State;
+        if (!_magicReviewLoads.TryGetValue(review, out var issued)
+            || !_magicReviewReceipts.TryGetValue(receipt, out var receiptDisplay)
+            || !ReferenceEquals(issued.Display, receiptDisplay)
+            || !CanDisplayCreationMagicReReviewReceipt(receipt)
+            || !IsCreationCatalogDisplayCurrent(display)) return null;
+        string key = CreationMagicReReviewPhoneAuthority.IdempotencyKey(review.InitialPreview);
+        if (display.CreationMagicResonance is not { } current
+            || !CreationMagicReReviewPhoneAuthority.SavedMatches(receipt, review.InitialPreview, current, key)) return null;
+
+        // Navigation is read-only. The issued, authenticated save must still be
+        // the current draft; a later save or owner transition cannot reuse it.
+        var loaded = await LoadCreationMagicResonanceForDisplayAsync(display, token);
+        if (!IsCreationCatalogDisplayCurrent(display)
+            || !CanDisplayCreationMagicReReviewReceipt(receipt)
+            || loaded is not { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } saved }
+            || !CreationMagicReReviewPhoneAuthority.SavedMatches(receipt, review.InitialPreview, saved, key)) return null;
+        return await PrepareCreationResourcesPageAsync(display, token);
     }
 
     internal Task<CreationMagicReReviewConfirmResult> ConfirmCreationMagicReReviewAsync(
