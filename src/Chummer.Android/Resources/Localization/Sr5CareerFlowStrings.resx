@@ -304,6 +304,7 @@ Karma: {6} → {7} (cost {8})</value></data>
   <data name="A verified saved quality receipt is awaiting acknowledgement or correction." xml:space="preserve"><value>A verified saved quality receipt is awaiting acknowledgement or correction.</value></data>
   <data name="The quality preview does not own its exact Reviewed checkpoint." xml:space="preserve"><value>The quality preview does not own its exact Reviewed checkpoint.</value></data>
   <data name="Review quality" xml:space="preserve"><value>Review quality</value></data>
+  <data name="Checking…" xml:space="preserve"><value>Checking…</value></data>
   <data name="Quality" xml:space="preserve"><value>Quality</value></data>
   <data name="Operation" xml:space="preserve"><value>Operation</value></data>
   <data name="Level" xml:space="preserve"><value>Level</value></data>
