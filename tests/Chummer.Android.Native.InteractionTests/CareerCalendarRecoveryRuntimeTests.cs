@@ -30,7 +30,7 @@ internal static partial class AfterRunAuthorityHarness
         await InvokeTokenPageActionAsync(unchanged, "PrepareForAppearanceRefreshAsync", default);
         RefreshCalendar(unchanged);
         Require(CalendarField<Sr5DowntimeCalendarDesktopSession>(unchanged, "_session").State.Resume.Restored
-                && !PageButton(unchanged, "sr5-downtime-calendar-apply").IsEnabled,
+                && !CalendarField<Sr5DowntimeCalendarDesktopSession>(unchanged, "_session").State.CanApply,
             "An unchanged review lost its resume or restored confirmation.");
 
         // Actual unrelated Core-owned save, not a fabricated revision in the view.
