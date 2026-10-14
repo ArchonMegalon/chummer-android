@@ -13,6 +13,12 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--career-calendar-wizard-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCalendarWizardAsync(args[1]);
+            await AfterRunAuthorityHarness.RunCalendarStaleReviewAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--career-calendar-recovery-content-root")
         {
             await AfterRunAuthorityHarness.RunCalendarStaleReviewAsync(args[1]);

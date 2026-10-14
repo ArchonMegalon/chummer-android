@@ -1042,4 +1042,19 @@ Preview: {3}…</value></data>
   <data name="Your runner changed after this preview. Discard the preview to plan a new change. Nothing from this preview was saved." xml:space="preserve"><value>Your runner changed after this preview. Discard the preview to plan a new change. Nothing from this preview was saved.</value></data>
   <data name="Preview discarded. Choose your new calendar change." xml:space="preserve"><value>Preview discarded. Choose your new calendar change.</value></data>
   <data name="Only an exact unapplied Downtime Calendar review can be discarded." xml:space="preserve"><value>Only an exact unapplied Downtime Calendar review can be discarded.</value></data>
+  <data name="Loading calendar…" xml:space="preserve"><value>Loading calendar…</value></data>
+  <data name="Year" xml:space="preserve"><value>Year</value></data>
+  <data name="Notes color" xml:space="preserve"><value>Notes color</value></data>
+  <data name="Review change" xml:space="preserve"><value>Review change</value></data>
+  <data name="Change preview" xml:space="preserve"><value>Change preview</value></data>
+  <data name="Save change" xml:space="preserve"><value>Save change</value></data>
+  <data name="Calendar change saved." xml:space="preserve"><value>Calendar change saved.</value></data>
+  <data name="{0} · Week {1}" xml:space="preserve"><value>{0} · Week {1}</value></data>
+  <data name="No notes" xml:space="preserve"><value>No notes</value></data>
+  <data name="Notes color: {0}" xml:space="preserve"><value>Notes color: {0}</value></data>
+  <data name="Choose Change preview before editing this change." xml:space="preserve"><value>Choose Change preview before editing this change.</value></data>
+  <data name="Review your change, then save or change it." xml:space="preserve"><value>Review your change, then save or change it.</value></data>
+  <data name="Choose your next calendar change." xml:space="preserve"><value>Choose your next calendar change.</value></data>
+  <data name="No saved weeks yet. Add a week first." xml:space="preserve"><value>No saved weeks yet. Add a week first.</value></data>
+  <data name="Saving calendar change…" xml:space="preserve"><value>Saving calendar change…</value></data>
 </root>

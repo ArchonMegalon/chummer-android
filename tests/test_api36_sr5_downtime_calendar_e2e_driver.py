@@ -96,13 +96,12 @@ class Api36Sr5DowntimeCalendarDriverTests(unittest.TestCase):
         device.tap.assert_not_called()
         device.tap_single_exact_resource_id.assert_not_called()
 
-    def test_recovered_receipt_rejects_prefix_only_text_without_ack_replay(self) -> None:
+    def test_recovered_receipt_rejects_inexact_text_without_ack_replay(self) -> None:
         device = Mock(spec=driver.physical.shared.Device)
-        digest_prefix = "sha256:" + "a" * 12
-        expected = f"Applied receipt {digest_prefix}… at revision 2."
+        expected = "Calendar change saved."
         device.wait_exact_resource_id_bidirectional.return_value = (
             driver.physical.shared.UiNode(
-                {"text": f"Saved with verified receipt {digest_prefix}…"}
+                {"text": "Calendar change saved. extra"}
             )
         )
         with (
@@ -360,7 +359,8 @@ class Api36Sr5DowntimeCalendarDriverTests(unittest.TestCase):
             "android_device_observation", "expected_apk_sha256",
             "sr5-downtime-calendar-operation", "Edit week",
             "Reviewed preview restored. Confirm it again before saving.",
-            "sr5-downtime-calendar-confirm", "sr5-downtime-calendar-apply",
+            "sr5-downtime-calendar-apply", "Confirm Calendar change",
+            "Calendar change saved.", "Choose your next calendar change.",
             "sr5-downtime-calendar-clear-applied", "acknowledgeAndReopen",
             "finalRestartSuccessor",
         ):
@@ -370,20 +370,31 @@ class Api36Sr5DowntimeCalendarDriverTests(unittest.TestCase):
             'expected_recovery = "Reviewed preview restored. Confirm it again before saving."',
             maxsplit=1,
         )[1].split(
-            '_tap_exact(device, "sr5-downtime-calendar-apply")', maxsplit=1
+            '    applied = read_journal(device)', maxsplit=1
         )[0]
         self.assertEqual(1, recovery.count("_acquire_exact_resource_text_bidirectional("))
         self.assertLess(
             recovery.index("_acquire_exact_resource_text_bidirectional("),
-            recovery.index('_tap_exact(device, "sr5-downtime-calendar-confirm")'),
+            recovery.index('_tap_exact(device, "sr5-downtime-calendar-apply")'),
         )
         self.assertEqual(
             1,
-            recovery.count('_tap_exact(device, "sr5-downtime-calendar-confirm")'),
+            recovery.count('_tap_exact(device, "sr5-downtime-calendar-apply")'),
         )
-        self.assertNotIn("_wait_resource_text(", recovery)
+        self.assertLess(
+            recovery.index('_tap_exact(device, "sr5-downtime-calendar-apply")'),
+            recovery.index('"Confirm Calendar change", timeout=60'),
+        )
+        self.assertLess(
+            recovery.index('"Confirm Calendar change", timeout=60'),
+            recovery.index('device.tap("Confirm", timeout=60)'),
+        )
+        self.assertEqual(1, recovery.count('device.tap("Confirm", timeout=60)'))
+        self.assertNotIn("sr5-downtime-calendar-confirm", source)
+        before_save = recovery.split('_tap_exact(device, "sr5-downtime-calendar-apply")', maxsplit=1)[0]
+        self.assertNotIn("_wait_resource_text(", before_save)
         self.assertNotIn('sr5-downtime-calendar-review', recovery)
-        receipt_recovery = source.split("    expected_receipt = (", maxsplit=1)[1].split(
+        receipt_recovery = source.split('    expected_receipt = "Calendar change saved."', maxsplit=1)[1].split(
             "    time.sleep(1)", maxsplit=1
         )[0]
         self.assertEqual(
@@ -411,6 +422,27 @@ class Api36Sr5DowntimeCalendarDriverTests(unittest.TestCase):
             self.assertNotIn(forbidden, receipt_recovery)
         self.assertIn('"status": "device-pass-source-bound"', source)
         self.assertNotIn('"releaseAttested": True', source)
+
+    def test_plain_week_and_receipt_labels_keep_typed_identity_validation(self) -> None:
+        source = DRIVER.read_text(encoding="utf-8")
+        proof = source.split("def prove_downtime(", maxsplit=1)[1].split(
+            "\ndef parse_args", maxsplit=1
+        )[0]
+        label = proof.split("    target_label = (", maxsplit=1)[1].split(
+            "    picker =", maxsplit=1
+        )[0]
+        self.assertIn(" · Week ", label)
+        self.assertNotIn("weekId", label)
+        self.assertIn('(picker.attributes.get("text") or "") != target_label', proof)
+        self.assertNotIn("receiptDigest'][:19]", proof)
+        self.assertNotIn("verified receipt sha256:", proof)
+        self.assertLess(
+            proof.index("review_projection = validate_journal("),
+            proof.index('_tap_exact(device, "sr5-downtime-calendar-apply")'),
+        )
+        self.assertIn("applied_projection = validate_journal(", proof)
+        self.assertIn('("actionId", "previewDigest", "expectedPostconditionDigest")', proof)
+        self.assertIn("assert_calendar(calendar_leaf.root_for_authority(device, saved)", proof)
 
     def test_argument_failure_writes_nonpassing_receipt_without_device_access(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

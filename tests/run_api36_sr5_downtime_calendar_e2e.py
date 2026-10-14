@@ -649,14 +649,13 @@ def prove_downtime(
     _tap_exact(device, "sr5-downtime-calendar-operation")
     device.tap("Edit week", timeout=60)
     target_label = (
-        f"{fixture['target']['year']} W{fixture['target']['isoWeek']:02d} · "
-        f"{fixture['target']['weekId']}"
+        f"{fixture['target']['year']} · Week {fixture['target']['isoWeek']:02d}"
     )
     picker = device.wait_for_single_exact_resource_id(
         "sr5-downtime-calendar-week", timeout=60,
         evidence_prefix="sr5-downtime-week", surface_name="Downtime week picker",
     )
-    if fixture["target"]["weekId"] not in (picker.attributes.get("text") or ""):
+    if (picker.attributes.get("text") or "") != target_label:
         _tap_exact(device, "sr5-downtime-calendar-week")
         device.tap(target_label, timeout=60)
     device.set_text(
@@ -696,12 +695,15 @@ def prove_downtime(
         timeout=90,
         surface_name="Recovered Downtime status",
     )
-    _tap_exact(device, "sr5-downtime-calendar-confirm")
-    device.tap("Confirm", timeout=60)
     _tap_exact(device, "sr5-downtime-calendar-apply")
+    device.wait_for_single_exact_text(
+        "Confirm Calendar change", timeout=60,
+        evidence_prefix="sr5-downtime-confirmation", surface_name="Calendar confirmation dialog",
+    )
+    device.tap("Confirm", timeout=60)
     _wait_resource_text(
         device, "sr5-downtime-calendar-receipt",
-        lambda text: "verified receipt sha256:" in text, timeout=240,
+        lambda text: text == "Calendar change saved.", timeout=240,
     )
     applied = read_journal(device)
     if applied is None:
@@ -743,10 +745,7 @@ def prove_downtime(
     open_downtime(device)
     if read_journal(device) != applied:
         raise RuntimeError("Downtime receipt journal bytes changed during restart recovery")
-    expected_receipt = (
-        f"Applied receipt {applied_projection['receiptDigest'][:19]}… "
-        f"at revision {saved.content_revision}."
-    )
+    expected_receipt = "Calendar change saved."
     _acquire_exact_resource_text_bidirectional(
         device, "sr5-downtime-calendar-receipt", expected_receipt,
         timeout=90,
@@ -757,7 +756,7 @@ def prove_downtime(
     time.sleep(1)
     if read_journal(device, required=False) is not None:
         raise RuntimeError("Acknowledged Downtime receipt journal was not removed")
-    expected_ack = "Applied receipt cleared. A new preview may be created."
+    expected_ack = "Choose your next calendar change."
     _wait_resource_text(
         device, "sr5-downtime-calendar-status", lambda text: text == expected_ack,
         timeout=60,
