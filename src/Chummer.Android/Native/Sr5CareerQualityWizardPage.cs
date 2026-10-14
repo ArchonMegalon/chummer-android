@@ -29,6 +29,7 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
     private readonly Label _blocker;
     private readonly Label _recovery;
     private readonly Button _review;
+    private readonly ActivityIndicator _reviewProgress;
     private readonly Button _resume;
     private readonly Button _resolve;
     private readonly Button _abandon;
@@ -37,6 +38,9 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
     private Sr5CareerQualityCheckpoint? _checkpoint;
     private int _automaticResolutionStarted;
     private bool _selecting;
+    private bool _reviewPending;
+    private int _reviewQualityIndex;
+    private int _reviewLevelIndex;
 
     public Sr5CareerQualityWizardPage(
         RunnerSessionCoordinator coordinator,
@@ -158,7 +162,28 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
         _review = NativeTheme.PrimaryButton(Text("Review quality"));
         _review.AutomationId = "sr5-career-quality-review";
         _review.Clicked += async (_, _) => await RunAsync(OpenReviewAsync);
-        body.Add(_review);
+        _reviewProgress = new ActivityIndicator
+        {
+            AutomationId = "sr5-career-quality-review-progress",
+            Color = NativeTheme.Text,
+            WidthRequest = 24,
+            HeightRequest = 24,
+            IsVisible = false,
+            IsRunning = false,
+            VerticalOptions = LayoutOptions.Center
+        };
+        Grid reviewRow = new()
+        {
+            ColumnDefinitions = new ColumnDefinitionCollection
+            {
+                new() { Width = GridLength.Auto },
+                new() { Width = GridLength.Star }
+            },
+            ColumnSpacing = 8
+        };
+        reviewRow.Add(_reviewProgress, 0);
+        reviewRow.Add(_review, 1);
+        body.Add(reviewRow);
         _resume = NativeTheme.SecondaryButton(Text("Resume reviewed quality change"));
         _resume.AutomationId = "sr5-career-quality-resume";
         _resume.Clicked += async (_, _) => await RunAsync(ResumeReviewAsync);
@@ -263,6 +288,7 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
     private void SelectQuality()
     {
         if (_selecting) return;
+        if (_reviewPending) { RestoreReviewSelection(); return; }
         if (!IsOfferDisplayCurrent() || !_qualities.IsEnabled || _checkpoint is not null)
         { RefreshEnabledState(); return; }
         SetSelectedQuality(_qualities.SelectedIndex);
@@ -289,6 +315,7 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
     private void SelectLevel()
     {
         if (_selecting) return;
+        if (_reviewPending) { RestoreReviewSelection(); return; }
         if (!IsOfferDisplayCurrent() || !_levels.IsEnabled || _checkpoint is not null)
         { RefreshEnabledState(); return; }
         var group = _qualities.SelectedIndex >= 0 && _qualities.SelectedIndex < _choices.Count
@@ -296,6 +323,19 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
         _selected = group is not null && _levels.SelectedIndex >= 0 && _levels.SelectedIndex < group.Options.Count
             ? group.Options[_levels.SelectedIndex] : null;
         RefreshEnabledState();
+    }
+
+    private void RestoreReviewSelection()
+    {
+        // A delayed native picker callback must not change the displayed or
+        // admitted choice after Review has captured it.
+        _selecting = true;
+        try
+        {
+            _qualities.SelectedIndex = _reviewQualityIndex;
+            _levels.SelectedIndex = _reviewLevelIndex;
+        }
+        finally { _selecting = false; }
     }
 
     private bool IsOfferDisplayCurrent()
@@ -316,7 +356,7 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
             && _recoveryDraft is not null
             && _checkpoint.MatchesActionDraft(_recoveryDraft)
             && _checkpointAuthority.OwnsReviewed(_checkpoint);
-        _qualities.IsEnabled = revisionMatches && completeAuthority && _checkpoint is null;
+        _qualities.IsEnabled = !_reviewPending && revisionMatches && completeAuthority && _checkpoint is null;
         _qualities.IsVisible = _checkpoint is null;
         var group = _qualities.SelectedIndex >= 0 && _qualities.SelectedIndex < _choices.Count
             ? _choices[_qualities.SelectedIndex] : null;
@@ -346,7 +386,10 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
                 : _selected is null
                     ? Text("No exact quality projection is available.")
                     : Sr5CareerQualityDraft.BlockerText(_selected.Blocker);
-        _review.IsEnabled = revisionMatches
+        _review.Text = Text(_reviewPending ? "Checking…" : "Review quality");
+        _reviewProgress.IsVisible = _reviewPending;
+        _reviewProgress.IsRunning = _reviewPending;
+        _review.IsEnabled = !_reviewPending && revisionMatches
             && completeAuthority
             && _checkpoint is null
             && _selected is { CanApply: true }
@@ -354,44 +397,76 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
             && _selected.Authority.Effects.IsExact
             && _selected.Authority.Effects.UnsupportedFamilies.Count == 0;
         _resume.IsVisible = reviewedOwned;
-        _resume.IsEnabled = revisionMatches && reviewedOwned;
+        _resume.IsEnabled = !_reviewPending && revisionMatches && reviewedOwned;
         _resolve.IsVisible = _checkpoint?.Phase is (Sr5CareerCheckpointPhase.Applying
             or Sr5CareerCheckpointPhase.Applied);
-        _resolve.IsEnabled = _resolve.IsVisible
+        _resolve.IsEnabled = !_reviewPending && _resolve.IsVisible
             && _checkpoint is not null
             && _checkpointAuthority.OwnsCurrentRunner(_checkpoint);
         _abandon.IsVisible = reviewedOwned;
-        _abandon.IsEnabled = revisionMatches && reviewedOwned;
+        _abandon.IsEnabled = !_reviewPending && revisionMatches && reviewedOwned;
     }
 
     private async Task OpenReviewAsync()
     {
+        if (_reviewPending || !_review.IsEnabled) return;
         if (_selected is null)
         {
             await DisplayAlertAsync(Text("Cannot review"), Text("Choose an exact quality operation."), Text("OK"));
             return;
         }
-        Sr5CareerQualityDraft draft = await _authority.ReviewAsync(
-            _editor,
-            _selected,
-            Guid.NewGuid(),
-            DateTime.Now);
-        Sr5CareerQualityCheckpoint candidate = Sr5CareerQualityCheckpoint.FromDraft(draft);
-        if (!_store.TryCreate(candidate, out Sr5CareerQualityCheckpoint stored, out string blocker))
+        CharacterCareerQualityQuote selected = _selected;
+        long appearance = CaptureAppearanceGeneration();
+        if (!CanAcceptReview(appearance, selected)) return;
+        _reviewQualityIndex = _qualities.SelectedIndex;
+        _reviewLevelIndex = _levels.SelectedIndex;
+        _reviewPending = true;
+        RefreshEnabledState();
+        try
         {
-            await DisplayAlertAsync(Text("Review not checkpointed"), blocker, Text("OK"));
-            return;
+            Sr5CareerQualityDraft draft = await _authority.ReviewAsync(
+                _editor,
+                selected,
+                Guid.NewGuid(),
+                DateTime.Now);
+            // A review is a read, not a committed mutation. Do not retain or
+            // navigate its result after this appearance has been retired.
+            if (!CanAcceptReview(appearance, selected)) return;
+            Sr5CareerQualityCheckpoint candidate = Sr5CareerQualityCheckpoint.FromDraft(draft);
+            if (!_store.TryCreate(candidate, out Sr5CareerQualityCheckpoint stored, out string blocker))
+            {
+                await DisplayAlertAsync(Text("Review not checkpointed"), blocker, Text("OK"));
+                return;
+            }
+            _checkpoint = stored;
+            _recoveryDraft = draft;
+            await Navigation.PushAsync(new Sr5CareerQualityReviewPage(
+                Coordinator,
+                draft,
+                stored,
+                _authority,
+                _store,
+                _checkpointAuthority));
         }
-        _checkpoint = stored;
-        _recoveryDraft = draft;
-        await Navigation.PushAsync(new Sr5CareerQualityReviewPage(
-            Coordinator,
-            draft,
-            stored,
-            _authority,
-            _store,
-            _checkpointAuthority));
+        finally
+        {
+            _reviewPending = false;
+            _reviewProgress.IsRunning = false;
+            // Away -> back may have opened a new appearance while this read
+            // was pending. Release only its busy UI, deriving enabled state
+            // afresh; the old result is never admitted to that appearance.
+            if (IsCurrentAppearanceGeneration(CaptureAppearanceGeneration()))
+                RefreshEnabledState();
+        }
     }
+
+    private bool CanAcceptReview(long appearance, CharacterCareerQualityQuote selected)
+        => IsCurrentAppearanceGeneration(appearance)
+            && ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), this)
+            && Navigation.ModalStack.Count == 0
+            && IsOfferDisplayCurrent()
+            && _checkpoint is null
+            && ReferenceEquals(_selected, selected);
 
     private async Task ResumeReviewAsync()
     {

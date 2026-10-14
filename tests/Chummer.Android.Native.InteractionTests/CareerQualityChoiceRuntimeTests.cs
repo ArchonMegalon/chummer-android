@@ -163,6 +163,7 @@ internal static partial class AfterRunAuthorityHarness
                     // The original still-current quote authority can explicitly retire
                     // this uncommitted synthetic review; no mutation has been sent.
                     Require(journal.TryDeleteReviewed(Sr5CareerQualityCheckpointCas.From(held), out blocker), blocker);
+                    await AssertCareerQualityReviewFeedbackAsync(ui, runtime, presenter, editor, selected);
                 }
 
                 var before = files.Get(runtime.Id).Value!;
@@ -263,6 +264,171 @@ internal static partial class AfterRunAuthorityHarness
             ui.AssertHealthy();
             Console.WriteLine("PASS Career quality choices: exact admitted families/levels, hidden blocked authority, retained unavailable review, actual level 0→1→2 handlers, reconstructed receipt/no replay, per-instance removals and owner ABA callbacks");
         });
+    }
+
+    private static async Task AssertCareerQualityReviewFeedbackAsync(IssuedPageUiContext ui,
+        NativeRewardRuntime runtime, RunnerSessionSr5CareerQualityPresenter presenter,
+        CareerQualityEditorState editor, CharacterCareerQualityQuote selected)
+    {
+        var files = new FileWorkspaceStore(runtime.StateDirectory);
+        var before = files.Get(runtime.Id).Value!;
+        foreach (bool returnDuringReview in new[] { false, true })
+        {
+            var delayed = new DelayedCareerQualityReviewPresenter(presenter);
+            var authority = new Sr5CareerQualityCoordinator(delayed, presenter);
+            var live = new Sr5CareerQualityLiveCheckpointAuthority(presenter, editor, () => presenter.Binding);
+            var backend = new MemoryBackend();
+            var ownerBackend = new MemoryBackend();
+            var journal = new Sr5CareerQualityCheckpointStore(backend, live, new Sr5CareerMutationOwnerStore(ownerBackend));
+            var page = new Sr5CareerQualityWizardPage(runtime.Coordinator, editor, authority, journal, live);
+            var navigation = new NavigationPage(new ContentPage());
+            await navigation.PushAsync(page, false);
+            var window = new Window(navigation);
+            using var alerts = new IssuedPageAlerts(page, window);
+            Task? pending = null;
+            DelayedCareerQualityReviewPresenter.Gate? gate = null;
+            try
+            {
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+                SelectCareerQualityQuote(page, editor, selected);
+                var qualities = Element<Picker>("sr5-career-quality-picker");
+                var levels = Element<Picker>("sr5-career-quality-level-picker");
+                var review = Element<Button>("sr5-career-quality-review");
+                var progress = Element<ActivityIndicator>("sr5-career-quality-review-progress");
+                Require(qualities.IsEnabled && levels.IsVisible && levels.IsEnabled && review.IsEnabled,
+                    "SETUP: feedback must exercise real admitted multi-level choices.");
+                int qualityIndex = qualities.SelectedIndex, levelIndex = levels.SelectedIndex;
+                gate = delayed.HoldNext(fail: !returnDuringReview);
+                pending = ui.BeginAsyncVoid(() => ((IButtonController)review).SendClicked());
+                // Observe immediately, before yielding to the pending presenter.
+                AssertBusy();
+                await gate.Entered.Task.WaitAsync(TimeSpan.FromSeconds(30));
+                Require(delayed.ReviewCalls == 1 && delayed.Requested is { } requested
+                    && JsonSerializer.Serialize(requested) == JsonSerializer.Serialize(CareerQualityWorkflow.CreateDraft(editor, selected)),
+                    "Review did not capture exactly the selected Core operation before awaiting.");
+                ((IButtonController)review).SendClicked(); // May be suppressed by MAUI while disabled.
+                levels.SelectedIndex = (levelIndex + 1) % levels.Items.Count;
+                qualities.SelectedIndex = (qualityIndex + 1) % qualities.Items.Count;
+                Require(delayed.ReviewCalls == 1 && ReferenceEquals(SelectedCareerQualityQuote(page), selected)
+                    && qualities.SelectedIndex == qualityIndex && levels.SelectedIndex == levelIndex,
+                    "A duplicate tap or queued selector callback changed the pending operation or issued another request.");
+                AssertBusy();
+                Require(string.IsNullOrEmpty(backend.Read()), "A pending review created a checkpoint before Core completed.");
+
+                if (returnDuringReview)
+                {
+                    long oldAppearance = IssuedPageField<long>(page, "_appearanceGeneration");
+                    IssuedPageLifecycle(page, "OnDisappearing");
+                    await navigation.PopAsync(false);
+                    await navigation.PushAsync(page, false);
+                    // The existing pending callback owns the UI pump join. Start
+                    // this real appearance directly and join both on release.
+                    IssuedPageLifecycle(page, "OnAppearing");
+                    Require(IssuedPageField<long>(page, "_appearanceGeneration") > oldAppearance
+                        && IssuedPageField<int>(page, "_subscribed") == 1,
+                        "SETUP: the held review did not cross an actual away/back appearance.");
+                }
+                var stackBeforeCompletion = navigation.Navigation.NavigationStack.ToArray();
+                gate.Release.TrySetResult();
+                await JoinIssuedPageAsync(pending);
+                pending = null;
+                await ui.DrainDispatchedAsyncVoidAsync();
+                Require(ReferenceEquals(navigation.CurrentPage, page)
+                    && navigation.Navigation.NavigationStack.SequenceEqual(stackBeforeCompletion)
+                    && string.IsNullOrEmpty(backend.Read()),
+                    "A failed or departed review created a late checkpoint or navigated the newer appearance.");
+                Require(alerts.Titles.Count == (returnDuringReview ? 0 : 1),
+                    "Review failure was not reported once, or a departed result displayed a late alert.");
+                AssertRestored();
+                RequireSameRewardDocument(before, files.Get(runtime.Id).Value!);
+
+                // Retry is a new explicit action, including after away/back.
+                gate = delayed.HoldNext(fail: false);
+                pending = ui.BeginAsyncVoid(() => ((IButtonController)review).SendClicked());
+                AssertBusy();
+                await gate.Entered.Task.WaitAsync(TimeSpan.FromSeconds(30));
+                Require(delayed.ReviewCalls == 2, "Retry did not issue exactly one new explicit review request.");
+                gate.Release.TrySetResult();
+                await JoinIssuedPageAsync(pending);
+                pending = null;
+                await ui.DrainDispatchedAsyncVoidAsync();
+                Require(navigation.CurrentPage is Sr5CareerQualityReviewPage
+                    && journal.TryRead(out var checkpoint, out _)
+                    && JsonSerializer.Serialize(checkpoint.Draft.Review.Draft)
+                        == JsonSerializer.Serialize(CareerQualityWorkflow.CreateDraft(editor, selected))
+                    && !progress.IsRunning && !progress.IsVisible
+                    && review.Text == Sr5CareerFlowStrings.Text("Review quality"),
+                    "Successful retry lost the exact operation, failed to checkpoint/navigate or retained busy feedback.");
+                Require(journal.TryRead(out var reviewed, out var blocker), blocker);
+                Require(journal.TryDeleteReviewed(Sr5CareerQualityCheckpointCas.From(reviewed), out blocker), blocker);
+                RequireSameRewardDocument(before, files.Get(runtime.Id).Value!);
+                Require(delayed.ConfirmCalls == 0 && delayed.CorrectionCalls == 0,
+                    "Review feedback implicitly applied or corrected a Career mutation.");
+
+                T Element<T>(string id) where T : Element => IssuedElements(page).OfType<T>()
+                    .Single(element => element.AutomationId == id);
+                void AssertBusy()
+                {
+                    Require(progress.IsVisible && progress.IsRunning
+                        && review.Text == Sr5CareerFlowStrings.Text("Checking…")
+                        && !qualities.IsEnabled && !levels.IsEnabled
+                        && IssuedElements(page).OfType<Button>().All(button => !button.IsEnabled),
+                        "Review must show immediate checking/progress and disable selectors and every action before awaiting Core.");
+                }
+                void AssertRestored()
+                {
+                    Require(!progress.IsVisible && !progress.IsRunning && qualities.IsEnabled && levels.IsEnabled
+                        && review.IsEnabled && review.Text == Sr5CareerFlowStrings.Text("Review quality")
+                        && ReferenceEquals(SelectedCareerQualityQuote(page), selected),
+                        "Failed or old-appearance review did not restore the current exact editable selection for retry.");
+                }
+            }
+            finally
+            {
+                gate?.Release.TrySetResult();
+                if (pending is not null) await JoinIssuedPageAsync(pending);
+                foreach (var openPage in navigation.Navigation.NavigationStack.OfType<NativePageBase>())
+                    if (IssuedPageField<int>(openPage, "_subscribed") != 0)
+                        IssuedPageLifecycle(openPage, "OnDisappearing");
+                await ui.DrainDispatchedAsyncVoidAsync();
+            }
+        }
+        ui.AssertHealthy();
+        Console.WriteLine("PASS Career quality review feedback: immediate busy UI, exact captured operation, duplicate/selector rejection, failure retry, away/back rejects old result, fresh retry checkpoint, no runner write");
+    }
+
+    private sealed class DelayedCareerQualityReviewPresenter(ISr5CareerQualityPresenter inner) : ISr5CareerQualityPresenter
+    {
+        internal sealed class Gate(bool fail)
+        {
+            internal readonly TaskCompletionSource Entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            internal readonly TaskCompletionSource Release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            internal bool Fail => fail;
+        }
+        private Gate? _next;
+        internal int ReviewCalls, ConfirmCalls, CorrectionCalls;
+        internal CareerQualityDraft? Requested;
+        internal Gate HoldNext(bool fail) => _next = new(fail);
+        public Sr5CareerRunnerBinding Binding => inner.Binding;
+        public Task<CareerQualityEditorState?> LoadAsync(CancellationToken ct) => inner.LoadAsync(ct);
+        public Task<CareerQualityAuthoritySnapshot?> ReadRecoverySnapshotAsync(CancellationToken ct)
+            => inner.ReadRecoverySnapshotAsync(ct);
+        public async Task<CareerQualityReview> ReviewAsync(CareerQualityDraft draft, CancellationToken ct)
+        {
+            ReviewCalls++; Requested = draft;
+            var gate = _next ?? throw new InvalidOperationException("SETUP: review was not explicitly released by this test.");
+            _next = null;
+            gate.Entered.TrySetResult();
+            await gate.Release.Task.WaitAsync(ct);
+            if (gate.Fail) throw new IOException("Synthetic quality review read failure.");
+            return await inner.ReviewAsync(draft, ct);
+        }
+        public Task<CareerQualityConfirmation> ConfirmAndRefreshAsync(CareerQualityReview review, Guid id,
+            DateTime date, CancellationToken ct)
+        { ConfirmCalls++; return inner.ConfirmAndRefreshAsync(review, id, date, ct); }
+        public Task<CareerQualityCorrectionConfirmation> CorrectAndRefreshAsync(CareerQualityCorrectionRequest request,
+            CancellationToken ct)
+        { CorrectionCalls++; return inner.CorrectAndRefreshAsync(request, ct); }
     }
 
     private static CharacterCareerQualityQuote? SelectedCareerQualityQuote(Sr5CareerQualityWizardPage page)

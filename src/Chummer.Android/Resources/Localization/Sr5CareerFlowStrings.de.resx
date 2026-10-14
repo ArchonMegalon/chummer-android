@@ -304,6 +304,7 @@ Karma: {6} → {7} (Kosten {8})</value></data>
   <data name="A verified saved quality receipt is awaiting acknowledgement or correction." xml:space="preserve"><value>Ein geprüfter gespeicherter Vor-/Nachteilbeleg wartet auf Bestätigung oder Korrektur.</value></data>
   <data name="The quality preview does not own its exact Reviewed checkpoint." xml:space="preserve"><value>Die Vor-/Nachteilvorschau besitzt ihren exakten Reviewed-Checkpoint nicht.</value></data>
   <data name="Review quality" xml:space="preserve"><value>Vor-/Nachteil prüfen</value></data>
+  <data name="Checking…" xml:space="preserve"><value>Wird geprüft…</value></data>
   <data name="Quality" xml:space="preserve"><value>Vor-/Nachteil</value></data>
   <data name="Operation" xml:space="preserve"><value>Vorgang</value></data>
   <data name="Level" xml:space="preserve"><value>Stufe</value></data>

@@ -304,6 +304,7 @@ Karma: {6} → {7} (coste {8})</value></data>
   <data name="A verified saved quality receipt is awaiting acknowledgement or correction." xml:space="preserve"><value>Un recibo de cualidad guardado y verificado espera confirmación o corrección.</value></data>
   <data name="The quality preview does not own its exact Reviewed checkpoint." xml:space="preserve"><value>La vista previa de cualidad no posee su punto de control Reviewed exacto.</value></data>
   <data name="Review quality" xml:space="preserve"><value>Revisar cualidad</value></data>
+  <data name="Checking…" xml:space="preserve"><value>Comprobando…</value></data>
   <data name="Quality" xml:space="preserve"><value>Cualidad</value></data>
   <data name="Operation" xml:space="preserve"><value>Operación</value></data>
   <data name="Level" xml:space="preserve"><value>Nivel</value></data>
