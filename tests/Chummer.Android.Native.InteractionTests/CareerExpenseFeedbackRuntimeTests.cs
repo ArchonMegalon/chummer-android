@@ -16,42 +16,54 @@ internal static partial class AfterRunAuthorityHarness
         await ui.RunAsync(async () =>
         {
             foreach (string currency in new[] { "karma", "nuyen" })
-            foreach (string scenario in new[] { "saved", "departure", "shell-failure", "owner-aba-before" })
+            foreach (string scenario in new[] { "saved", "departure", "shell-failure", "owner-aba-before", "owner-aba-during" })
             {
                 NativePageBase? page = null;
                 bool observing = false;
                 int pendingObservations = 0;
+                int shellListsAfterSave = 0;
                 Button? gain = null;
                 ActivityIndicator? progress = null;
                 var owners = new ControlledLinkedOwner();
+                void ObserveSave()
+                {
+                    if (!observing || pendingObservations != 0) return;
+                    void Observe()
+                    {
+                        pendingObservations++;
+                        Require(progress is { IsRunning: true, IsVisible: true },
+                            "Career expense edit has no visible pending feedback.");
+                        Require(MinimalVisible(page!).OfType<Button>().All(x => !x.IsEnabled)
+                            && MinimalVisible(page!).OfType<Entry>().All(x => !x.IsEnabled)
+                            && MinimalVisible(page!).OfType<Editor>().All(x => !x.IsEnabled),
+                            "Pending expense edit allows editing or another submission.");
+                        ((IButtonController)gain!).SendClicked();
+                        if (scenario == "departure") IssuedPageLifecycle(page!, "OnDisappearing");
+                        if (scenario == "owner-aba-during")
+                        {
+                            OwnerScope original = owners.Current;
+                            owners.Set(new OwnerScope("career-save-other"));
+                            owners.Set(original);
+                        }
+                    }
+                    if (ReferenceEquals(SynchronizationContext.Current, ui)) Observe();
+                    else
+                    {
+                        var checkedUi = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                        ui.Post(_ =>
+                        {
+                            try { Observe(); checkedUi.SetResult(); }
+                            catch (Exception error) { checkedUi.SetException(error); }
+                        }, null);
+                        checkedUi.Task.WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
+                    }
+                }
                 await using var runtime = new NativeRewardRuntime(contentRoot,
                     linkedOwners: owners, productionCreationOverview: true,
                     beforeShellWorkspaceList: () =>
                     {
                         if (!observing) return;
-                        void Observe()
-                        {
-                            pendingObservations++;
-                            Require(progress is { IsRunning: true, IsVisible: true },
-                                "Career expense edit has no visible pending feedback.");
-                            Require(MinimalVisible(page!).OfType<Button>().All(x => !x.IsEnabled)
-                                && MinimalVisible(page!).OfType<Entry>().All(x => !x.IsEnabled)
-                                && MinimalVisible(page!).OfType<Editor>().All(x => !x.IsEnabled),
-                                "Pending expense edit allows editing or another submission.");
-                            ((IButtonController)gain!).SendClicked();
-                            if (scenario == "departure") IssuedPageLifecycle(page!, "OnDisappearing");
-                        }
-                        if (ReferenceEquals(SynchronizationContext.Current, ui)) Observe();
-                        else
-                        {
-                            var checkedUi = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-                            ui.Post(_ =>
-                            {
-                                try { Observe(); checkedUi.SetResult(); }
-                                catch (Exception error) { checkedUi.SetException(error); }
-                            }, null);
-                            checkedUi.Task.WaitAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
-                        }
+                        shellListsAfterSave++;
                         if (scenario == "shell-failure") throw new IOException("Synthetic expense edit shell failure.");
                     });
                 await runtime.Coordinator.InitializeAsync();
@@ -60,6 +72,19 @@ internal static partial class AfterRunAuthorityHarness
                 var c = runtime.Coordinator;
                 var store = new FileWorkspaceStore(runtime.StateDirectory);
                 var before = store.Get(runtime.Id).Value!;
+                runtime.Presenter.StateChanged += (_, _) =>
+                {
+                    // Observe actual persistence, not the redundant shell refresh
+                    // this regression removes. No fake mutation or save result.
+                    if (runtime.Presenter.State.IsBusy && runtime.Presenter.State.IsDirty)
+                        ObserveSave();
+                };
+                if (scenario == "shell-failure")
+                {
+                    // An incomplete shell must keep the full refresh/failure path.
+                    typeof(Chummer.Presentation.Shell.ShellPresenter).GetProperty("State")!
+                        .SetValue(runtime.Shell, runtime.Shell.State with { Commands = [] });
+                }
                 var karmaEditor = currency == "karma" ? await c.PrepareCareerKarmaExpenseEditAsync() : null;
                 var nuyenEditor = currency == "nuyen" ? await c.PrepareCareerNuyenExpenseEditAsync() : null;
                 page = currency == "karma"
@@ -127,6 +152,11 @@ internal static partial class AfterRunAuthorityHarness
                 observing = true;
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)gain).SendClicked()));
                 observing = false;
+                if (scenario is "saved" or "departure")
+                    Require(shellListsAfterSave == 0,
+                        "An exact durable economy save unnecessarily repeated shell roster/inbound synchronization.");
+                if (scenario == "shell-failure")
+                    Require(shellListsAfterSave > 0, "An incomplete shell skipped its required refresh.");
                 Require(pendingObservations > 0 && !progress.IsRunning && !progress.IsVisible,
                     "Booking did not show bounded save feedback or left its spinner active.");
                 Require(navigation.Navigation.NavigationStack.Count == (scenario == "saved" ? 1 : 2),
@@ -135,7 +165,7 @@ internal static partial class AfterRunAuthorityHarness
                 ((IButtonController)gain).SendClicked();
                 await ui.DrainDispatchedAsyncVoidAsync();
                 RequireSameRewardDocument(after, store.Get(runtime.Id).Value!);
-                if (scenario != "shell-failure")
+                if (scenario is not ("shell-failure" or "owner-aba-during"))
                 {
                     var oldXml = XElement.Parse(before.Document.Content);
                     var savedXml = XElement.Parse(after.Document.Content);

@@ -13,6 +13,7 @@ using Chummer.Contracts.Characters;
 using Chummer.Contracts.LifeModules;
 using Chummer.Contracts.Owners;
 using Chummer.Contracts.Presentation;
+using Chummer.Contracts.Rulesets;
 using Chummer.Contracts.Workspaces;
 using Chummer.Presentation;
 using Chummer.Presentation.Overview;
@@ -4888,13 +4889,14 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 "This runner changed while manual Karma was open. Reopen it before saving.");
         }
 
+        CharacterOverviewState original = State;
         await _presenter.ApplyCareerManualKarmaEditAsync(request, cancellationToken);
         if (State.Error is null)
         {
             await _presenter.SaveAsync(cancellationToken);
         }
         _notice = State.Error is null ? "Manual Karma saved." : null;
-        await SyncShellAsync(cancellationToken);
+        await RefreshShellAfterCareerEconomySaveAsync(original, cancellationToken);
         NotifyChanged();
     }
 
@@ -4914,13 +4916,14 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 "This runner changed while manual Nuyen was open. Reopen it before saving.");
         }
 
+        CharacterOverviewState original = State;
         await _presenter.ApplyCareerManualNuyenEditAsync(request, cancellationToken);
         if (State.Error is null)
         {
             await _presenter.SaveAsync(cancellationToken);
         }
         _notice = State.Error is null ? "Manual Nuyen saved." : null;
-        await SyncShellAsync(cancellationToken);
+        await RefreshShellAfterCareerEconomySaveAsync(original, cancellationToken);
         NotifyChanged();
     }
 
@@ -4967,13 +4970,14 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 "This runner changed while a Nuyen expense was open. Reopen it before saving.");
         }
 
+        CharacterOverviewState original = State;
         await _presenter.ApplyCareerNuyenExpenseEditAsync(request, cancellationToken);
         if (State.Error is null)
         {
             await _presenter.SaveAsync(cancellationToken);
         }
         _notice = State.Error is null ? "Nuyen expense saved." : null;
-        await SyncShellAsync(cancellationToken);
+        await RefreshShellAfterCareerEconomySaveAsync(original, cancellationToken);
         NotifyChanged();
     }
 
@@ -4999,6 +5003,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 "This runner changed while a Karma expense was open. Reopen it before saving.");
         }
 
+        CharacterOverviewState original = State;
         await _presenter.ApplyCareerKarmaExpenseEditAsync(request, cancellationToken);
         bool exactMutationApplied = State.Error is null
             && State.WorkspaceId == request.WorkspaceId
@@ -5027,7 +5032,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
             && (!AndroidE2EAuthority.Enabled
                 || authority is not null && authority.Matches(State));
         _notice = persisted ? "Karma expense saved." : null;
-        await SyncShellAsync(cancellationToken);
+        await RefreshShellAfterCareerEconomySaveAsync(original, cancellationToken);
         NotifyChanged();
         return persisted;
     }
@@ -7436,10 +7441,65 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     private Task RefreshShellAfterPresenterSyncAsync(CancellationToken cancellationToken)
         => FinalizeShellAsync(syncPresenterContext: false, cancellationToken);
 
+    private Task RefreshShellAfterCareerEconomySaveAsync(
+        CharacterOverviewState original,
+        CancellationToken cancellationToken)
+        => FinalizeShellAsync(syncPresenterContext: true, cancellationToken,
+            careerEconomyOrigin: original);
+
+    private bool CanReuseCareerEconomyShell(
+        CharacterOverviewState original,
+        CharacterOverviewState saved)
+    {
+        // Only the four nonstructural economy edits use this path. Their
+        // mutation, durable save, outbound sync and recovery reads have already
+        // completed in Presentation. Its owner-bound feedback publishes the
+        // saved roster; do not fetch the entire roster/inbound sync again.
+        // Missing or changed context keeps the ordinary full refresh.
+        ShellState shell = _shellPresenter.State;
+        if (_disposed || original.Profile?.Created != true || saved.Profile?.Created != true
+            || saved.IsBusy || saved.Error is not null || saved.ConflictState is not null
+            || saved.IsDirty || original.ContentRevision <= 0
+            || original.ContentRevision == long.MaxValue
+            || saved.ContentRevision != original.ContentRevision + 1
+            || saved.SavedRevision != saved.ContentRevision
+            || original.WorkspaceId is not { } workspace
+            || original.Session.ActiveWorkspaceId != workspace
+            || saved.WorkspaceId != workspace || saved.Session.ActiveWorkspaceId != workspace
+            || original.DisplayOwnerContext is not { IsValid: true } owner
+            || original.Session.OwnerContext != owner
+            || saved.DisplayOwnerContext != owner || saved.Session.OwnerContext != owner
+            || !IsNativePersistenceOwnerCurrent(owner)
+            || shell.OwnerContext != owner || shell.ActiveWorkspaceId != workspace
+            || shell.IsBusy || shell.Error is not null
+            || shell.Commands.Count == 0 || shell.NavigationTabs.Count == 0
+            || shell.WorkflowDefinitions is not { Count: > 0 }
+            || shell.WorkflowSurfaces is not { Count: > 0 }
+            || saved.ActiveWorkspace is not { } active
+            || !string.Equals(active.RulesetId, original.ActiveWorkspace?.RulesetId, StringComparison.Ordinal)
+            // Older sessions can omit the roster ruleset. The exact owner-bound
+            // overview still carries the Core-read edition; require that same
+            // SR5 edition before/after, and reject any conflicting roster value.
+            || RulesetDefaults.NormalizeOptional(saved.Rules?.GameEdition) is not RulesetDefaults.Sr5
+            || RulesetDefaults.NormalizeOptional(original.Rules?.GameEdition) is not RulesetDefaults.Sr5
+            || RulesetDefaults.NormalizeOptional(active.RulesetId) is { } rosterRuleset
+                && rosterRuleset != RulesetDefaults.Sr5
+            || !string.Equals(RulesetDefaults.Sr5, shell.ActiveRulesetId, StringComparison.Ordinal)
+            || !saved.OpenWorkspaces.SequenceEqual(saved.Session.OpenWorkspaces))
+            return false;
+
+        return shell.OpenWorkspaces.SequenceEqual(saved.OpenWorkspaces
+            .Select(workspace => new ShellWorkspaceState(
+                workspace.Id, workspace.Name, workspace.Alias, workspace.LastOpenedUtc,
+                workspace.RulesetId, workspace.HasSavedWorkspace))
+            .OrderByDescending(workspace => workspace.LastOpenedUtc));
+    }
+
     private async Task FinalizeShellAsync(
         bool syncPresenterContext,
         CancellationToken cancellationToken,
-        CharacterOverviewState? expectedState = null)
+        CharacterOverviewState? expectedState = null,
+        CharacterOverviewState? careerEconomyOrigin = null)
     {
         CharacterOverviewState requested = expectedState ?? State;
         await _shellSyncGate.WaitAsync(cancellationToken);
@@ -7451,7 +7511,11 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
                 ? requested.Session.OwnerContext : requested.DisplayOwnerContext;
             if (_client is IOwnerBoundShellStateClient beforeSync
                 && original is { } beforeStamp && beforeSync.CaptureOwnerContext() != beforeStamp) return;
-            if (syncPresenterContext)
+            // Recheck after taking the gate: the state/owner may have changed
+            // while a previous shell operation was finishing.
+            if (syncPresenterContext
+                && !(careerEconomyOrigin is not null
+                    && CanReuseCareerEconomyShell(careerEconomyOrigin, requested)))
             {
                 try
                 {
