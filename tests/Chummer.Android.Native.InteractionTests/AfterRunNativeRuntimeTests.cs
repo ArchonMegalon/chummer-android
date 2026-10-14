@@ -583,7 +583,8 @@ internal static partial class AfterRunAuthorityHarness
             Func<ICharacterCreationGearInteractionPresenter, ICharacterCreationGearInteractionPresenter>? gearDecorator = null,
             bool creationLifestyles = false,
             Func<IOwnerBoundCharacterCreationLifestylesService,
-                IOwnerBoundCharacterCreationLifestylesService>? lifestylesDecorator = null)
+                IOwnerBoundCharacterCreationLifestylesService>? lifestylesDecorator = null,
+            bool careerSkillGroups = false)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -599,6 +600,14 @@ internal static partial class AfterRunAuthorityHarness
                 SetEnvironment("CHUMMER_DESKTOP_CLIENT_MODE", "local");
                 creationSkillsSeed?.Invoke(StateDirectory);
                 var services = new ServiceCollection();
+                if (careerSkillGroups)
+                {
+                    // Match the actual MauiProgram atomic workspace composition.
+                    services.AddSingleton<IAndroidCareerSkillGroupSettingsCatalog,
+                        PreferencesAndroidCareerSkillGroupSettingsCatalog>();
+                    services.AddSingleton<ICharacterCareerSkillGroupAdvanceWorkspace,
+                        AndroidCharacterCareerSkillGroupAdvanceWorkspace>();
+                }
                 services.AddChummerLocalRuntimeClient(contentRoot, contentRoot);
                 services.Replace(ServiceDescriptor.Singleton<IWorkspaceStore>(new FileWorkspaceStore(StateDirectory)));
                 if (linkedOwners is not null)
@@ -766,7 +775,9 @@ internal static partial class AfterRunAuthorityHarness
                     originBookScenes: originScenes,
                     originSceneDocuments: originSceneDocuments,
                     localRunnerAdoptionService: LocalAdoption,
-                    careerQualityWorkspace: careerQualityWorkspaceFactory?.Invoke(Client));
+                    careerQualityWorkspace: careerQualityWorkspaceFactory?.Invoke(Client),
+                    careerSkillGroupService: careerSkillGroups
+                        ? _provider.GetRequiredService<ICharacterCareerSkillGroupAdvanceService>() : null);
             }
             catch
             {

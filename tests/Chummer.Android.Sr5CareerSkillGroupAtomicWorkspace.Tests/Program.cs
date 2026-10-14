@@ -32,6 +32,8 @@ internal static class Program
         Unknown_store_outcome_recovers_persisted_receipt();
         Stale_revision_and_corrupt_ledger_never_mutate();
         Missing_settings_authority_fails_closed();
+        Free_module_grants_survive_atomic_purchase_and_restart();
+        Source_profile_mismatch_and_changed_authority_fail_closed();
         Console.WriteLine("SR5 Career skill-group atomic workspace tests passed.");
         return 0;
     }
@@ -183,6 +185,78 @@ internal static class Program
             new SkillSourceResolver(),
             new SettingsCatalog(SettingsCatalogJson())));
 
+    private static void Free_module_grants_survive_atomic_purchase_and_restart()
+    {
+        foreach (bool sourceProfile in new[] { false, true })
+        {
+            TestWorkspaceStore store = FreeGrantStore();
+            string before = store.Current.Document.Content;
+            var resolver = new SkillSourceResolver(sourceProfile ? SourceSettings() : null);
+            var catalog = new SettingsCatalog(sourceProfile ? string.Empty : SettingsCatalogJson());
+            CharacterCareerSkillGroupAdvanceService Open() => new(
+                new AndroidCharacterCareerSkillGroupAdvanceWorkspace(store, resolver, catalog));
+            var service = Open();
+            var command = Command(service);
+            var result = service.Advance(command);
+            Check(result.Outcome == CharacterCareerSkillGroupAdvanceServiceOutcome.Applied,
+                "Numeric XML flags and retained module grants must admit the exact atomic purchase.");
+            Check(result.ReviewedQuote!.GroupRating == 2 && result.ReviewedQuote.KarmaPoints == 0
+                && result.ReviewedQuote.CostRating == 3 && result.ReviewedQuote.KarmaCost == 20,
+                "Price must include granted member levels, separately from paid group points.");
+            XElement saved = XElement.Parse(store.Current.Document.Content);
+            Check(saved.Element("karma")!.Value == "20"
+                && saved.Descendants("group").Single().Element("karma")!.Value == "1",
+                "Exactly one paid group level and one20Karma expense must persist.");
+            Check(XNode.DeepEquals(saved.Element("improvements"), XElement.Parse(before).Element("improvements"))
+                && XNode.DeepEquals(saved.Element("newskills")!.Element("skills"), XElement.Parse(before).Element("newskills")!.Element("skills")),
+                "Atomic group advancement must preserve all module grants and individual allocations.");
+            var replay = Open().Advance(command);
+            Check(replay.Outcome == CharacterCareerSkillGroupAdvanceServiceOutcome.Replayed
+                && replay.Receipt == result.Receipt && store.AtomicReplaceCount == 1,
+                "Restart recovers the original receipt without purchasing or spending twice.");
+            var reopened = Open().Quote(new(WorkspaceId, GroupIdentity));
+            Check(reopened.Binding!.Quote.GroupRating == 3 && reopened.Binding.Quote.CostRating == 4
+                && reopened.Binding.Quote.KarmaPoints == 1 && reopened.Binding.Quote.AvailableKarma == 20,
+                "Cold quote must retain the exact free/paid separation and budget.");
+        }
+    }
+
+    private static void Source_profile_mismatch_and_changed_authority_fail_closed()
+    {
+        TestWorkspaceStore store = FreeGrantStore();
+        var mismatch = new CharacterCareerSkillGroupAdvanceService(new AndroidCharacterCareerSkillGroupAdvanceWorkspace(
+            store, new SkillSourceResolver(SourceSettings().Replace("profile-sr5", "another-profile", StringComparison.Ordinal)),
+            new SettingsCatalog(string.Empty)));
+        Check(mismatch.Quote(new(WorkspaceId, GroupIdentity)).Outcome == CharacterCareerSkillGroupAdvanceServiceOutcome.Unavailable,
+            "A different Core profile must never substitute for the saved profile.");
+        var resolver = new SkillSourceResolver(SourceSettings());
+        var service = new CharacterCareerSkillGroupAdvanceService(new AndroidCharacterCareerSkillGroupAdvanceWorkspace(
+            store, resolver, new SettingsCatalog(string.Empty)));
+        var command = Command(service);
+        resolver.Authority = "changed-source-authority";
+        Check(service.Advance(command).Outcome == CharacterCareerSkillGroupAdvanceServiceOutcome.Conflict
+            && store.AtomicReplaceCount == 0, "Source authority changes must invalidate already reviewed commands.");
+    }
+
+    private static TestWorkspaceStore FreeGrantStore()
+    {
+        XElement xml = XElement.Parse(CharacterXml());
+        xml.SetElementValue("created", "1");
+        xml.Descendants("group").Single().SetElementValue("karma", "0");
+        xml.Descendants("group").Single().SetElementValue("isbroken", "0");
+        foreach (XElement skill in xml.Descendants("skill")) skill.SetElementValue("isknowledge", "0");
+        foreach (var (type, name, value) in new[] { ("SkillGroupLevel", "Firearms", "2"),
+            ("SkillLevel", "Automatics", "1"), ("SkillLevel", "Longarms", "1") })
+            xml.Element("improvements")!.Add(new XElement("improvement", new XElement("improvementttype", type),
+                new XElement("improvedname", name), new XElement("val", value),
+                new XElement("enabled", "1"), new XElement("addtorating", "0")));
+        return new(new WorkspaceStoredDocument(WorkspaceId,
+            new WorkspaceDocument(xml.ToString(SaveOptions.DisableFormatting), CharacterCareerSkillGroupAdvanceRules.RulesetId),
+            InitialRevision, InitialRevision, DateTimeOffset.UtcNow));
+    }
+
+    private static string SourceSettings() => "<settings><id>profile-sr5</id><karmacost><karmanewskillgroup>5</karmanewskillgroup><karmaimproveskillgroup>5</karmaimproveskillgroup></karmacost><maxskillrating>12</maxskillrating><usepointsonbrokengroups>0</usepointsonbrokengroups></settings>";
+
     private static CharacterCareerSkillGroupAdvanceCommand Command(
         CharacterCareerSkillGroupAdvanceService service)
     {
@@ -281,10 +355,14 @@ internal static class Program
         public string ReadCatalogJson() => json;
     }
 
-    private sealed class SkillSourceResolver :
+    private sealed class SkillSourceResolver(string? profile = null) :
         ICharacterSourceDataResolver,
         ICharacterSourceDataContext
     {
+        public string Authority { get; set; } = "exact-core-source-authority";
+        public bool TryResolveCareerSettingsProfile(out string xml, out string authority)
+        { xml = profile ?? string.Empty; authority = Authority; return profile is not null; }
+
         public ICharacterSourceDataContext? TryCreateContext(string characterXml)
             => string.IsNullOrWhiteSpace(characterXml) ? null : this;
 

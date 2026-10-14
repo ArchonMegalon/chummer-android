@@ -9,6 +9,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerSkillRatingRules.cs" Link="Core/CharacterCareerSkillRatingRules.cs" />
+    <Compile Include="$(ChummerCoreRoot)/Chummer.Contracts/Characters/CharacterCareerActiveSkillAdvanceRules.cs" Link="Core/CharacterCareerActiveSkillAdvanceRules.cs" />
     <Compile Include="AtomicWorkspaceCompileStubs.cs" />
     <Compile Include="../../src/Chummer.Android/Native/AndroidCharacterCareerSkillGroupAdvanceWorkspace.cs"
              Link="Native/AndroidCharacterCareerSkillGroupAdvanceWorkspace.cs" />

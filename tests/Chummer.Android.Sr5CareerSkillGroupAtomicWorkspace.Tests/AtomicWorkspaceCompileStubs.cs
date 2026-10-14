@@ -91,6 +91,9 @@ namespace Chummer.Application.Characters
 
     public interface ICharacterSourceDataContext
     {
+        bool TryResolveCareerSettingsProfile(out string xml, out string authority)
+        { xml = authority = string.Empty; return false; }
+
         bool TryResolveActiveSkillSource(
             string sourceSkillId,
             out CharacterActiveSkillSource source);
