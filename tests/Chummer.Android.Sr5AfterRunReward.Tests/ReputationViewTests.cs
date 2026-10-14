@@ -100,7 +100,8 @@ internal static partial class ReputationTests
         var checkpoint = ui.Model.Checkpoint!;
         Check(checkpoint.Receipt is null);
         SavedControlsVisible(ui);
-        string closedFormat = PhoneStrings.Get("ReputationWizardClosedReceipt", string.Empty);
+        var resources = new ResourceManager("Chummer.Android.Resources.Localization.PhoneStrings", typeof(Sr5CareerReputationView).Assembly);
+        string closedFormat = resources.GetString("ReputationWizardClosedReceipt", CultureInfo.CurrentUICulture)!;
         Check(!string.IsNullOrEmpty(closedFormat));
         Equal(string.Format(CultureInfo.CurrentCulture, closedFormat, checkpoint.SupersededAtRevision!),
             ui.Find<Label>("receipt").Text);
