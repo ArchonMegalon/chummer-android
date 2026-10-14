@@ -494,7 +494,12 @@ public sealed class Sr5CareerSpecializationReviewPage : NativePageBase
         };
         body.Add(NativeTheme.Eyebrow(Text("SR5 Career · 3 of 4")));
         body.Add(NativeTheme.Title(Format("{0}: {1}", draft.Quote.SkillName, draft.Quote.Selection.Name)));
-        body.Add(NativeTheme.Card(
+        VerticalStackLayout summary = new() { Spacing = 8 };
+        summary.Add(NativeTheme.Metric(Text("Karma cost"), draft.Quote.KarmaCost.ToString(CultureInfo.InvariantCulture)));
+        summary.Add(NativeTheme.Metric(Text("Runner Karma"), $"{draft.Quote.AvailableKarma} → {draft.Plan.SavedCharacterKarma}"));
+        body.Add(NativeTheme.Card(summary));
+        VerticalStackLayout technical = new() { Spacing = 8 };
+        technical.Add(NativeTheme.Card(
             NativeTheme.Body(
                 Format(
                     "Typed identity: {0} / {1}\nSelection: {2} / {3}\nSpecializations: {4} → {5}\nKarma: {6} → {7} (cost {8})",
@@ -514,7 +519,7 @@ public sealed class Sr5CareerSpecializationReviewPage : NativePageBase
                 Text("This specialization will break the current skill group under the active setting."),
                 NativeTheme.Danger)));
         }
-        body.Add(NativeTheme.Body(
+        technical.Add(NativeTheme.Body(
             Format(
                 "Character {0} · source {1} · rules {2} · logical {3}",
                 ShortDigest(draft.Quote.CharacterRevision),
@@ -522,15 +527,17 @@ public sealed class Sr5CareerSpecializationReviewPage : NativePageBase
                 ShortDigest(draft.Quote.RuleDigest),
                 ShortDigest(draft.Quote.LogicalRevision)),
             NativeTheme.Muted));
-        _status = NativeTheme.Body(
+        technical.Add(NativeTheme.Body(
             Text("A durable shared mutation owner is acquired before Chummer receives the request."),
-            NativeTheme.Muted);
+            NativeTheme.Muted));
+        _status = NativeTheme.Body(string.Empty, NativeTheme.Muted);
         _status.AutomationId = "sr5-career-specialization-review-status";
         body.Add(_status);
         _apply = NativeTheme.PrimaryButton(Text("Confirm and save specialization"));
         _apply.AutomationId = "sr5-career-specialization-apply";
         _apply.Clicked += async (_, _) => await RunAsync(ApplyAsync);
         body.Add(_apply);
+        body.Add(NativeTheme.TechnicalDetails(technical, "sr5-career-specialization-review-details"));
         Content = new ScrollView { Content = body };
         Refresh();
     }
@@ -621,7 +628,7 @@ public sealed class Sr5CareerSpecializationReceiptPage : NativePageBase
             Spacing = 14
         };
         body.Add(NativeTheme.Eyebrow(Text("SR5 Career · 4 of 4")));
-        body.Add(NativeTheme.Title(Text("Saved and re-projected")));
+        body.Add(NativeTheme.Title(Text("Specialization saved")));
         body.Add(NativeTheme.Body(
             Format(
                 "{0} was added. Specializations {1} → {2}; Karma {3} → {4}.",
@@ -631,13 +638,15 @@ public sealed class Sr5CareerSpecializationReceiptPage : NativePageBase
                 receipt.KarmaBefore.ToString(CultureInfo.InvariantCulture),
                 receipt.KarmaAfter.ToString(CultureInfo.InvariantCulture)),
             NativeTheme.Text));
-        body.Add(NativeTheme.Card(NativeTheme.Body(
+        body.Add(NativeTheme.Body(Text("Select Continue to finish this purchase before closing the app."), NativeTheme.Muted));
+        View technical = NativeTheme.Card(NativeTheme.Body(
             Text("This is a current-process typed projection proof, not a persisted Core receipt. If the process dies before acknowledgement, recovery remains locked rather than guessing."),
-            NativeTheme.Muted)));
-        _done = NativeTheme.PrimaryButton(Text("Acknowledge receipt"));
+            NativeTheme.Muted));
+        _done = NativeTheme.PrimaryButton(Text("Continue"));
         _done.AutomationId = "sr5-career-specialization-receipt-acknowledge";
         _done.Clicked += async (_, _) => await RunAsync(AcknowledgeAsync);
         body.Add(_done);
+        body.Add(NativeTheme.TechnicalDetails(technical, "sr5-career-specialization-receipt-details"));
         Content = new ScrollView { Content = body };
         Refresh();
     }

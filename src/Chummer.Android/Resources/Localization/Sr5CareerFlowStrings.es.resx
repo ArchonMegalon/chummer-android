@@ -60,7 +60,7 @@
   <data name="Expense identity" xml:space="preserve"><value>Identidad del gasto</value></data>
   <data name="Date" xml:space="preserve"><value>Fecha</value></data>
   <data name="Undo" xml:space="preserve"><value>Deshacer</value></data>
-  <data name="Apply and verify once" xml:space="preserve"><value>Aplicar y verificar una vez</value></data>
+  <data name="Confirm advancement" xml:space="preserve"><value>Confirmar mejora</value></data>
   <data name="The exact checkpoint moves to Applying before mutation. Success is shown only after atomic save and a fresh recoverable receipt projection match the reviewed identity, costs and digests." xml:space="preserve"><value>El punto de control exacto pasa a Applying antes de la mutación. El éxito solo se muestra cuando el guardado atómico y una proyección de recibo recuperable reciente coinciden con la identidad, los costes y los resúmenes revisados.</value></data>
   <data name="The runner revision, owner, quote, or durable checkpoint changed. This preview cannot apply." xml:space="preserve"><value>Cambiaron la revisión del runner, el propietario, la cotización o el punto de control duradero. Esta vista previa no puede aplicarse.</value></data>
   <data name="The one-shot apply is running or awaiting authoritative recovery." xml:space="preserve"><value>La aplicación de un solo intento está en curso o espera la recuperación autorizada.</value></data>
@@ -74,7 +74,7 @@
   <data name="The typed attribute receipt does not own the resolved checkpoint." xml:space="preserve"><value>El recibo tipado de atributo no posee el punto de control resuelto.</value></data>
   <data name="Attribute receipt" xml:space="preserve"><value>Recibo de atributo</value></data>
   <data name="SR5 Career · 3 of 3" xml:space="preserve"><value>Carrera SR5 · 3 de 3</value></data>
-  <data name="Verified saved advancement" xml:space="preserve"><value>Mejora guardada verificada</value></data>
+  <data name="Advancement saved" xml:space="preserve"><value>Mejora guardada</value></data>
   <data name="Attribute Karma" xml:space="preserve"><value>Karma de atributo</value></data>
   <data name="Transaction" xml:space="preserve"><value>Transacción</value></data>
   <data name="Saved revision" xml:space="preserve"><value>Revisión guardada</value></data>
@@ -272,30 +272,22 @@ Karma: {6} → {7} (coste {8})</value></data>
   <data name="Apply not started" xml:space="preserve"><value>La aplicación no se inició</value></data>
   <data name="Specialization saved" xml:space="preserve"><value>Especialización guardada</value></data>
   <data name="SR5 Career · 4 of 4" xml:space="preserve"><value>Carrera SR5 · 4 de 4</value></data>
-  <data name="Saved and re-projected" xml:space="preserve"><value>Guardado y vuelto a proyectar</value></data>
+  <data name="Select Continue to finish this purchase before closing the app." xml:space="preserve"><value>Selecciona Continuar para terminar esta compra antes de cerrar la aplicación.</value></data>
   <data name="{0} was added. Specializations {1} → {2}; Karma {3} → {4}." xml:space="preserve"><value>Se añadió {0}. Especializaciones {1} → {2}; Karma {3} → {4}.</value></data>
   <data name="This is a current-process typed projection proof, not a persisted Core receipt. If the process dies before acknowledgement, recovery remains locked rather than guessing." xml:space="preserve"><value>Esto es una prueba de proyección tipada del proceso actual, no un recibo persistido de Core. Si el proceso muere antes de la confirmación, la recuperación permanece bloqueada en lugar de adivinar.</value></data>
   <data name="Receipt remains locked" xml:space="preserve"><value>El recibo sigue bloqueado</value></data>
   <data name="The SR5 quality route requires the exact clean saved runner revision." xml:space="preserve"><value>La ruta de cualidades SR5 requiere la revisión exacta, limpia y guardada del runner.</value></data>
   <data name="Change quality" xml:space="preserve"><value>Cambiar una cualidad</value></data>
-  <data name="Choose a quality operation" xml:space="preserve"><value>Elige una operación de cualidad</value></data>
-  <data name="Only exact Core candidates from enabled sources, custom data and the active GM policy are shown. Android never identifies a quality by its label and never applies a partial effect family." xml:space="preserve"><value>Solo se muestran los candidatos exactos de Core de fuentes habilitadas, datos personalizados y la política GM activa. Android nunca identifica una cualidad por su etiqueta y nunca aplica una familia de efectos parcial.</value></data>
   <data name="Quality and operation" xml:space="preserve"><value>Cualidad y operación</value></data>
-  <data name="Exact quality operation" xml:space="preserve"><value>Operación exacta de cualidad</value></data>
   <data name="{0} candidate(s) and {1} receipt(s) were omitted. The whole quality lane remains fail-closed." xml:space="preserve"><value>Se omitieron {0} candidato(s) y {1} recibo(s). Toda la vía de cualidades permanece cerrada ante fallos.</value></data>
-  <data name="Review exact quality diff" xml:space="preserve"><value>Revisar la diferencia exacta de cualidad</value></data>
   <data name="Resume reviewed quality change" xml:space="preserve"><value>Reanudar el cambio de cualidad revisado</value></data>
   <data name="Resolve interrupted atomic commit" xml:space="preserve"><value>Resolver la confirmación atómica interrumpida</value></data>
   <data name="{0} · {1} · level {2} → {3} · {4}" xml:space="preserve"><value>{0} · {1} · nivel {2} → {3} · {4}</value></data>
-  <data name="{0} Karma" xml:space="preserve"><value>{0} Karma</value></data>
   <data name="Acquire level" xml:space="preserve"><value>Adquirir nivel</value></data>
   <data name="Remove level" xml:space="preserve"><value>Quitar nivel</value></data>
   <data name="Remove all levels" xml:space="preserve"><value>Quitar todos los niveles</value></data>
   <data name="Unsupported operation" xml:space="preserve"><value>Operación no compatible</value></data>
   <data name="No exact quality operation is available." xml:space="preserve"><value>No hay ninguna operación exacta de cualidad disponible.</value></data>
-  <data name="{0} · {1} · level {2} → {3} · runner Karma {4} → {5}" xml:space="preserve"><value>{0} · {1} · nivel {2} → {3} · Karma del runner {4} → {5}</value></data>
-  <data name="source {0} · source id {1} · internal id {2} · effects {3} · GM allowed" xml:space="preserve"><value>fuente {0} · id de fuente {1} · id interno {2} · efectos {3} · GM permitido</value></data>
-  <data name="source {0} · source id {1} · internal id {2} · effects {3} · GM blocked" xml:space="preserve"><value>fuente {0} · id de fuente {1} · id interno {2} · efectos {3} · GM bloqueado</value></data>
   <data name="The saved runner revision changed. Reopen quality advancement." xml:space="preserve"><value>La revisión guardada del runner cambió. Vuelve a abrir el avance de cualidad.</value></data>
   <data name="Ambiguous candidate or receipt authority was omitted. No quality operation may continue." xml:space="preserve"><value>Se omitió una autoridad ambigua de candidato o de recibo. Ninguna operación de cualidad puede continuar.</value></data>
   <data name="No exact quality projection is available." xml:space="preserve"><value>No hay ninguna proyección exacta de cualidad disponible.</value></data>
@@ -312,48 +304,18 @@ Karma: {6} → {7} (coste {8})</value></data>
   <data name="A verified saved quality receipt is awaiting acknowledgement or correction." xml:space="preserve"><value>Un recibo de cualidad guardado y verificado espera confirmación o corrección.</value></data>
   <data name="The quality preview does not own its exact Reviewed checkpoint." xml:space="preserve"><value>La vista previa de cualidad no posee su punto de control Reviewed exacto.</value></data>
   <data name="Review quality" xml:space="preserve"><value>Revisar cualidad</value></data>
-  <data name="Review exact atomic diff" xml:space="preserve"><value>Revisar la diferencia atómica exacta</value></data>
   <data name="Quality" xml:space="preserve"><value>Cualidad</value></data>
   <data name="Operation" xml:space="preserve"><value>Operación</value></data>
-  <data name="Typed identity" xml:space="preserve"><value>Identidad tipada</value></data>
-  <data name="{0} · source {1}" xml:space="preserve"><value>{0} · fuente {1}</value></data>
   <data name="Level" xml:space="preserve"><value>Nivel</value></data>
-  <data name="Rule cost / delta" xml:space="preserve"><value>Coste de regla / delta</value></data>
-  <data name="Source" xml:space="preserve"><value>Fuente</value></data>
-  <data name="{0} · enabled {1}" xml:space="preserve"><value>{0} · habilitado {1}</value></data>
   <data name="GM policy" xml:space="preserve"><value>Política GM</value></data>
-  <data name="allowed {0} · free approved {1}" xml:space="preserve"><value>permitido {0} · gratis aprobado {1}</value></data>
   <data name="Effects" xml:space="preserve"><value>Efectos</value></data>
-  <data name="exact {0} · mutations {1}" xml:space="preserve"><value>exacto {0} · mutaciones {1}</value></data>
-  <data name="Applied effect families" xml:space="preserve"><value>Familias de efectos aplicadas</value></data>
-  <data name="Unsupported effect families" xml:space="preserve"><value>Familias de efectos no compatibles</value></data>
-  <data name="Workspace / saved revisions" xml:space="preserve"><value>Revisiones del espacio de trabajo / guardadas</value></data>
-  <data name="Logical revision" xml:space="preserve"><value>Revisión lógica</value></data>
-  <data name="Source revision" xml:space="preserve"><value>Revisión de fuente</value></data>
-  <data name="Rule digest" xml:space="preserve"><value>Resumen de regla</value></data>
-  <data name="Content digest" xml:space="preserve"><value>Resumen de contenido</value></data>
-  <data name="Runtime digest" xml:space="preserve"><value>Resumen de ejecución</value></data>
-  <data name="Confirm atomic quality transaction" xml:space="preserve"><value>Confirmar la transacción atómica de cualidad</value></data>
-  <data name="The checkpoint moves to Applying first. Presentation commits the full quality/effect delta, expense and receipt atomically; Android never retries an unknown outcome." xml:space="preserve"><value>El punto de control pasa primero a Applying. Presentation confirma atómicamente el delta completo de cualidad/efecto, el gasto y el recibo; Android nunca reintenta un resultado desconocido.</value></data>
   <data name="Owner, revision, source, rule, effects, runtime, content or durable checkpoint changed." xml:space="preserve"><value>Cambiaron el propietario, la revisión, la fuente, la regla, los efectos, la ejecución, el contenido o el punto de control duradero.</value></data>
-  <data name="The one-shot atomic commit is running or awaiting authoritative recovery." xml:space="preserve"><value>La confirmación atómica de un solo intento está en curso o espera la recuperación autorizada.</value></data>
   <data name="Commit blocked" xml:space="preserve"><value>Confirmación bloqueada</value></data>
   <data name="{0} The Applying lock cannot be cleared or replayed." xml:space="preserve"><value>{0} El bloqueo Applying no puede borrarse ni repetirse.</value></data>
   <data name="Fresh atomic authority proves no quality/effect/expense/receipt transaction was saved." xml:space="preserve"><value>La autoridad atómica reciente demuestra que no se guardó ninguna transacción de cualidad/efecto/gasto/recibo.</value></data>
   <data name="The quality receipt does not own this resolved checkpoint." xml:space="preserve"><value>El recibo de cualidad no posee este punto de control resuelto.</value></data>
-  <data name="Quality receipt" xml:space="preserve"><value>Recibo de cualidad</value></data>
-  <data name="Verified atomic quality receipt" xml:space="preserve"><value>Recibo atómico de cualidad verificado</value></data>
-  <data name="Instances" xml:space="preserve"><value>Instancias</value></data>
-  <data name="receipt {0} · source {1} → {2} · rule {3} → {4} · state {5}" xml:space="preserve"><value>recibo {0} · fuente {1} → {2} · regla {3} → {4} · estado {5}</value></data>
-  <data name="Correct this quality transaction" xml:space="preserve"><value>Corregir esta transacción de cualidad</value></data>
-  <data name="Correction is a separate typed compensating transaction. It restores exact instances and Karma and removes only the original expense; the receipt is never edited in place." xml:space="preserve"><value>La corrección es una transacción compensatoria tipada independiente. Restaura las instancias exactas y el Karma y elimina solo el gasto original; el recibo nunca se edita in situ.</value></data>
   <data name="Correct quality transaction" xml:space="preserve"><value>Corregir la transacción de cualidad</value></data>
-  <data name="Enter the reason recorded with the compensating transaction." xml:space="preserve"><value>Introduce el motivo registrado con la transacción compensatoria.</value></data>
   <data name="Keep transaction" xml:space="preserve"><value>Conservar la transacción</value></data>
-  <data name="This atomically restores the exact pre-transaction quality instances and Karma and removes the bound expense." xml:space="preserve"><value>Esto restaura atómicamente las instancias exactas de cualidad y el Karma anteriores a la transacción y elimina el gasto vinculado.</value></data>
-  <data name="Compensating transaction {0} restored the exact prior state." xml:space="preserve"><value>La transacción compensatoria {0} restauró el estado previo exacto.</value></data>
-  <data name="The receipt was recovered from the exact clean atomic saved revision." xml:space="preserve"><value>El recibo se recuperó de la revisión guardada atómica, limpia y exacta.</value></data>
-  <data name="The runner moved past this receipt; it remains bound to the earlier saved revision." xml:space="preserve"><value>El runner avanzó más allá de este recibo; permanece vinculado a la revisión guardada anterior.</value></data>
   <data name="The SR5 After Run route requires the exact current clean saved runner revision." xml:space="preserve"><value>La ruta After Run de SR5 requiere la revisión exacta actual, limpia y guardada del runner.</value></data>
   <data name="After the run" xml:space="preserve"><value>Después del run</value></data>
   <data name="SR5 Career · After Run · 1 of 7" xml:space="preserve"><value>Carrera SR5 · After Run · 1 de 7</value></data>
@@ -681,7 +643,6 @@ Vista previa: {3}…</value></data>
   <data name="Confirm and save exact damage" xml:space="preserve"><value>Confirmar y guardar el daño exacto</value></data>
   <data name="Confirmation unavailable" xml:space="preserve"><value>Confirmación no disponible</value></data>
   <data name="Core proved no mutation after restart. Confirm the exact review again." xml:space="preserve"><value>Core demostró que no hubo mutación tras reiniciar. Confirma de nuevo la revisión exacta.</value></data>
-  <data name="Core proved the runner stayed at the reviewed revision. Confirm again if desired." xml:space="preserve"><value>Core demostró que el runner permaneció en la revisión comprobada. Confirma de nuevo si lo deseas.</value></data>
   <data name="Damage outcome unknown" xml:space="preserve"><value>Resultado del daño desconocido</value></data>
   <data name="Damage saved" xml:space="preserve"><value>Daño guardado</value></data>
   <data name="Exact saved boxes {0} / {1} · review and receipt required" xml:space="preserve"><value>Casillas guardadas exactas {0} / {1} · se requieren revisión y recibo</value></data>
@@ -689,7 +650,6 @@ Vista previa: {3}…</value></data>
   <data name="Filled boxes after this action" xml:space="preserve"><value>Casillas llenas después de esta acción</value></data>
   <data name="Loading the exact saved damage track…" xml:space="preserve"><value>Cargando la pista de daño guardada exacta…</value></data>
   <data name="No exact change" xml:space="preserve"><value>Sin cambio exacto</value></data>
-  <data name="No mutation observed" xml:space="preserve"><value>No se observó ninguna mutación</value></data>
   <data name="Only the exact verified Playtime damage receipt may be acknowledged." xml:space="preserve"><value>Solo se puede confirmar el recibo de daño de partida verificado exacto.</value></data>
   <data name="Physical" xml:space="preserve"><value>Físico</value></data>
   <data name="Playtime · {0} damage" xml:space="preserve"><value>Partida · daño {0}</value></data>

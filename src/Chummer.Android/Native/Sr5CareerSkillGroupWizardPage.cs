@@ -503,45 +503,46 @@ public sealed class Sr5CareerSkillGroupReviewPage : NativePageBase
             Spacing = 14
         };
         body.Add(NativeTheme.Eyebrow(Text("SR5 Career · 2 of 3")));
-        body.Add(NativeTheme.Title(Text("Review exact diff")));
+        body.Add(NativeTheme.Title(Text("Review advancement")));
         VerticalStackLayout diff = new() { Spacing = 8 };
         diff.Add(NativeTheme.Metric(Text("Skill group"), _draft.Quote.Name));
         diff.Add(NativeTheme.Metric(
             Text("Group rating"),
             $"{_draft.Quote.GroupRating} → {_draft.Quote.TargetGroupRating}"));
-        diff.Add(NativeTheme.Metric(
+        diff.Add(NativeTheme.Metric(Text("Runner Karma"),
+            $"{_draft.Quote.AvailableKarma} → {_draft.Plan.SavedCharacterKarma}"));
+        diff.Add(NativeTheme.Metric(Text("Karma cost"), _draft.Quote.KarmaCost.ToString(CultureInfo.InvariantCulture)));
+        body.Add(NativeTheme.Card(diff));
+        VerticalStackLayout technical = new() { Spacing = 8 };
+        technical.Add(NativeTheme.Metric(
             Text("Cost rating"),
             $"{_draft.Quote.CostRating} → {_draft.Quote.TargetCostRating}"));
-        diff.Add(NativeTheme.Metric(
+        technical.Add(NativeTheme.Metric(
             Text("Group Karma points"),
             $"{_draft.Quote.KarmaPoints} → {_draft.Plan.SavedGroupKarmaPoints}"));
-        diff.Add(NativeTheme.Metric(
-            Text("Runner Karma"),
-            $"{_draft.Quote.AvailableKarma} → {_draft.Plan.SavedCharacterKarma}"));
-        diff.Add(NativeTheme.Metric(Text("Enabled members"), _draft.Quote.EnabledMemberCount.ToString(CultureInfo.InvariantCulture)));
-        diff.Add(NativeTheme.Metric(Text("Rating maximum"), _draft.Quote.RatingMaximum.ToString(CultureInfo.InvariantCulture)));
-        diff.Add(NativeTheme.Metric(
+        technical.Add(NativeTheme.Metric(Text("Enabled members"), _draft.Quote.EnabledMemberCount.ToString(CultureInfo.InvariantCulture)));
+        technical.Add(NativeTheme.Metric(Text("Rating maximum"), _draft.Quote.RatingMaximum.ToString(CultureInfo.InvariantCulture)));
+        technical.Add(NativeTheme.Metric(
             Text("Application time"),
             $"{_draft.Quote.ApplicationDuration} · {_draft.Quote.TimeAuthority}"));
         foreach (CharacterCareerSkillGroupPrerequisiteResult prerequisite in _draft.Quote.Prerequisites)
         {
-            diff.Add(NativeTheme.Metric(
+            technical.Add(NativeTheme.Metric(
                 Format("Prerequisite · {0}", prerequisite.Prerequisite),
                 Format(
                     prerequisite.Satisfied ? "satisfied · {0}" : "blocked · {0}",
                     prerequisite.Authority)));
         }
-        diff.Add(NativeTheme.Metric(Text("Expense"), _draft.Plan.ExpenseReason));
-        diff.Add(NativeTheme.Metric(Text("Transaction"), _draft.Plan.TransactionId.ToString("D")));
-        diff.Add(NativeTheme.Metric(Text("Expense identity"), _draft.Plan.ExpenseId.ToString("D")));
-        diff.Add(NativeTheme.Metric(Text("Content authority"), _draft.RuntimeAuthority.ContentDigest));
-        diff.Add(NativeTheme.Metric(Text("Runtime authority"), _draft.RuntimeAuthority.RuntimeDigest));
-        diff.Add(NativeTheme.Metric(Text("Date"), _draft.Plan.ExpenseDateLocal.ToString("O", CultureInfo.InvariantCulture)));
-        diff.Add(NativeTheme.Metric(Text("Undo"), $"{_draft.Plan.KarmaUndoType} · {_draft.Plan.UndoObjectId}"));
-        body.Add(NativeTheme.Card(diff));
+        technical.Add(NativeTheme.Metric(Text("Expense"), _draft.Plan.ExpenseReason));
+        technical.Add(NativeTheme.Metric(Text("Transaction"), _draft.Plan.TransactionId.ToString("D")));
+        technical.Add(NativeTheme.Metric(Text("Expense identity"), _draft.Plan.ExpenseId.ToString("D")));
+        technical.Add(NativeTheme.Metric(Text("Content authority"), _draft.RuntimeAuthority.ContentDigest));
+        technical.Add(NativeTheme.Metric(Text("Runtime authority"), _draft.RuntimeAuthority.RuntimeDigest));
+        technical.Add(NativeTheme.Metric(Text("Date"), _draft.Plan.ExpenseDateLocal.ToString("O", CultureInfo.InvariantCulture)));
+        technical.Add(NativeTheme.Metric(Text("Undo"), $"{_draft.Plan.KarmaUndoType} · {_draft.Plan.UndoObjectId}"));
         _blocker = NativeTheme.Body(string.Empty, NativeTheme.Danger);
         body.Add(_blocker);
-        _apply = NativeTheme.PrimaryButton(Text("Apply and verify once"));
+        _apply = NativeTheme.PrimaryButton(Text("Confirm advancement"));
         _apply.AutomationId = "sr5-career-skill-group-apply";
         _apply.Clicked += async (_, _) =>
         {
@@ -552,9 +553,10 @@ public sealed class Sr5CareerSkillGroupReviewPage : NativePageBase
             }
         };
         body.Add(_apply);
-        body.Add(NativeTheme.Body(
+        technical.Add(NativeTheme.Body(
             Text("The exact checkpoint moves to Applying before mutation. Success is shown only after the atomic Core service returns a digest-verified persisted receipt for the reviewed identity, costs and revisions."),
             NativeTheme.Muted));
+        body.Add(NativeTheme.TechnicalDetails(technical, "sr5-career-skill-group-review-details"));
         Content = new ScrollView { Content = body };
         RefreshEnabledState();
     }
@@ -681,22 +683,23 @@ public sealed class Sr5CareerSkillGroupReceiptPage : NativePageBase
             Spacing = 14
         };
         body.Add(NativeTheme.Eyebrow(Text("SR5 Career · 3 of 3")));
-        body.Add(NativeTheme.Title(Text("Verified saved advancement")));
+        body.Add(NativeTheme.Title(Text("Advancement saved")));
         VerticalStackLayout details = new() { Spacing = 8 };
         details.Add(NativeTheme.Metric(Text("Skill group"), checkpoint.Draft.Quote.Name));
         details.Add(NativeTheme.Metric(Text("Group rating"), $"{receipt.GroupRatingBefore} → {receipt.GroupRatingAfter}"));
-        details.Add(NativeTheme.Metric(Text("Cost rating"), $"{receipt.CostRatingBefore} → {receipt.CostRatingAfter}"));
-        details.Add(NativeTheme.Metric(Text("Group Karma"), $"{receipt.GroupKarmaBefore} → {receipt.GroupKarmaAfter}"));
         details.Add(NativeTheme.Metric(Text("Runner Karma"), $"{receipt.CharacterKarmaBefore} → {receipt.CharacterKarmaAfter}"));
         details.Add(NativeTheme.Metric(Text("Expense"), receipt.ExpenseAmount.ToString(CultureInfo.InvariantCulture)));
-        details.Add(NativeTheme.Metric(Text("Transaction"), receipt.TransactionId.ToString("D")));
-        details.Add(NativeTheme.Metric(
+        body.Add(NativeTheme.Card(details));
+        VerticalStackLayout technical = new() { Spacing = 8 };
+        technical.Add(NativeTheme.Metric(Text("Cost rating"), $"{receipt.CostRatingBefore} → {receipt.CostRatingAfter}"));
+        technical.Add(NativeTheme.Metric(Text("Group Karma"), $"{receipt.GroupKarmaBefore} → {receipt.GroupKarmaAfter}"));
+        technical.Add(NativeTheme.Metric(Text("Transaction"), receipt.TransactionId.ToString("D")));
+        technical.Add(NativeTheme.Metric(
             Text("Saved revision"),
             checked(checkpoint.Draft.ExpectedContentRevision + 1).ToString(CultureInfo.InvariantCulture)));
-        body.Add(NativeTheme.Card(details));
         _durability = NativeTheme.Body(string.Empty, NativeTheme.Muted);
         body.Add(_durability);
-        body.Add(NativeTheme.Body(
+        technical.Add(NativeTheme.Body(
             Format(
                 "receipt {0} · reviewed source {1} · rule {2} · content {3} · runtime {4} · owner {5}",
                 receipt.ReceiptDigest,
@@ -706,7 +709,7 @@ public sealed class Sr5CareerSkillGroupReceiptPage : NativePageBase
                 checkpoint.Draft.RuntimeAuthority.RuntimeDigest,
                 checkpoint.Draft.OwnerId.ToString("D")),
             NativeTheme.Muted));
-        Button acknowledge = NativeTheme.PrimaryButton(Text("Acknowledge receipt"));
+        Button acknowledge = NativeTheme.PrimaryButton(Text("Continue"));
         acknowledge.AutomationId = "sr5-career-skill-group-receipt-acknowledge";
         acknowledge.Clicked += async (_, _) => await RunAsync(async () =>
         {
@@ -721,6 +724,7 @@ public sealed class Sr5CareerSkillGroupReceiptPage : NativePageBase
             await Navigation.PopToRootAsync();
         });
         body.Add(acknowledge);
+        body.Add(NativeTheme.TechnicalDetails(technical, "sr5-career-skill-group-receipt-details"));
         Button correct = NativeTheme.SecondaryButton(Text("Correct this advancement"));
         correct.AutomationId = "sr5-career-skill-group-receipt-correct";
         correct.IsEnabled = false;

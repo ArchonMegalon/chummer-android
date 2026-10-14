@@ -60,7 +60,7 @@
   <data name="Expense identity" xml:space="preserve"><value>Ausgabenidentität</value></data>
   <data name="Date" xml:space="preserve"><value>Datum</value></data>
   <data name="Undo" xml:space="preserve"><value>Rückgängig</value></data>
-  <data name="Apply and verify once" xml:space="preserve"><value>Einmal anwenden und prüfen</value></data>
+  <data name="Confirm advancement" xml:space="preserve"><value>Steigerung bestätigen</value></data>
   <data name="The exact checkpoint moves to Applying before mutation. Success is shown only after atomic save and a fresh recoverable receipt projection match the reviewed identity, costs and digests." xml:space="preserve"><value>Der exakte Checkpoint wechselt vor der Mutation zu Applying. Erfolg wird erst angezeigt, wenn die atomare Speicherung und eine frische wiederherstellbare Belegprojektion mit der geprüften Identität, den Kosten und den Digests übereinstimmen.</value></data>
   <data name="The runner revision, owner, quote, or durable checkpoint changed. This preview cannot apply." xml:space="preserve"><value>Runner-Revision, Besitzer, Angebot oder dauerhafter Checkpoint haben sich geändert. Diese Vorschau kann nicht angewendet werden.</value></data>
   <data name="The one-shot apply is running or awaiting authoritative recovery." xml:space="preserve"><value>Das einmalige Anwenden läuft oder wartet auf die maßgebliche Wiederherstellung.</value></data>
@@ -74,7 +74,7 @@
   <data name="The typed attribute receipt does not own the resolved checkpoint." xml:space="preserve"><value>Der typisierte Attributbeleg besitzt den aufgelösten Checkpoint nicht.</value></data>
   <data name="Attribute receipt" xml:space="preserve"><value>Attributbeleg</value></data>
   <data name="SR5 Career · 3 of 3" xml:space="preserve"><value>SR5-Karriere · 3 von 3</value></data>
-  <data name="Verified saved advancement" xml:space="preserve"><value>Geprüfte gespeicherte Steigerung</value></data>
+  <data name="Advancement saved" xml:space="preserve"><value>Steigerung gespeichert</value></data>
   <data name="Attribute Karma" xml:space="preserve"><value>Attribut-Karma</value></data>
   <data name="Transaction" xml:space="preserve"><value>Transaktion</value></data>
   <data name="Saved revision" xml:space="preserve"><value>Gespeicherte Revision</value></data>
@@ -272,30 +272,22 @@ Karma: {6} → {7} (Kosten {8})</value></data>
   <data name="Apply not started" xml:space="preserve"><value>Anwenden nicht gestartet</value></data>
   <data name="Specialization saved" xml:space="preserve"><value>Spezialisierung gespeichert</value></data>
   <data name="SR5 Career · 4 of 4" xml:space="preserve"><value>SR5-Karriere · 4 von 4</value></data>
-  <data name="Saved and re-projected" xml:space="preserve"><value>Gespeichert und erneut projiziert</value></data>
+  <data name="Select Continue to finish this purchase before closing the app." xml:space="preserve"><value>Tippe auf Weiter, um diesen Kauf abzuschließen, bevor du die App schließt.</value></data>
   <data name="{0} was added. Specializations {1} → {2}; Karma {3} → {4}." xml:space="preserve"><value>{0} wurde hinzugefügt. Spezialisierungen {1} → {2}; Karma {3} → {4}.</value></data>
   <data name="This is a current-process typed projection proof, not a persisted Core receipt. If the process dies before acknowledgement, recovery remains locked rather than guessing." xml:space="preserve"><value>Dies ist ein typisierter Projektionsnachweis des aktuellen Prozesses, kein dauerhafter Core-Beleg. Stirbt der Prozess vor der Bestätigung, bleibt die Wiederherstellung gesperrt, statt zu raten.</value></data>
   <data name="Receipt remains locked" xml:space="preserve"><value>Beleg bleibt gesperrt</value></data>
   <data name="The SR5 quality route requires the exact clean saved runner revision." xml:space="preserve"><value>Die SR5-Vor-/Nachteilroute erfordert die exakte saubere gespeicherte Runner-Revision.</value></data>
   <data name="Change quality" xml:space="preserve"><value>Vor- oder Nachteil ändern</value></data>
-  <data name="Choose a quality operation" xml:space="preserve"><value>Vor-/Nachteiloperation wählen</value></data>
-  <data name="Only exact Core candidates from enabled sources, custom data and the active GM policy are shown. Android never identifies a quality by its label and never applies a partial effect family." xml:space="preserve"><value>Angezeigt werden nur exakte Core-Kandidaten aus aktivierten Quellen, eigenen Daten und der aktiven GM-Richtlinie. Android identifiziert einen Vor-/Nachteil niemals über dessen Bezeichnung und wendet niemals eine teilweise Effektfamilie an.</value></data>
   <data name="Quality and operation" xml:space="preserve"><value>Vor-/Nachteil und Vorgang</value></data>
-  <data name="Exact quality operation" xml:space="preserve"><value>Exakte Vor-/Nachteiloperation</value></data>
   <data name="{0} candidate(s) and {1} receipt(s) were omitted. The whole quality lane remains fail-closed." xml:space="preserve"><value>{0} Kandidat(en) und {1} Beleg(e) wurden ausgelassen. Die gesamte Vor-/Nachteilspur bleibt fehlersicher geschlossen.</value></data>
-  <data name="Review exact quality diff" xml:space="preserve"><value>Exakte Vor-/Nachteildifferenz prüfen</value></data>
   <data name="Resume reviewed quality change" xml:space="preserve"><value>Geprüfte Vor-/Nachteiländerung fortsetzen</value></data>
   <data name="Resolve interrupted atomic commit" xml:space="preserve"><value>Unterbrochene atomare Speicherung auflösen</value></data>
   <data name="{0} · {1} · level {2} → {3} · {4}" xml:space="preserve"><value>{0} · {1} · Stufe {2} → {3} · {4}</value></data>
-  <data name="{0} Karma" xml:space="preserve"><value>{0} Karma</value></data>
   <data name="Acquire level" xml:space="preserve"><value>Stufe erwerben</value></data>
   <data name="Remove level" xml:space="preserve"><value>Stufe entfernen</value></data>
   <data name="Remove all levels" xml:space="preserve"><value>Alle Stufen entfernen</value></data>
   <data name="Unsupported operation" xml:space="preserve"><value>Nicht unterstützter Vorgang</value></data>
   <data name="No exact quality operation is available." xml:space="preserve"><value>Es ist keine exakte Vor-/Nachteiloperation verfügbar.</value></data>
-  <data name="{0} · {1} · level {2} → {3} · runner Karma {4} → {5}" xml:space="preserve"><value>{0} · {1} · Stufe {2} → {3} · Runner-Karma {4} → {5}</value></data>
-  <data name="source {0} · source id {1} · internal id {2} · effects {3} · GM allowed" xml:space="preserve"><value>Quelle {0} · Quellen-ID {1} · interne ID {2} · Effekte {3} · GM erlaubt</value></data>
-  <data name="source {0} · source id {1} · internal id {2} · effects {3} · GM blocked" xml:space="preserve"><value>Quelle {0} · Quellen-ID {1} · interne ID {2} · Effekte {3} · GM blockiert</value></data>
   <data name="The saved runner revision changed. Reopen quality advancement." xml:space="preserve"><value>Die gespeicherte Runner-Revision hat sich geändert. Vor-/Nachteiländerung erneut öffnen.</value></data>
   <data name="Ambiguous candidate or receipt authority was omitted. No quality operation may continue." xml:space="preserve"><value>Mehrdeutige Kandidaten- oder Beleginstanz wurde ausgelassen. Keine Vor-/Nachteiloperation darf fortgesetzt werden.</value></data>
   <data name="No exact quality projection is available." xml:space="preserve"><value>Es ist keine exakte Vor-/Nachteilprojektion verfügbar.</value></data>
@@ -312,48 +304,18 @@ Karma: {6} → {7} (Kosten {8})</value></data>
   <data name="A verified saved quality receipt is awaiting acknowledgement or correction." xml:space="preserve"><value>Ein geprüfter gespeicherter Vor-/Nachteilbeleg wartet auf Bestätigung oder Korrektur.</value></data>
   <data name="The quality preview does not own its exact Reviewed checkpoint." xml:space="preserve"><value>Die Vor-/Nachteilvorschau besitzt ihren exakten Reviewed-Checkpoint nicht.</value></data>
   <data name="Review quality" xml:space="preserve"><value>Vor-/Nachteil prüfen</value></data>
-  <data name="Review exact atomic diff" xml:space="preserve"><value>Exakte atomare Differenz prüfen</value></data>
   <data name="Quality" xml:space="preserve"><value>Vor-/Nachteil</value></data>
   <data name="Operation" xml:space="preserve"><value>Vorgang</value></data>
-  <data name="Typed identity" xml:space="preserve"><value>Typisierte Identität</value></data>
-  <data name="{0} · source {1}" xml:space="preserve"><value>{0} · Quelle {1}</value></data>
   <data name="Level" xml:space="preserve"><value>Stufe</value></data>
-  <data name="Rule cost / delta" xml:space="preserve"><value>Regelkosten / Delta</value></data>
-  <data name="Source" xml:space="preserve"><value>Quelle</value></data>
-  <data name="{0} · enabled {1}" xml:space="preserve"><value>{0} · aktiviert {1}</value></data>
   <data name="GM policy" xml:space="preserve"><value>GM-Richtlinie</value></data>
-  <data name="allowed {0} · free approved {1}" xml:space="preserve"><value>erlaubt {0} · kostenlos genehmigt {1}</value></data>
   <data name="Effects" xml:space="preserve"><value>Effekte</value></data>
-  <data name="exact {0} · mutations {1}" xml:space="preserve"><value>exakt {0} · Mutationen {1}</value></data>
-  <data name="Applied effect families" xml:space="preserve"><value>Angewendete Effektfamilien</value></data>
-  <data name="Unsupported effect families" xml:space="preserve"><value>Nicht unterstützte Effektfamilien</value></data>
-  <data name="Workspace / saved revisions" xml:space="preserve"><value>Workspace-/gespeicherte Revisionen</value></data>
-  <data name="Logical revision" xml:space="preserve"><value>Logische Revision</value></data>
-  <data name="Source revision" xml:space="preserve"><value>Quellenrevision</value></data>
-  <data name="Rule digest" xml:space="preserve"><value>Regel-Digest</value></data>
-  <data name="Content digest" xml:space="preserve"><value>Inhalts-Digest</value></data>
-  <data name="Runtime digest" xml:space="preserve"><value>Laufzeit-Digest</value></data>
-  <data name="Confirm atomic quality transaction" xml:space="preserve"><value>Atomare Vor-/Nachteiltransaktion bestätigen</value></data>
-  <data name="The checkpoint moves to Applying first. Presentation commits the full quality/effect delta, expense and receipt atomically; Android never retries an unknown outcome." xml:space="preserve"><value>Der Checkpoint wechselt zuerst zu Applying. Presentation speichert das vollständige Vor-/Nachteil-/Effekt-Delta, die Ausgabe und den Beleg atomar; Android wiederholt niemals ein unbekanntes Ergebnis.</value></data>
   <data name="Owner, revision, source, rule, effects, runtime, content or durable checkpoint changed." xml:space="preserve"><value>Besitzer, Revision, Quelle, Regel, Effekte, Laufzeit, Inhalt oder dauerhafter Checkpoint haben sich geändert.</value></data>
-  <data name="The one-shot atomic commit is running or awaiting authoritative recovery." xml:space="preserve"><value>Die einmalige atomare Speicherung läuft oder wartet auf die maßgebliche Wiederherstellung.</value></data>
   <data name="Commit blocked" xml:space="preserve"><value>Speicherung blockiert</value></data>
   <data name="{0} The Applying lock cannot be cleared or replayed." xml:space="preserve"><value>{0} Die Applying-Sperre kann nicht gelöscht oder erneut ausgeführt werden.</value></data>
   <data name="Fresh atomic authority proves no quality/effect/expense/receipt transaction was saved." xml:space="preserve"><value>Eine frische atomare Instanz belegt, dass keine Vor-/Nachteil-/Effekt-/Ausgabe-/Belegtransaktion gespeichert wurde.</value></data>
   <data name="The quality receipt does not own this resolved checkpoint." xml:space="preserve"><value>Der Vor-/Nachteilbeleg besitzt diesen aufgelösten Checkpoint nicht.</value></data>
-  <data name="Quality receipt" xml:space="preserve"><value>Vor-/Nachteilbeleg</value></data>
-  <data name="Verified atomic quality receipt" xml:space="preserve"><value>Geprüfter atomarer Vor-/Nachteilbeleg</value></data>
-  <data name="Instances" xml:space="preserve"><value>Instanzen</value></data>
-  <data name="receipt {0} · source {1} → {2} · rule {3} → {4} · state {5}" xml:space="preserve"><value>Beleg {0} · Quelle {1} → {2} · Regel {3} → {4} · Zustand {5}</value></data>
-  <data name="Correct this quality transaction" xml:space="preserve"><value>Diese Vor-/Nachteiltransaktion korrigieren</value></data>
-  <data name="Correction is a separate typed compensating transaction. It restores exact instances and Karma and removes only the original expense; the receipt is never edited in place." xml:space="preserve"><value>Die Korrektur ist eine eigene typisierte kompensierende Transaktion. Sie stellt exakte Instanzen und Karma wieder her und entfernt nur die Originalausgabe; der Beleg wird niemals an Ort und Stelle bearbeitet.</value></data>
   <data name="Correct quality transaction" xml:space="preserve"><value>Vor-/Nachteiltransaktion korrigieren</value></data>
-  <data name="Enter the reason recorded with the compensating transaction." xml:space="preserve"><value>Den Grund eingeben, der mit der kompensierenden Transaktion gespeichert wird.</value></data>
   <data name="Keep transaction" xml:space="preserve"><value>Transaktion behalten</value></data>
-  <data name="This atomically restores the exact pre-transaction quality instances and Karma and removes the bound expense." xml:space="preserve"><value>Dies stellt atomar die exakten Vor-/Nachteilinstanzen und das Karma vor der Transaktion wieder her und entfernt die gebundene Ausgabe.</value></data>
-  <data name="Compensating transaction {0} restored the exact prior state." xml:space="preserve"><value>Die kompensierende Transaktion {0} hat den exakten vorherigen Zustand wiederhergestellt.</value></data>
-  <data name="The receipt was recovered from the exact clean atomic saved revision." xml:space="preserve"><value>Der Beleg wurde aus der exakten sauberen atomar gespeicherten Revision wiederhergestellt.</value></data>
-  <data name="The runner moved past this receipt; it remains bound to the earlier saved revision." xml:space="preserve"><value>Der Runner hat diesen Beleg hinter sich gelassen; er bleibt an die frühere gespeicherte Revision gebunden.</value></data>
   <data name="The SR5 After Run route requires the exact current clean saved runner revision." xml:space="preserve"><value>Die SR5-After-Run-Route erfordert die exakte aktuelle saubere gespeicherte Runner-Revision.</value></data>
   <data name="After the run" xml:space="preserve"><value>Nach dem Run</value></data>
   <data name="SR5 Career · After Run · 1 of 7" xml:space="preserve"><value>SR5-Karriere · After Run · 1 von 7</value></data>
@@ -681,7 +643,6 @@ Vorschau: {3}…</value></data>
   <data name="Confirm and save exact damage" xml:space="preserve"><value>Exakten Schaden bestätigen und speichern</value></data>
   <data name="Confirmation unavailable" xml:space="preserve"><value>Bestätigung nicht verfügbar</value></data>
   <data name="Core proved no mutation after restart. Confirm the exact review again." xml:space="preserve"><value>Core hat nach dem Neustart bewiesen, dass keine Mutation erfolgte. Bestätige die exakte Prüfung erneut.</value></data>
-  <data name="Core proved the runner stayed at the reviewed revision. Confirm again if desired." xml:space="preserve"><value>Core hat bewiesen, dass der Runner auf der geprüften Revision blieb. Bestätige bei Bedarf erneut.</value></data>
   <data name="Damage outcome unknown" xml:space="preserve"><value>Schadenergebnis unbekannt</value></data>
   <data name="Damage saved" xml:space="preserve"><value>Schaden gespeichert</value></data>
   <data name="Exact saved boxes {0} / {1} · review and receipt required" xml:space="preserve"><value>Exakt gespeicherte Kästchen {0} / {1} · Prüfung und Beleg erforderlich</value></data>
@@ -689,7 +650,6 @@ Vorschau: {3}…</value></data>
   <data name="Filled boxes after this action" xml:space="preserve"><value>Gefüllte Kästchen nach dieser Aktion</value></data>
   <data name="Loading the exact saved damage track…" xml:space="preserve"><value>Exakte gespeicherte Schadensleiste wird geladen…</value></data>
   <data name="No exact change" xml:space="preserve"><value>Keine exakte Änderung</value></data>
-  <data name="No mutation observed" xml:space="preserve"><value>Keine Mutation festgestellt</value></data>
   <data name="Only the exact verified Playtime damage receipt may be acknowledged." xml:space="preserve"><value>Nur der exakt verifizierte Spielzeit-Schadensbeleg darf bestätigt werden.</value></data>
   <data name="Physical" xml:space="preserve"><value>Körperlich</value></data>
   <data name="Playtime · {0} damage" xml:space="preserve"><value>Spielzeit · {0}-Schaden</value></data>
