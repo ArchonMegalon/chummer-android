@@ -36,6 +36,39 @@ def test_appearance_does_not_replay_and_controls_do_not_rebuild_on_refresh():
     assert "_model.CanContinue" in refresh
 
 
+def test_reward_wizard_has_explicit_stages_and_optional_saved_actions():
+    view = (NATIVE / "Sr5AfterRunRewardView.cs").read_text()
+    for automation_id in (
+        "sr5-reward-input-section",
+        "sr5-reward-review-section",
+        "sr5-reward-change",
+        "sr5-reward-saved-section",
+        "sr5-reward-options-toggle",
+        "sr5-reward-options",
+    ):
+        assert view.count(f'"{automation_id}"') == 1, automation_id
+    assert "_model.ChangeReview()" in view
+    assert "ReferenceEquals(" in view, "Expanded actions must follow the exact saved-result handoff."
+    # The managed native test exercises the buttons and actual Core persistence;
+    # these source checks only retain stable renderer and resource entry points.
+    runtime = (ROOT / "tests/Chummer.Android.Native.InteractionTests/AfterRunNativeRuntimeTests.cs").read_text()
+    assert "RunRewardWizardStagesAsync" in runtime
+    assert "NativeRewardWizardStagesAsync" in runtime
+
+
+def test_change_review_is_an_uncommitted_model_transition_not_a_recovery_reset():
+    model = (NATIVE / "Sr5AfterRunRewardPhoneModel.cs").read_text()
+    change = model.split("public bool ChangeReview()", 1)[1].split("public ", 1)[0]
+    assert "CanChangeReview" in change
+    assert "Review = null" in change
+    assert "Sr5AfterRunRewardPhoneStatus.Editing" in change
+    for forbidden in (
+        "Guid.NewGuid", "OperationId =", "RewardId =", "Draft =",
+        "Checkpoint =", "_confirmedIntent =", "_coordinator.", "RetryAsync", "ConfirmAsync",
+    ):
+        assert forbidden not in change, forbidden
+
+
 def test_saved_reward_planning_reuses_calendar_and_revalidates_destination_entry():
     page = (NATIVE / "Sr5AfterRunRewardWizardPage.cs").read_text()
     view = (NATIVE / "Sr5AfterRunRewardView.cs").read_text()

@@ -22,15 +22,17 @@ public sealed class Sr5AfterRunRewardView : ContentView
     private readonly DatePicker _date;
     private readonly TimePicker _time;
     private readonly CheckBox _noAward;
-    private readonly Label _status, _review, _receipt, _historyPosition;
+    private readonly Label _status, _review, _receipt, _historyPosition, _downtimeBoundary, _consequencesBoundary;
     private readonly ActivityIndicator _working;
-    private readonly Button _preview, _confirm, _recover, _retry, _done, _consequences, _downtime, _reputation, _resume, _previous, _next;
+    private readonly Button _preview, _confirm, _change, _recover, _retry, _done, _optionsToggle, _consequences, _downtime, _reputation, _resume, _previous, _next;
     private readonly Picker _history;
-    private readonly VerticalStackLayout _historySection;
+    private readonly VerticalStackLayout _inputSection, _reviewSection, _savedSection, _options, _historySection;
     private IReadOnlyList<Sr5AfterRunRewardCheckpoint> _historySource = [];
     private Sr5AfterRunRewardCheckpoint[] _historyItems = [];
     private int _historyPage;
     private bool _rendering, _actionActive;
+    private bool _optionsExpanded;
+    private Sr5AfterRunRewardConsequencesHandoff? _optionsHandoff;
     private CancellationToken _lifetime;
 
     public Sr5AfterRunRewardView(Sr5AfterRunRewardPhoneModel model,
@@ -47,8 +49,6 @@ public sealed class Sr5AfterRunRewardView : ContentView
         _reviewReputation = reviewReputation;
         VerticalStackLayout body = new() { Padding = new Thickness(20, 18, 20, 40), Spacing = 14 };
         body.Add(NativeTheme.Title(T("AfterRunRewardTitle", "After Run · Rewards")));
-        body.Add(NativeTheme.Body(T("AfterRunRewardIntro",
-            "Record a local reward for this runner. Review the changes before saving. This does not approve run consequences."), NativeTheme.Muted));
         body.Add(NativeTheme.Body(T("AfterRunRewardExperimental",
             "Experimental workflow — not yet covered by the current phone release's device tests."), NativeTheme.Muted));
         _status = NativeTheme.Body(string.Empty);
@@ -66,12 +66,15 @@ public sealed class Sr5AfterRunRewardView : ContentView
         _date = new() { AutomationId = "sr5-reward-date", Date = model.Draft.Date };
         _time = new() { AutomationId = "sr5-reward-time", Time = model.Draft.Time };
         _noAward = new() { AutomationId = "sr5-reward-no-award" };
-        AddField(body, T("AfterRunRewardKarma", "Karma gained"), _karma);
-        AddField(body, T("AfterRunRewardNuyen", "Nuyen gained"), _nuyen);
-        AddField(body, T("AfterRunRewardReason", "Reason / run name (optional)"), _reason);
-        AddField(body, T("AfterRunRewardDate", "Entry date"), _date);
-        AddField(body, T("AfterRunRewardTime", "Local time"), _time);
-        AddField(body, T("AfterRunRewardNoAward", "Explicitly record no reward (0 Karma / 0 Nuyen)"), _noAward);
+        _inputSection = new() { AutomationId = "sr5-reward-input-section", Spacing = 14 };
+        _inputSection.Add(NativeTheme.Body(T("AfterRunRewardIntro",
+            "Record a local reward for this runner. Review the changes before saving. This does not approve run consequences."), NativeTheme.Muted));
+        AddField(_inputSection, T("AfterRunRewardKarma", "Karma gained"), _karma);
+        AddField(_inputSection, T("AfterRunRewardNuyen", "Nuyen gained"), _nuyen);
+        AddField(_inputSection, T("AfterRunRewardReason", "Reason / run name (optional)"), _reason);
+        AddField(_inputSection, T("AfterRunRewardDate", "Entry date"), _date);
+        AddField(_inputSection, T("AfterRunRewardTime", "Local time"), _time);
+        AddField(_inputSection, T("AfterRunRewardNoAward", "Explicitly record no reward (0 Karma / 0 Nuyen)"), _noAward);
         _karma.TextChanged += (_, _) => DraftChanged();
         _nuyen.TextChanged += (_, _) => DraftChanged();
         _reason.TextChanged += (_, _) => DraftChanged();
@@ -81,43 +84,64 @@ public sealed class Sr5AfterRunRewardView : ContentView
 
         _preview = Button("sr5-reward-preview", T("AfterRunRewardPreview", "Review reward"),
             token => _model.PreviewAsync(CultureInfo.CurrentCulture, token));
-        body.Add(_preview);
+        _inputSection.Add(_preview);
+        body.Add(_inputSection);
+        _reviewSection = new() { AutomationId = "sr5-reward-review-section", Spacing = 14 };
         _review = NativeTheme.Body(string.Empty);
         _review.AutomationId = "sr5-reward-review";
-        body.Add(_review);
+        _reviewSection.Add(_review);
         _confirm = Button("sr5-reward-confirm", T("AfterRunRewardConfirm", "Confirm and save this reward"), _model.ConfirmAsync);
-        body.Add(_confirm);
+        _reviewSection.Add(_confirm);
+        _change = Button("sr5-reward-change", T("AfterRunRewardChange", "Change reward"), _ =>
+        {
+            _model.ChangeReview();
+            return Task.CompletedTask;
+        }, secondary: true);
+        _reviewSection.Add(_change);
+        body.Add(_reviewSection);
         _recover = Button("sr5-reward-recover", T("AfterRunRewardRecover", "Check saved result"), _model.RecoverAsync);
         body.Add(_recover);
         _retry = Button("sr5-reward-retry", T("AfterRunRewardRetry", "Retry the same confirmed reward"), _model.RetryAsync);
         body.Add(_retry);
         _receipt = NativeTheme.Body(string.Empty, NativeTheme.Success);
         _receipt.AutomationId = "sr5-reward-receipt";
-        body.Add(_receipt);
-        _downtime = Button("sr5-reward-downtime", T("AfterRunRewardDowntime", "Plan downtime"), async token =>
-        {
-            if (_model.CanContinue && _planDowntime is not null) await _planDowntime(token);
-        });
-        body.Add(_downtime);
-        _reputation = Button("sr5-reward-reputation", T("ReputationWizardTitle", "Career · Reputation"), async token =>
-        {
-            if (_model.CanContinue && _reviewReputation is not null) await _reviewReputation(token);
-        });
-        body.Add(_reputation);
-        body.Add(NativeTheme.Body(T("AfterRunRewardDowntimeBoundary",
-            "Plan your calendar locally. Each calendar change needs its own review and confirmation; it does not spend Karma, grant rewards or approve run consequences."), NativeTheme.Muted));
+        _savedSection = new() { AutomationId = "sr5-reward-saved-section", Spacing = 14 };
+        _savedSection.Add(_receipt);
         _done = Button("sr5-reward-done", T("AfterRunRewardDone", "Done · return to Career"), async _ =>
         {
             if (_model.CanContinue) await _finish();
         });
-        body.Add(_done);
+        _savedSection.Add(_done);
+        _optionsToggle = Button("sr5-reward-options-toggle", T("AfterRunRewardOptions", "More options"), _ =>
+        {
+            if (_model.CanContinue) _optionsExpanded = !_optionsExpanded;
+            return Task.CompletedTask;
+        }, secondary: true);
+        _savedSection.Add(_optionsToggle);
+        _options = new() { AutomationId = "sr5-reward-options", Spacing = 14 };
+        _downtime = Button("sr5-reward-downtime", T("AfterRunRewardDowntime", "Plan downtime"), async token =>
+        {
+            if (CanUseOptions && _planDowntime is not null) await _planDowntime(token);
+        }, secondary: true);
+        _options.Add(_downtime);
+        _downtimeBoundary = NativeTheme.Body(T("AfterRunRewardDowntimeBoundary",
+            "Plan your calendar locally. Each calendar change needs its own review and confirmation; it does not spend Karma, grant rewards or approve run consequences."), NativeTheme.Muted);
+        _options.Add(_downtimeBoundary);
+        _reputation = Button("sr5-reward-reputation", T("ReputationWizardTitle", "Career · Reputation"), async token =>
+        {
+            if (CanUseOptions && _reviewReputation is not null) await _reviewReputation(token);
+        }, secondary: true);
+        _options.Add(_reputation);
         _consequences = Button("sr5-reward-consequences", T("AfterRunRewardConsequences", "Review run consequences"), async token =>
         {
-            if (_model.CanContinue && _reviewConsequences is not null) await _reviewConsequences(token);
-        });
-        body.Add(_consequences);
-        body.Add(NativeTheme.Body(T("AfterRunRewardConsequencesBoundary",
-            "Heat, reputation and contacts require a separate reviewed run proposal. Checking it does not grant rewards again or approve consequences."), NativeTheme.Muted));
+            if (CanUseOptions && _reviewConsequences is not null) await _reviewConsequences(token);
+        }, secondary: true);
+        _options.Add(_consequences);
+        _consequencesBoundary = NativeTheme.Body(T("AfterRunRewardConsequencesBoundary",
+            "Heat, reputation and contacts require a separate reviewed run proposal. Checking it does not grant rewards again or approve consequences."), NativeTheme.Muted);
+        _options.Add(_consequencesBoundary);
+        _savedSection.Add(_options);
+        body.Add(_savedSection);
 
         _historySection = new() { Spacing = 10 };
         _historySection.Add(NativeTheme.FieldLabel(T("AfterRunRewardHistory", "Previously recorded rewards")));
@@ -152,7 +176,15 @@ public sealed class Sr5AfterRunRewardView : ContentView
         Refresh();
     }
 
-    public void SetLifetime(CancellationToken cancellationToken) => _lifetime = cancellationToken;
+    public void SetLifetime(CancellationToken cancellationToken)
+    {
+        if (_lifetime != cancellationToken || cancellationToken.IsCancellationRequested) _optionsExpanded = false;
+        _lifetime = cancellationToken;
+        Refresh();
+    }
+
+    private bool CanUseOptions => _optionsExpanded && _model.CanContinue
+        && ReferenceEquals(_optionsHandoff, _model.Handoff);
 
     private static string T(string key, string fallback) => PhoneStrings.Get(key, fallback);
 
@@ -163,10 +195,13 @@ public sealed class Sr5AfterRunRewardView : ContentView
         body.Add(field);
     }
 
-    private Button Button(string id, string label, Func<CancellationToken, Task> action)
+    private Button Button(string id, string label, Func<CancellationToken, Task> action, bool secondary = false)
     {
-        var button = NativeTheme.PrimaryButton(label);
+        var button = secondary ? NativeTheme.SecondaryButton(label) : NativeTheme.PrimaryButton(label);
         button.AutomationId = id;
+        button.HeightRequest = -1;
+        button.MinimumHeightRequest = 50;
+        button.LineBreakMode = LineBreakMode.WordWrap;
         button.Clicked += async (_, _) => await ExecuteAsync(action);
         return button;
     }
@@ -210,8 +245,19 @@ public sealed class Sr5AfterRunRewardView : ContentView
         {
             bool busy = _actionActive || _model.IsBusy;
             bool editable = !busy && _model.CanEdit;
+            bool reviewing = _model.Review is not null && !_model.HasRetainedIntent && _model.HasCurrentSelection;
+            bool saved = _model.CanContinue;
+            _inputSection.IsVisible = !reviewing && !_model.HasRetainedIntent && _model.HasCurrentSelection;
+            _reviewSection.IsVisible = reviewing;
+            _savedSection.IsVisible = saved;
+            if (!ReferenceEquals(_optionsHandoff, _model.Handoff))
+            {
+                _optionsExpanded = false;
+                _optionsHandoff = _model.Handoff;
+            }
             _working.IsVisible = _working.IsRunning = busy || _model.Status == Sr5AfterRunRewardPhoneStatus.Loading;
             _status.Text = StatusText(busy);
+            _status.IsVisible = busy || !saved;
             // Assign only changed values. Coordinator refreshes cannot replace
             // the native editor or normalize partial user input while typing.
             if (_karma.Text != _model.Draft.Karma) _karma.Text = _model.Draft.Karma;
@@ -223,27 +269,38 @@ public sealed class Sr5AfterRunRewardView : ContentView
             _karma.IsEnabled = _nuyen.IsEnabled = editable;
             _reason.IsEnabled = _date.IsEnabled = _time.IsEnabled = _noAward.IsEnabled = editable;
             _preview.IsEnabled = editable;
-            _confirm.IsVisible = _model.Review is not null;
+            _preview.IsVisible = _inputSection.IsVisible;
+            _confirm.IsVisible = reviewing;
             _confirm.IsEnabled = !busy && _model.CanConfirm;
-            _review.IsVisible = _model.CanConfirm;
+            _change.IsVisible = reviewing;
+            _change.IsEnabled = !busy && _model.CanChangeReview;
+            _review.IsVisible = reviewing;
             _review.Text = _model.Review is { } review ? PreviewText(review.Preview) : string.Empty;
             _recover.IsVisible = _retry.IsVisible = _model.HasRetainedIntent && !_model.CanContinue;
             _recover.IsEnabled = !busy && _model.CanRecover;
             _retry.IsEnabled = !busy && _model.CanRetry;
-            _done.IsVisible = _done.IsEnabled = !busy && _model.CanContinue;
-            _consequences.IsVisible = _reviewConsequences is not null && _model.CanContinue;
+            _done.IsVisible = saved;
+            _done.IsEnabled = !busy && saved;
+            _optionsToggle.IsVisible = saved && (_planDowntime is not null || _reviewReputation is not null || _reviewConsequences is not null);
+            _optionsToggle.IsEnabled = !busy && _optionsToggle.IsVisible;
+            _optionsToggle.Text = _optionsExpanded
+                ? T("AfterRunRewardHideOptions", "Hide options") : T("AfterRunRewardOptions", "More options");
+            _options.IsVisible = _optionsToggle.IsVisible && _optionsExpanded;
+            _consequences.IsVisible = _reviewConsequences is not null && _options.IsVisible;
             _consequences.IsEnabled = !busy && _consequences.IsVisible;
-            _downtime.IsVisible = _planDowntime is not null && _model.CanContinue;
+            _consequencesBoundary.IsVisible = _consequences.IsVisible;
+            _downtime.IsVisible = _planDowntime is not null && _options.IsVisible;
             _downtime.IsEnabled = !busy && _downtime.IsVisible;
-            _reputation.IsVisible = _reviewReputation is not null && _model.CanContinue;
+            _downtimeBoundary.IsVisible = _downtime.IsVisible;
+            _reputation.IsVisible = _reviewReputation is not null && _options.IsVisible;
             _reputation.IsEnabled = !busy && _reputation.IsVisible;
-            _receipt.IsVisible = _model.CanContinue;
-            _receipt.Text = _model.Handoff is { } saved
+            _receipt.IsVisible = saved;
+            _receipt.Text = _model.Handoff is { } handoff
                 ? PhoneStrings.Format("AfterRunRewardSaved", "Saved. Current balance: {0} Karma · {1} Nuyen.",
-                    saved.Snapshot.AvailableKarma.ToString("N0", CultureInfo.CurrentCulture),
-                    saved.Snapshot.AvailableNuyen.ToString("N2", CultureInfo.CurrentCulture)) : string.Empty;
+                    handoff.Snapshot.AvailableKarma.ToString("N0", CultureInfo.CurrentCulture),
+                    handoff.Snapshot.AvailableNuyen.ToString("N2", CultureInfo.CurrentCulture)) : string.Empty;
             BindHistory();
-            _historySection.IsVisible = _historySource.Count > 0 && !_model.HasRetainedIntent;
+            _historySection.IsVisible = _historySource.Count > 0 && _inputSection.IsVisible;
             _history.IsEnabled = editable;
             _previous.IsEnabled = editable && _historyPage > 0;
             _next.IsEnabled = editable && (_historyPage + 1) * HistoryPageSize < _historySource.Count;
@@ -288,6 +345,8 @@ public sealed class Sr5AfterRunRewardView : ContentView
         if (busy) return T("AfterRunRewardWorking", "Working… Please wait.");
         if (!_model.HasCurrentSelection)
             return T("AfterRunRewardRunnerChanged", "The selected runner changed. Reopen After Run for the current saved runner.");
+        if (_model.CanChangeReview && !_model.CanConfirm)
+            return T("AfterRunRewardReviewStale", "The runner changed. Change the reward and review the current balances before saving.");
         return _model.Status switch
         {
             Sr5AfterRunRewardPhoneStatus.Loading => T("AfterRunRewardLoading", "Checking saved rewards…"),

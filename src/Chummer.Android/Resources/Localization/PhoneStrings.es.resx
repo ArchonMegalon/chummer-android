@@ -172,6 +172,10 @@
   <data name="AfterRunRewardNoAward" xml:space="preserve"><value>Registrar expresamente que no hay recompensa (0 Karma / 0 Nuyen)</value></data>
   <data name="AfterRunRewardPreview" xml:space="preserve"><value>Revisar recompensa</value></data>
   <data name="AfterRunRewardConfirm" xml:space="preserve"><value>Confirmar y guardar esta recompensa</value></data>
+  <data name="AfterRunRewardChange" xml:space="preserve"><value>Cambiar recompensa</value></data>
+  <data name="AfterRunRewardReviewStale" xml:space="preserve"><value>El runner ha cambiado. Elige «Cambiar recompensa» y revisa los saldos actuales antes de guardar.</value></data>
+  <data name="AfterRunRewardOptions" xml:space="preserve"><value>Más opciones</value></data>
+  <data name="AfterRunRewardHideOptions" xml:space="preserve"><value>Ocultar opciones</value></data>
   <data name="AfterRunRewardRecover" xml:space="preserve"><value>Comprobar resultado guardado</value></data>
   <data name="AfterRunRewardRetry" xml:space="preserve"><value>Reintentar la misma recompensa confirmada</value></data>
   <data name="AfterRunRewardDone" xml:space="preserve"><value>Listo · volver a Carrera</value></data>
