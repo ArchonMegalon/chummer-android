@@ -132,7 +132,28 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 232 is the latest [observed Internal availability](../play/evidence/preview232-internal-observation.json),
+Preview 233 is the latest [observed Internal availability](../play/evidence/preview233-internal-observation.json),
+released on 14 October at 13:43 Europe/Vienna. Android #777 hides the editing
+form in terminal saved and superseded-closed Reputation results, keeping the
+result and enabled Done action visible. Identity, owner/revision, journal and
+persistence guards remain intact; Core/UI are unchanged. Forty real-Core
+model/MAUI-control cases, five presenter/file-store integration cases, 21 focused
+Python checks and repository key hygiene passed; 324 native sources compiled
+with zero warnings/errors. The API 36 x64 Release/Internal route saved one manual
+Street Cred adjustment 0 to 1 (total 4 to 5), revision 23 to 24, with one exact
+Core/host receipt and unchanged Karma 15/Nuyen 365 and 37 unrelated files. A new
+process reopened that history record without another adjustment; all 39 saved
+files were byte-identical. Superseded-closed controls had managed coverage, not
+this native route. Local ARM64 build, isolated original-key signing, independent
+keyless verification and one Play upload/final confirmation passed.
+The known Done mismatch remains: Reputation's Career-labelled Done first
+returns to After Run, whose Done then returns to Career. Physical Preview 233,
+full Career/live Origin and startup/reload acceptance remain unverified. Guest
+boot ANRs, resource pressure and a recovered null-root accessibility observation
+are retained, not performance fixes. Version 233 is consumed; retain its exact
+packet and prior rollback artifacts, and do not rebuild/re-upload it.
+
+Preview 232 was previously [observed on Internal](../play/evidence/preview232-internal-observation.json),
 released on 14 October at 12:47 Europe/Vienna. Android #775 separates After Run
 reward input, review and saved stages. Change preserves an unconfirmed draft;
 Done returns directly to Career, with optional follow-up actions under More
