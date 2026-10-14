@@ -132,7 +132,36 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 235 is the latest [observed Internal availability](../play/evidence/preview235-internal-observation.json),
+Preview 236 is the latest [observed Internal availability](../play/evidence/preview236-internal-observation.json),
+released on 14 October at 16:54 Europe/Vienna. Its exact local ARM64 build,
+original-key isolated signing, independent keyless verification and one Play
+upload/save-and-publish/final confirmation completed. Android #783 continues
+automatically after an explicit Creation Magic re-review confirmation; it does
+not automatically approve the choices. Dependencies are unchanged from Preview235.
+Focused managed run 02 passed and compiled 324 native sources with zero
+warnings/errors, covering exact save/cold recovery, owner ABA, uncertain reply,
+postcommit-refresh failure, automatic forward navigation and navigation-only retry.
+The API 36 x64 Release/Internal build also had zero warnings/errors. Its retained
+Priority/Adept route continued from the saved Qualities receipt into explicit
+Magic re-review, preserved five powers and their budget, then opened Resources
+automatically after one confirmation. Revisions advanced 16/16 to 17/17, Magic
+draft 2 to 3 and its Attributes binding 1 to 5, with one appended receipt and
+unchanged prior receipts. Raw character and 38 other files, including Qualities,
+stayed unchanged. A new process restored the same powers/budget and reopened the
+same Resources view without resaving; all 39 saved/restarted files were identical.
+
+This closes the observed explicit re-review-to-Resources continuation gap for
+that Priority/Adept route, not all talents or build methods. Earlier failed and
+partial attempts remain retained, not relabelled. SystemUI/system-service boot
+ANRs and recovered observer failures remain recorded; restoration is still slow.
+No application ANR was observed in the final route, not proof of a general
+startup/reload fix. Physical Preview236 installation, complete Creation/Career,
+live Origin and broader beta readiness remain unverified. Play reported 8749
+supported phones, zero newly unsupported phones and only missing mapping/native-
+symbol warnings. Version236 is consumed; retain its exact packet and prior
+rollback artifacts, and do not rebuild/re-upload it.
+
+Preview 235 was previously [observed on Internal](../play/evidence/preview235-internal-observation.json),
 released on 14 October at 16:06 Europe/Vienna. Its exact local ARM64 build,
 original-key isolated signing, independent keyless verification and one Play
 upload/save-and-publish/final confirmation completed. Android #781 groups
