@@ -81,3 +81,11 @@ def test_physical_proof_is_a_fail_closed_contract_not_a_claim() -> None:
     assert "AfterWorkspaceSha256" in model
     assert "EvidenceArtifactSha256" in model
     assert "not a persisted Core receipt" in page
+
+
+def test_compact_specialization_keeps_group_break_and_restart_warning_visible() -> None:
+    page = read("Sr5CareerSpecializationWizardPage.cs")
+    warning = page.split("if (draft.Quote.WillBreakSkillGroup)", 1)[1].split("technical.Add", 1)[0]
+    assert "body.Add(NativeTheme.Card" in warning
+    assert "This specialization will break the current skill group" in warning
+    assert 'body.Add(NativeTheme.Body(Text("Select Continue to finish this purchase before closing the app.")' in page

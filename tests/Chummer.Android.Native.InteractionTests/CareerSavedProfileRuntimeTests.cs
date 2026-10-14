@@ -136,7 +136,7 @@ internal static partial class AfterRunAuthorityHarness
                 .GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(family)!;
             Require(currentSession.State.Snapshot.Binding.WorkspaceRevision == saved.ContentRevision,
                 "Family did not bind the persisted advancement revision.");
-            saved = await RunSavedFreeSkillsAsync(runtime);
+            saved = await RunSavedFreeSkillsAsync(runtime, ui);
             // Equal account names after an intervening owner are not the same
             // navigation authority, even if stale overview IDs still match.
             OwnerScope originalOwner = owners.Current;
@@ -165,7 +165,89 @@ internal static partial class AfterRunAuthorityHarness
         MinimalRequireNoMachineValues(page);
     }
 
-    private static async Task<Chummer.Application.Workspaces.WorkspaceStoredDocument> RunSavedFreeSkillsAsync(NativeRewardRuntime runtime)
+    private static async Task RunCompactCareerSkillUiAsync(NativeRewardRuntime runtime,
+        IssuedPageUiContext ui, CareerActiveSkillAdvanceEditorState editor,
+        CharacterCareerActiveSkillAdvanceQuote skill)
+    {
+        // Actual saved Core quote, production phone journal and button handlers.
+        // The compact view must not replace admission or persistence with a UI-only result.
+        var store = new FileWorkspaceStore(runtime.StateDirectory);
+        var before = store.Get(runtime.Id).Value!;
+        var root = new ContentPage();
+        var navigation = new NavigationPage(root);
+        var choose = new Sr5CareerActiveSkillWizardPage(runtime.Coordinator, editor);
+        await navigation.PushAsync(choose, false);
+        var window = new Window(navigation);
+        using (var alerts = new IssuedPageAlerts(choose, window))
+        {
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(choose, "OnAppearing")));
+            MinimalVisible(choose).OfType<Picker>().Single().SelectedIndex = editor.Skills.ToList().IndexOf(skill);
+            var review = MinimalVisible(choose).OfType<Button>().Single(x => x.AutomationId == "sr5-career-active-skill-review");
+            Require(review.IsEnabled, "The saved granted skill cannot be reviewed.");
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)review).SendClicked()));
+            Require(alerts.Titles.Count == 0, "Skill choose failed: " + string.Join("; ", alerts.Messages));
+        }
+        Require(navigation.CurrentPage is Sr5CareerActiveSkillReviewPage, "Skill review did not advance.");
+        var reviewPage = (Sr5CareerActiveSkillReviewPage)navigation.CurrentPage;
+        using (var alerts = new IssuedPageAlerts(reviewPage, window))
+        {
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(reviewPage, "OnAppearing")));
+            RequireCompactCareerDetails(reviewPage, "sr5-career-active-skill-review-details",
+                "sr5-career-active-skill-apply", skill.Identity.SkillId.ToString("D"));
+            var labels = MinimalVisible(reviewPage).OfType<Label>().Select(x => x.Text).ToArray();
+            Require(labels.Contains("Computer") && labels.Contains("5 → 6") && labels.Contains("22 → 10")
+                && labels.Contains("12"), "Compact review lost the name, real rating, cost or remaining Karma.");
+            RequireSameRewardDocument(before, store.Get(runtime.Id).Value!);
+            var apply = MinimalVisible(reviewPage).OfType<Button>().Single(x => x.AutomationId == "sr5-career-active-skill-apply");
+            Require(apply.IsEnabled, "Compact review disabled a valid exact advancement.");
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)apply).SendClicked()));
+            Require(alerts.Titles.Count == 0, "Skill apply failed: " + string.Join("; ", alerts.Messages));
+        }
+        Require(navigation.CurrentPage is Sr5CareerActiveSkillReceiptPage, "Skill purchase did not reach its verified receipt.");
+        var receiptPage = (Sr5CareerActiveSkillReceiptPage)navigation.CurrentPage;
+        var saved = store.Get(runtime.Id).Value!;
+        using (var alerts = new IssuedPageAlerts(receiptPage, window))
+        {
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(receiptPage, "OnAppearing")));
+            RequireCompactCareerDetails(receiptPage, "sr5-career-active-skill-receipt-details",
+                "sr5-career-active-skill-receipt-acknowledge", skill.Identity.SkillId.ToString("D"));
+            var labels = MinimalVisible(receiptPage).OfType<Label>().Select(x => x.Text).ToArray();
+            Require(labels.Contains("Computer") && labels.Contains("5 → 6")
+                && labels.Contains("12") && labels.Contains("10"), "Compact receipt lost saved values.");
+            RequireSameRewardDocument(saved, store.Get(runtime.Id).Value!);
+            var next = MinimalVisible(receiptPage).OfType<Button>().Single(x =>
+                x.AutomationId == "sr5-career-active-skill-receipt-acknowledge");
+            Require(next.Text == "Continue", "Receipt still asks the player to acknowledge technical evidence.");
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)next).SendClicked()));
+            Require(alerts.Titles.Count == 0 && ReferenceEquals(navigation.CurrentPage, root),
+                "Continue failed to finish the saved advancement.");
+        }
+        RequireSameRewardDocument(saved, store.Get(runtime.Id).Value!);
+        foreach (var page in new NativePageBase[] { choose, reviewPage, receiptPage })
+            IssuedPageLifecycle(page, "OnDisappearing");
+        Console.WriteLine("PASS compact Career skill: real choose/review/save/Continue, visible rating/cost/balance, IDs collapsed, exact expandable details, no write on disclosure/acknowledgement.");
+    }
+
+    private static void RequireCompactCareerDetails(ContentPage page, string detailsId, string primaryId, string exactIdentity)
+    {
+        MinimalRequireNoMachineValues(page);
+        var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
+        var primary = body.Children.OfType<Button>().Single(x => x.AutomationId == primaryId);
+        var details = body.Children.OfType<VerticalStackLayout>().Single(x => x.AutomationId == detailsId);
+        Require(body.Children.IndexOf(primary) < body.Children.IndexOf(details),
+            "Technical disclosure displaced the ordinary confirmation/Continue action.");
+        var toggle = MinimalVisible(details).OfType<Button>().Single();
+        string compactText = MinimalVisibleText(page);
+        ((IButtonController)toggle).SendClicked();
+        Require(MinimalVisibleText(page).Contains(exactIdentity, StringComparison.Ordinal),
+            "Expanded details no longer contain the exact underlying identity.");
+        ((IButtonController)toggle).SendClicked();
+        Require(MinimalVisibleText(page) == compactText, "Collapsing details changed the player-facing result.");
+        MinimalRequireNoMachineValues(page);
+    }
+
+    private static async Task<Chummer.Application.Workspaces.WorkspaceStoredDocument> RunSavedFreeSkillsAsync(
+        NativeRewardRuntime runtime, IssuedPageUiContext ui)
     {
         var c = runtime.Coordinator;
         var store = new FileWorkspaceStore(runtime.StateDirectory);
@@ -177,8 +259,7 @@ internal static partial class AfterRunAuthorityHarness
             "Computer must price its two module levels plus three Electronics levels exactly.");
         var skillRequest = new CareerActiveSkillAdvanceRequest(active.WorkspaceId, active.ContentRevision,
             computer, computer.RuleDigest, true, Guid.NewGuid(), new DateTime(2026, 10, 14, 12, 2, 0));
-        Require(await c.ApplyCareerActiveSkillAdvanceAsync(skillRequest),
-            "Actual native granted-skill handler did not save: " + c.State.Error);
+        await RunCompactCareerSkillUiAsync(runtime, ui, active, computer);
         var skillSaved = store.Get(runtime.Id).Value!;
         var skillXml = XElement.Parse(skillSaved.Document.Content);
         Require(skillSaved.ContentRevision == 4 && skillSaved.SavedRevision == 4

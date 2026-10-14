@@ -76,8 +76,8 @@ class CareerSkillGroupWizardSourceContractTests(unittest.TestCase):
         self.assertIn("class Sr5CareerSkillGroupWizardPage", page)
         self.assertIn("class Sr5CareerSkillGroupReviewPage", page)
         self.assertIn("class Sr5CareerSkillGroupReceiptPage", page)
-        self.assertIn("Review exact diff", page)
-        self.assertIn("Apply and verify once", page)
+        self.assertIn("Review advancement", page)
+        self.assertIn("Confirm advancement", page)
         choose_section, review_section = page.split(
             "public sealed class Sr5CareerSkillGroupReviewPage", maxsplit=1
         )

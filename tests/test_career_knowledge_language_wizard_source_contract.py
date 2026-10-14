@@ -54,7 +54,7 @@ class CareerKnowledgeLanguageWizardSourceContractTests(unittest.TestCase):
         choose, review = page.split("public sealed class Sr5CareerKnowledgeSkillReviewPage", 1)
         self.assertNotIn("_authority.ApplyAsync", choose)
         self.assertIn("_authority.ApplyAsync", review)
-        self.assertIn("Apply and verify once", review)
+        self.assertIn("Confirm advancement", review)
 
     def test_native_language_and_knowledge_specific_blockers_stay_specialized(self) -> None:
         model = self.read("Sr5CareerKnowledgeSkillWizardModel.cs")

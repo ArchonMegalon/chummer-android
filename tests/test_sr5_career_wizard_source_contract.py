@@ -87,12 +87,43 @@ def test_active_skill_vertical_slice_has_review_apply_and_durable_receipt_bounda
     assert "CareerActiveSkillAdvanceRequest" in model
     assert "ExpectedContentRevision" in model
     assert "SavedContentRevision" in model
-    assert "Review exact diff" in page
-    assert "Apply and verify once" in page
+    assert "Review advancement" in page
+    assert "Confirm advancement" in page
     assert "Interlocked.CompareExchange" in page
     assert "Sr5CareerActiveSkillCoordinator" in page
     assert "fresh typed skill and expense reloads" in page
     assert "cannot be cleared or replayed" in page
+
+
+def test_advancement_review_and_receipt_put_technical_details_after_primary_action() -> None:
+    for name, route in (
+        ("ActiveSkill", "active-skill"),
+        ("Attribute", "attribute"),
+        ("KnowledgeSkill", "knowledge-skill"),
+        ("SkillGroup", "skill-group"),
+        ("Specialization", "specialization"),
+    ):
+        page = (ACTIVE_SKILL.parent / f"Sr5Career{name}WizardPage.cs").read_text(encoding="utf-8")
+        review = page.split(f"public sealed class Sr5Career{name}ReviewPage", 1)[1]
+        review, receipt = review.split(f"public sealed class Sr5Career{name}ReceiptPage", 1)
+        assert review.index("body.Add(_apply);") < review.index(
+            f'NativeTheme.TechnicalDetails(technical, "sr5-career-{route}-review-details")')
+        next_button = "_done" if name == "Specialization" else "acknowledge"
+        assert receipt.index(f"body.Add({next_button});") < receipt.index(
+            f'NativeTheme.TechnicalDetails(technical, "sr5-career-{route}-receipt-details")')
+        assert 'NativeTheme.PrimaryButton(Text("Continue"))' in receipt
+        # No GUID-bearing metric may be returned to the ordinary summary card.
+        for line in (review + receipt).splitlines():
+            if 'ToString("D")' in line and "NativeTheme.Metric" in line:
+                assert "technical.Add(" in line
+
+
+def test_compact_receipts_show_effective_ratings_not_only_paid_allocations() -> None:
+    attribute = (ACTIVE_SKILL.parent / "Sr5CareerAttributeWizardPage.cs").read_text(encoding="utf-8")
+    knowledge = (ACTIVE_SKILL.parent / "Sr5CareerKnowledgeSkillWizardPage.cs").read_text(encoding="utf-8")
+    assert 'details.Add(NativeTheme.Metric(Text("Value"), $"{checkpoint.Draft.Quote.EffectiveValue} → {checkpoint.Draft.Quote.TargetValue}"))' in attribute
+    assert 'details.Add(NativeTheme.Metric(Text("Rating"), $"{checkpoint.Draft.Quote.TotalBaseRating} → {checkpoint.Draft.Quote.TotalBaseRating + 1}"))' in knowledge
+    assert "receipt.BurnedEdgePointsBefore != receipt.BurnedEdgePointsAfter" in attribute
 
 
 def test_shared_action_boundary_has_route_idempotency_and_fail_closed_crash_recovery() -> None:

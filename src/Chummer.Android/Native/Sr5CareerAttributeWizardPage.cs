@@ -510,30 +510,36 @@ public sealed class Sr5CareerAttributeReviewPage : NativePageBase
             Spacing = 14
         };
         body.Add(NativeTheme.Eyebrow(Text("SR5 Career · 2 of 3")));
-        body.Add(NativeTheme.Title(Text("Review exact diff")));
+        body.Add(NativeTheme.Title(Text("Review advancement")));
         VerticalStackLayout diff = new() { Spacing = 8 };
         diff.Add(NativeTheme.Metric(Text("Attribute"), _draft.Quote.DisplayName));
         diff.Add(NativeTheme.Metric(
             Text("Value"),
             $"{_draft.Quote.EffectiveValue} → {_draft.Quote.TargetValue}"));
         diff.Add(NativeTheme.Metric(
-            Text("Attribute Karma points"),
-            $"{_draft.Quote.KarmaPoints} → {_draft.Plan.SavedAttributeKarmaPoints}"));
-        diff.Add(NativeTheme.Metric(
             Text("Runner Karma"),
             $"{_draft.Quote.AvailableKarma} → {_draft.Plan.SavedCharacterKarma}"));
-        diff.Add(NativeTheme.Metric(
+        diff.Add(NativeTheme.Metric(Text("Karma cost"), _draft.Quote.KarmaCost.ToString(CultureInfo.InvariantCulture)));
+        if (_draft.Quote.BurnedEdgePoints != _draft.Plan.SavedBurnedEdgePoints)
+        {
+            diff.Add(NativeTheme.Metric(Text("Burned Edge"),
+                $"{_draft.Quote.BurnedEdgePoints} → {_draft.Plan.SavedBurnedEdgePoints}"));
+        }
+        body.Add(NativeTheme.Card(diff));
+        VerticalStackLayout technical = new() { Spacing = 8 };
+        technical.Add(NativeTheme.Metric(Text("Attribute Karma points"),
+            $"{_draft.Quote.KarmaPoints} → {_draft.Plan.SavedAttributeKarmaPoints}"));
+        technical.Add(NativeTheme.Metric(
             Text("Burned Edge"),
             $"{_draft.Quote.BurnedEdgePoints} → {_draft.Plan.SavedBurnedEdgePoints}"));
-        diff.Add(NativeTheme.Metric(Text("Natural maximum"), _draft.Quote.NaturalMaximum.ToString(CultureInfo.InvariantCulture)));
-        diff.Add(NativeTheme.Metric(Text("Expense"), _draft.Plan.ExpenseReason));
-        diff.Add(NativeTheme.Metric(Text("Expense identity"), _draft.Plan.ExpenseId.ToString("D")));
-        diff.Add(NativeTheme.Metric(Text("Date"), _draft.Plan.ExpenseDateLocal.ToString("O", CultureInfo.InvariantCulture)));
-        diff.Add(NativeTheme.Metric(Text("Undo"), $"{_draft.Plan.KarmaUndoType} · {_draft.Plan.UndoObjectId}"));
-        body.Add(NativeTheme.Card(diff));
+        technical.Add(NativeTheme.Metric(Text("Natural maximum"), _draft.Quote.NaturalMaximum.ToString(CultureInfo.InvariantCulture)));
+        technical.Add(NativeTheme.Metric(Text("Expense"), _draft.Plan.ExpenseReason));
+        technical.Add(NativeTheme.Metric(Text("Expense identity"), _draft.Plan.ExpenseId.ToString("D")));
+        technical.Add(NativeTheme.Metric(Text("Date"), _draft.Plan.ExpenseDateLocal.ToString("O", CultureInfo.InvariantCulture)));
+        technical.Add(NativeTheme.Metric(Text("Undo"), $"{_draft.Plan.KarmaUndoType} · {_draft.Plan.UndoObjectId}"));
         _blocker = NativeTheme.Body(string.Empty, NativeTheme.Danger);
         body.Add(_blocker);
-        _apply = NativeTheme.PrimaryButton(Text("Apply and verify once"));
+        _apply = NativeTheme.PrimaryButton(Text("Confirm advancement"));
         _apply.AutomationId = "sr5-career-attribute-apply";
         _apply.Clicked += async (_, _) =>
         {
@@ -544,9 +550,10 @@ public sealed class Sr5CareerAttributeReviewPage : NativePageBase
             }
         };
         body.Add(_apply);
-        body.Add(NativeTheme.Body(
+        technical.Add(NativeTheme.Body(
             Text("The exact checkpoint moves to Applying before mutation. Success is shown only after atomic save and a fresh recoverable receipt projection match the reviewed identity, costs and digests."),
             NativeTheme.Muted));
+        body.Add(NativeTheme.TechnicalDetails(technical, "sr5-career-attribute-review-details"));
         Content = new ScrollView { Content = body };
         RefreshEnabledState();
     }
@@ -669,21 +676,24 @@ public sealed class Sr5CareerAttributeReceiptPage : NativePageBase
             Spacing = 14
         };
         body.Add(NativeTheme.Eyebrow(Text("SR5 Career · 3 of 3")));
-        body.Add(NativeTheme.Title(Text("Verified saved advancement")));
+        body.Add(NativeTheme.Title(Text("Advancement saved")));
         VerticalStackLayout details = new() { Spacing = 8 };
         details.Add(NativeTheme.Metric(Text("Attribute"), receipt.Identity.Abbreviation));
-        details.Add(NativeTheme.Metric(Text("Attribute Karma"), $"{receipt.AttributeKarmaBefore} → {receipt.AttributeKarmaAfter}"));
+        details.Add(NativeTheme.Metric(Text("Value"), $"{checkpoint.Draft.Quote.EffectiveValue} → {checkpoint.Draft.Quote.TargetValue}"));
         details.Add(NativeTheme.Metric(Text("Runner Karma"), $"{receipt.CharacterKarmaBefore} → {receipt.CharacterKarmaAfter}"));
-        details.Add(NativeTheme.Metric(Text("Burned Edge"), $"{receipt.BurnedEdgePointsBefore} → {receipt.BurnedEdgePointsAfter}"));
+        if (receipt.BurnedEdgePointsBefore != receipt.BurnedEdgePointsAfter)
+            details.Add(NativeTheme.Metric(Text("Burned Edge"), $"{receipt.BurnedEdgePointsBefore} → {receipt.BurnedEdgePointsAfter}"));
         details.Add(NativeTheme.Metric(Text("Expense"), receipt.ExpenseAmount.ToString(CultureInfo.InvariantCulture)));
-        details.Add(NativeTheme.Metric(Text("Transaction"), receipt.TransactionId.ToString("D")));
-        details.Add(NativeTheme.Metric(
+        body.Add(NativeTheme.Card(details));
+        VerticalStackLayout technical = new() { Spacing = 8 };
+        technical.Add(NativeTheme.Metric(Text("Attribute Karma"), $"{receipt.AttributeKarmaBefore} → {receipt.AttributeKarmaAfter}"));
+        technical.Add(NativeTheme.Metric(Text("Transaction"), receipt.TransactionId.ToString("D")));
+        technical.Add(NativeTheme.Metric(
             Text("Saved revision"),
             checked(checkpoint.Draft.ExpectedContentRevision + 1).ToString(CultureInfo.InvariantCulture)));
-        body.Add(NativeTheme.Card(details));
         _durability = NativeTheme.Body(string.Empty, NativeTheme.Muted);
         body.Add(_durability);
-        body.Add(NativeTheme.Body(
+        technical.Add(NativeTheme.Body(
             Format(
                 "receipt {0} · reviewed source {1} · rule {2} · owner {3}",
                 receipt.ReceiptDigest,
@@ -691,7 +701,7 @@ public sealed class Sr5CareerAttributeReceiptPage : NativePageBase
                 receipt.RuleDigest,
                 checkpoint.Draft.OwnerId.ToString("D")),
             NativeTheme.Muted));
-        Button acknowledge = NativeTheme.PrimaryButton(Text("Acknowledge receipt"));
+        Button acknowledge = NativeTheme.PrimaryButton(Text("Continue"));
         acknowledge.AutomationId = "sr5-career-attribute-receipt-acknowledge";
         acknowledge.Clicked += async (_, _) => await RunAsync(async () =>
         {
@@ -706,6 +716,7 @@ public sealed class Sr5CareerAttributeReceiptPage : NativePageBase
             await Navigation.PopToRootAsync();
         });
         body.Add(acknowledge);
+        body.Add(NativeTheme.TechnicalDetails(technical, "sr5-career-attribute-receipt-details"));
         Content = new ScrollView { Content = body };
         Refresh();
     }
