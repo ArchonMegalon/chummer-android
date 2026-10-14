@@ -1057,4 +1057,6 @@ Vorschau: {3}…</value></data>
   <data name="Choose your next calendar change." xml:space="preserve"><value>Wähle deine nächste Kalenderänderung.</value></data>
   <data name="No saved weeks yet. Add a week first." xml:space="preserve"><value>Noch keine Wochen gespeichert. Füge zuerst eine Woche hinzu.</value></data>
   <data name="Saving calendar change…" xml:space="preserve"><value>Kalenderänderung wird gespeichert…</value></data>
+  <data name="Also removes the first-level bonus" xml:space="preserve"><value>Entfernt auch den Bonus der ersten Stufe</value></data>
+  <data name="Option {0}" xml:space="preserve"><value>Option {0}</value></data>
 </root>

@@ -27,6 +27,11 @@ internal sealed partial class CreationKarmaPage : NativePageBase
     private CharacterCreationKarmaContactSelection? _editingContact;
     private CreationKarmaQualityPage? _qualityPage;
     private CreationKarmaPhoneSelection? _qualitySelection;
+    private CreationKarmaPhoneSelection? _qualityCacheSelection;
+    private CharacterCreationKarmaMetatypeState? _qualityCacheState;
+    private long _qualityCacheAppearance;
+    private readonly Dictionary<string, CreationQualityCatalogGroup> _selectedQualityGroups = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _selectedQualitySummaries = new(StringComparer.Ordinal);
     private readonly List<int> _qualityOffsets = [0];
     private string _qualityQuery = string.Empty;
     private CancellationTokenSource? _qualityPreparation;
@@ -185,7 +190,7 @@ internal sealed partial class CreationKarmaPage : NativePageBase
     private bool Current(long render, long appearance) => render == _render
         && IsCurrentAppearanceGeneration(appearance) && _session.Ready;
 
-    private void AddButton(string text, string id, Func<Task> action, bool enabled = true, string? disabledReason = null)
+    private Button AddButton(string text, string id, Func<Task> action, bool enabled = true, string? disabledReason = null)
     {
         long render = _render, appearance = CaptureAppearanceGeneration();
         var button = NativeTheme.SecondaryButton(text);
@@ -204,6 +209,7 @@ internal sealed partial class CreationKarmaPage : NativePageBase
             hint.AutomationId = id + "-prerequisite";
             _body.Add(hint);
         }
+        return button;
     }
 
     private Task Open(CreationKarmaStep step, string? sourceId = null, string? instanceId = null, string? sourceKind = null)
@@ -242,6 +248,12 @@ internal sealed partial class CreationKarmaPage : NativePageBase
         long appearance = CaptureAppearanceGeneration();
         bool Current() => IsCurrentAppearanceGeneration(appearance) && _session.Ready
             && ReferenceEquals(_session.Selection, selection) && ReferenceEquals(_session.Authority, state);
+        if (!ReferenceEquals(_qualityCacheSelection, selection) || !ReferenceEquals(_qualityCacheState, state)
+            || _qualityCacheAppearance != appearance)
+        {
+            _selectedQualityGroups.Clear(); _selectedQualitySummaries.Clear();
+            _qualityCacheSelection = selection; _qualityCacheState = state; _qualityCacheAppearance = appearance;
+        }
         _qualityPreparation?.Cancel();
         using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(ct);
         _qualityPreparation = lifetime;
@@ -255,7 +267,26 @@ internal sealed partial class CreationKarmaPage : NativePageBase
                 ? await _session.PreviewQualityPageAsync(_qualityQuery, _qualityOffsets[^1], QualityPageSize, lifetime.Token, Current)
                 : await Coordinator.LoadCreationKarmaQualityPageAsync(state, selection,
                     _qualityQuery, _qualityOffsets[^1], QualityPageSize, lifetime.Token, Current);
-            if (Current()) { _qualityPage = page; _qualitySelection = selection; }
+            if (Current() && page is not null)
+            {
+                // Browsing does not change the draft. Retain already checked
+                // selected families only within this exact appearance/input/
+                // authority, so a later catalog page keeps its rating controls.
+                foreach (var group in page.Groups ?? [])
+                    if (group.Members.Any(option => selection.QualityOptionIds!.Contains(option.OptionId, StringComparer.Ordinal)))
+                    {
+                        _selectedQualityGroups[group.Members[0].OptionId] = group;
+                        foreach (var option in group.Members)
+                            if (page.Summaries?.TryGetValue(option.OptionId, out string? summary) == true)
+                                _selectedQualitySummaries[option.OptionId] = summary;
+                    }
+                var groups = (page.Groups ?? []).Concat(_selectedQualityGroups.Values)
+                    .DistinctBy(group => group.Members[0].OptionId).ToArray();
+                var summaries = _selectedQualitySummaries.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+                foreach (var pair in page.Summaries ?? new Dictionary<string, string>()) summaries[pair.Key] = pair.Value;
+                _qualityPage = page with { Groups = groups, Summaries = summaries };
+                _qualitySelection = selection;
+            }
         }
         finally
         {
@@ -412,29 +443,30 @@ internal sealed partial class CreationKarmaPage : NativePageBase
 
     private void AddQualities()
     {
-        if (_session.Selection is not { Attributes: not null, QualityOptionIds: { } selected }
+        if (_session.Selection is not { Attributes: not null, QualityOptionIds: { } selected } selection
             || _session.Authority?.QualitiesCatalog is not { } catalog) return;
         _body.Add(NativeTheme.Body(CreationKarmaCopy.QualityHelp, NativeTheme.Muted));
         AddQualityTotals();
+        long render = _render, appearance = CaptureAppearanceGeneration();
+        var page = ReferenceEquals(_qualitySelection, selection) ? _qualityPage : null;
+        var groups = page?.Groups ?? [];
+        var rendered = new HashSet<string>(StringComparer.Ordinal);
         // Selected rows stay available for removal even when another choice has
         // made the combined draft invalid. No UI-side eligibility calculation.
         foreach (string id in selected)
         {
-            var option = catalog.Options.Single(item => item.OptionId == id);
-            AddQualityHeading(option);
-            AddButton(CreationKarmaCopy.Remove, "karma-remove-quality-" + id, async () =>
-            {
-                Change(_session.Selection! with { QualityOptionIds = _session.Selection!.QualityOptionIds!.Where(item => item != id).ToArray() });
-                await Preview();
-            });
+            if (rendered.Contains(id)) continue;
+            var group = groups.SingleOrDefault(item => item.Members.Any(option => option.OptionId == id));
+            if (group is not null) AddChoice(group, checkedAvailability: true);
+            else if (catalog.Options.SingleOrDefault(item => item.OptionId == id) is { } option)
+                AddChoice(new([option], []), checkedAvailability: false);
+            else AddRemove(id); // Never lose an unresolvable retained input.
         }
         var search = NativeTheme.SearchField("karma-quality-search", _search, CreationKarmaCopy.Search);
-        long render = _render, appearance = CaptureAppearanceGeneration();
         search.TextChanged += (_, args) => { if (Current(render, appearance)) _search = args.NewTextValue ?? string.Empty; };
         _body.Add(search);
         AddButton(CreationKarmaCopy.Search, "karma-quality-search-go", async () =>
         { _qualityQuery = _search.Trim(); await PrepareQualityPageAsync(default, reset: true); });
-        var page = ReferenceEquals(_qualitySelection, _session.Selection) ? _qualityPage : null;
         if (page is null || page.Options.Count == 0)
         {
             var message = NativeTheme.Body(page is null ? CreationKarmaCopy.QualityCheckFailed : CreationKarmaCopy.QualityEmpty,
@@ -442,44 +474,101 @@ internal sealed partial class CreationKarmaPage : NativePageBase
             message.AutomationId = "karma-quality-empty";
             _body.Add(message);
         }
-        foreach (var option in page?.Options ?? [])
-        {
-            AddQualityHeading(option);
-            AddButton(CreationKarmaCopy.UseSelection,
-                "karma-add-quality-" + option.OptionId, async () =>
-                {
-                    // Changing a rating replaces that source choice, never buys
-                    // a second instance or accumulates an earlier cost/credit.
-                    var retained = _session.Selection!.QualityOptionIds!.Where(id =>
-                        catalog.Options.Single(item => item.OptionId == id).SelectionKey != option.SelectionKey);
-                    Change(_session.Selection with { QualityOptionIds = retained.Append(option.OptionId).ToArray() });
-                    await Preview();
-                });
-        }
+        foreach (var group in groups.Where(group => group.Available.Length > 0
+            && !group.Members.Any(option => rendered.Contains(option.OptionId))))
+            AddChoice(group, checkedAvailability: true);
         AddButton(CreationKarmaCopy.Previous, "karma-quality-previous", async () =>
         { _qualityOffsets.RemoveAt(_qualityOffsets.Count - 1); await PrepareQualityPageAsync(default, reset: false); }, _qualityOffsets.Count > 1);
         AddButton(CreationKarmaCopy.Next, "karma-quality-next", async () =>
         { _qualityOffsets.Add(page!.NextOffset!.Value); await PrepareQualityPageAsync(default, reset: false); }, page?.NextOffset is not null);
-    }
 
-    private void AddQualityHeading(CharacterCreationQualityCatalogOption option)
-    {
-        long render = _render, appearance = CaptureAppearanceGeneration();
-        var original = Coordinator.State;
-        var heading = new Grid { ColumnDefinitions = [new(GridLength.Star), new(GridLength.Auto)], ColumnSpacing = 10 };
-        heading.Add(NativeTheme.Body(CreationKarmaCopy.QualitySourceCost(option.Name, option.Rating, option.KarmaCost)), 0);
-        var info = NativeTheme.SecondaryButton(CreationKarmaCopy.QualityInfo);
-        info.AutomationId = "karma-quality-info-" + option.OptionId;
-        info.WidthRequest = 50;
-        info.Padding = 0;
-        SemanticProperties.SetDescription(info, CreationFlowStrings.Format("Qualities.Info.Accessible", "Explain {0}", option.Name));
-        info.Clicked += async (_, _) => await RunAsync(async () =>
+        void AddRemove(string id)
         {
-            if (Current(render, appearance) && Coordinator.IsCreationCatalogDisplayCurrent(original))
-                await Navigation.PushAsync(new CreationQualityInfoPage(Coordinator, original, option));
-        });
-        heading.Add(info, 1);
-        _body.Add(heading);
+            rendered.Add(id);
+            AddButton(CreationKarmaCopy.Remove, "karma-remove-quality-" + id, async () =>
+            {
+                if (!ReferenceEquals(selection, _session.Selection)) return;
+                Change(selection with { QualityOptionIds = selected.Where(item => item != id).ToArray() });
+                await Preview();
+            });
+        }
+
+        void AddChoice(CreationQualityCatalogGroup group, bool checkedAvailability)
+        {
+            string familyId = group.Members[0].OptionId;
+            var option = group.Members.FirstOrDefault(member => selected.Contains(member.OptionId, StringComparer.Ordinal))
+                ?? group.Available[0];
+            var ratings = group.Available;
+            var original = Coordinator.State;
+            bool CurrentChoice() => Current(render, appearance) && _body.IsEnabled
+                && ReferenceEquals(selection, _session.Selection) && Coordinator.IsCreationCatalogDisplayCurrent(original);
+            var heading = new Grid { ColumnDefinitions = [new(GridLength.Star), new(GridLength.Auto)], ColumnSpacing = 10 };
+            var title = NativeTheme.Body(string.Empty);
+            var summary = NativeTheme.Body(string.Empty, NativeTheme.Muted);
+            summary.AutomationId = "karma-quality-summary-" + familyId;
+            var info = NativeTheme.SecondaryButton(CreationKarmaCopy.QualityInfo);
+            info.AutomationId = "karma-quality-info-" + familyId;
+            info.WidthRequest = 50; info.Padding = 0;
+            void Show()
+            {
+                title.Text = (selected.Contains(option.OptionId, StringComparer.Ordinal)
+                    ? CreationFlowStrings.Get("Common.SelectedPrefix", "Selected · ") : string.Empty)
+                    + CreationKarmaCopy.QualitySourceCost(option.Name, option.Rating, option.KarmaCost);
+                summary.Text = page?.Summaries?.GetValueOrDefault(option.OptionId) ?? string.Empty;
+                SemanticProperties.SetDescription(info, CreationFlowStrings.Format("Qualities.Info.Accessible", "Explain {0}", option.Name));
+            }
+            Show();
+            info.Clicked += async (_, _) => await RunAsync(async () =>
+            {
+                if (CurrentChoice()) await Navigation.PushAsync(new CreationQualityInfoPage(Coordinator, original, option));
+            });
+            heading.Add(title, 0); heading.Add(info, 1);
+            _body.Add(heading); _body.Add(summary);
+            Picker? picker = null;
+            if (ratings.Length > 1 || ratings.Length == 1 && ratings[0].OptionId != option.OptionId)
+            {
+                picker = new Picker
+                {
+                    AutomationId = "karma-quality-rating-" + familyId,
+                    Title = CreationFlowStrings.Get("Common.Rating", "Rating"),
+                    ItemsSource = ratings.Select(item => CreationFlowStrings.Format("Qualities.Info.Cost", "Rating {0} · Karma {1}",
+                        item.Rating, CreationQualitiesPage.Signed(item.KarmaCost))).ToArray(),
+                    SelectedIndex = Array.FindIndex(ratings, member => member.OptionId == option.OptionId),
+                    TextColor = NativeTheme.Text, BackgroundColor = NativeTheme.Surface
+                };
+                SemanticProperties.SetDescription(picker, picker.Title);
+                _body.Add(picker);
+            }
+            Button? apply = null;
+            if (ratings.Length > 0)
+            {
+                // MAUI automation IDs are write-once. The control identifies
+                // this family; its closure retains the exact admitted option.
+                apply = AddButton(CreationKarmaCopy.UseSelection, "karma-add-quality-" + familyId, async () =>
+                {
+                    if (!ReferenceEquals(selection, _session.Selection)
+                        || !ratings.Any(member => member.OptionId == option.OptionId)
+                        || selected.Contains(option.OptionId, StringComparer.Ordinal)) return;
+                    Change(selection with { QualityOptionIds = CreationQualityCatalogRatings.Replace(selected, group.Members, option) });
+                    await Preview();
+                });
+                apply.IsEnabled = ratings.Any(member => member.OptionId == option.OptionId)
+                    && !selected.Contains(option.OptionId, StringComparer.Ordinal);
+            }
+            if (picker is not null) picker.SelectedIndexChanged += (_, _) =>
+            {
+                if (!CurrentChoice() || picker.SelectedIndex < 0 || picker.SelectedIndex >= ratings.Length) return;
+                option = ratings[picker.SelectedIndex]; Show();
+                apply!.IsEnabled = !selected.Contains(option.OptionId, StringComparer.Ordinal);
+            };
+            foreach (var retained in group.Members.Where(member => selected.Contains(member.OptionId, StringComparer.Ordinal)))
+            {
+                if (checkedAvailability && !ratings.Any(member => member.OptionId == retained.OptionId))
+                    _body.Add(NativeTheme.Body(CreationKarmaCopy.QualitySourceCost(retained.Name, retained.Rating, retained.KarmaCost)
+                        + " · " + CreationKarmaCopy.UnavailableInCurrentRules(CreationKarmaCopy.Qualities), NativeTheme.Danger));
+                AddRemove(retained.OptionId);
+            }
+        }
     }
 
     private void AddQualityTotals()

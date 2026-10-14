@@ -9,6 +9,8 @@ internal sealed record Sr5CareerQualityWizardDependencies(
     Sr5CareerQualityCheckpointStore Store,
     ISr5CareerQualityCheckpointAuthority CheckpointAuthority);
 
+internal sealed record Sr5CareerQualityChoiceGroup(IReadOnlyList<CharacterCareerQualityQuote> Options);
+
 /// <summary>
 /// Phone-deep choose step. Labels are display-only; selection and every later
 /// transition use Operation + InternalId + SourceId + all Core digests.
@@ -19,7 +21,10 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
     private readonly Sr5CareerQualityCoordinator _authority;
     private readonly Sr5CareerQualityCheckpointStore _store;
     private readonly ISr5CareerQualityCheckpointAuthority _checkpointAuthority;
+    private readonly IReadOnlyList<Sr5CareerQualityChoiceGroup> _choices;
     private readonly Picker _qualities;
+    private readonly Picker _levels;
+    private readonly Label _levelLabel;
     private readonly Label _summary;
     private readonly Label _blocker;
     private readonly Label _recovery;
@@ -31,6 +36,7 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
     private Sr5CareerQualityDraft? _recoveryDraft;
     private Sr5CareerQualityCheckpoint? _checkpoint;
     private int _automaticResolutionStarted;
+    private bool _selecting;
 
     public Sr5CareerQualityWizardPage(
         RunnerSessionCoordinator coordinator,
@@ -88,7 +94,8 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
                 Text("The SR5 quality route requires the exact clean saved runner revision."));
         }
 
-        _selected = editor.Quotes.FirstOrDefault();
+        _choices = SelectableChoices(editor);
+        _selected = _choices.FirstOrDefault()?.Options[0];
         Title = Text("Change quality");
         AutomationId = Sr5CareerWizardRoutes.QualityChoose;
         VerticalStackLayout body = new()
@@ -101,18 +108,31 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
         body.Add(NativeTheme.Body(
             Text("Choose a quality, then check its Karma cost before applying the change."),
             NativeTheme.Muted));
-        body.Add(NativeTheme.FieldLabel(Text("Quality and operation")));
+        body.Add(NativeTheme.FieldLabel(Text("Quality")));
         _qualities = new Picker
         {
             AutomationId = "sr5-career-quality-picker",
-            Title = Text("Quality and operation"),
-            ItemsSource = editor.Quotes.Select(QualityLabel).ToArray(),
-            SelectedIndex = editor.Quotes.Count > 0 ? 0 : -1,
+            Title = Text("Quality"),
+            ItemsSource = _choices.Select(QualityName).ToArray(),
+            SelectedIndex = _choices.Count > 0 ? 0 : -1,
             BackgroundColor = NativeTheme.Surface,
             TextColor = NativeTheme.Text
         };
         _qualities.SelectedIndexChanged += (_, _) => SelectQuality();
         body.Add(_qualities);
+        _levelLabel = NativeTheme.FieldLabel(Text("Level"));
+        body.Add(_levelLabel);
+        _levels = new Picker
+        {
+            AutomationId = "sr5-career-quality-level-picker",
+            Title = Text("Level"),
+            ItemsSource = _choices.Count > 0 ? LevelLabels(_choices[0]) : Array.Empty<string>(),
+            SelectedIndex = _choices.Count > 0 ? 0 : -1,
+            BackgroundColor = NativeTheme.Surface,
+            TextColor = NativeTheme.Text
+        };
+        _levels.SelectedIndexChanged += (_, _) => SelectLevel();
+        body.Add(_levels);
         _summary = NativeTheme.Body(string.Empty, NativeTheme.Text);
         _summary.AutomationId = "sr5-career-quality-summary";
         body.Add(_summary);
@@ -172,6 +192,46 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
 
     protected override void Refresh() => RefreshEnabledState();
 
+    // These are display groups, never new rules or commands. In Career each
+    // quote is one already-admitted +1, -1 or remove-all operation; its exact
+    // target instance and first-level effects must survive grouping unchanged.
+    internal static IReadOnlyList<Sr5CareerQualityChoiceGroup> SelectableChoices(CareerQualityEditorState editor)
+        => editor.OmittedCandidateCount != 0 || editor.OmittedReceiptCount != 0
+            ? Array.Empty<Sr5CareerQualityChoiceGroup>()
+            : editor.Quotes.Where(quote => IsSelectableQuote(editor, quote))
+                .GroupBy(quote => (quote.Definition.SourceId, quote.Definition.Type, quote.Extra, quote.SourceName))
+                .Select(group => new Sr5CareerQualityChoiceGroup(group.ToArray()))
+                .ToArray();
+
+    private static bool IsSelectableQuote(CareerQualityEditorState editor, CharacterCareerQualityQuote quote)
+        => quote.CanApply && CharacterCareerQualityRules.IsCoherent(quote)
+            && Sr5CareerQualityDraft.EditorMatchesQuote(editor, quote)
+            && quote.Authority.Effects.IsExact
+            && quote.Authority.Effects.UnsupportedFamilies.Count == 0;
+
+    private static string QualityName(Sr5CareerQualityChoiceGroup group)
+    {
+        var quote = group.Options[0];
+        string name = QualityCatalogStrings.Name(quote.Definition.SourceId, quote.Definition.Name);
+        return string.Join(" · ", new[] { name, quote.Extra, quote.SourceName }
+            .Where(value => !string.IsNullOrWhiteSpace(value)));
+    }
+
+    private static string[] LevelLabels(Sr5CareerQualityChoiceGroup group)
+    {
+        string[] labels = group.Options.Select(quote =>
+            $"{quote.LevelBefore} → {quote.LevelAfter} · {KarmaChangeLabel(quote.CharacterKarmaDelta)}"
+            + (quote.Operation == CharacterCareerQualityOperation.RemoveAllLevels
+                ? " · " + OperationLabel(quote.Operation) : string.Empty)
+            + (quote.Operation == CharacterCareerQualityOperation.RemoveLevel
+                && quote.Authority.Effects.AppliedFamilies.Contains(CharacterCareerQualityEffectFamily.FirstLevelBonus)
+                ? " · " + Text("Also removes the first-level bonus") : string.Empty)).ToArray();
+        // Two removable instances may have distinct effects/origins despite
+        // identical labels. Keep both exact quotes; never deduplicate by level.
+        return labels.Select((label, index) => labels.Count(other => other == label) > 1
+            ? label + " · " + Format("Option {0}", index + 1) : label).ToArray();
+    }
+
     private static string QualityLabel(CharacterCareerQualityQuote quote)
         => Format(
             "{0} · {1} · level {2} → {3} · {4}",
@@ -202,22 +262,54 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
 
     private void SelectQuality()
     {
-        _selected = _qualities.SelectedIndex >= 0
-            && _qualities.SelectedIndex < _editor.Quotes.Count
-            ? _editor.Quotes[_qualities.SelectedIndex]
-            : null;
+        if (_selecting) return;
+        if (!IsOfferDisplayCurrent() || !_qualities.IsEnabled || _checkpoint is not null)
+        { RefreshEnabledState(); return; }
+        SetSelectedQuality(_qualities.SelectedIndex);
         RefreshEnabledState();
     }
 
-    private void RefreshEnabledState()
+    private void SetSelectedQuality(int index, CharacterCareerQualityQuote? retained = null)
     {
-        bool revisionMatches = Coordinator.State.WorkspaceId == _editor.WorkspaceId
+        _selecting = true;
+        try
+        {
+            var group = index >= 0 && index < _choices.Count ? _choices[index] : null;
+            _qualities.SelectedIndex = group is null ? -1 : index;
+            _levels.ItemsSource = group is null ? Array.Empty<string>() : LevelLabels(group);
+            int option = retained is null || group is null ? 0 : group.Options.ToList().FindIndex(quote =>
+                quote.Operation == retained.Operation && quote.Identity == retained.Identity
+                && quote.LogicalRevision == retained.LogicalRevision);
+            _levels.SelectedIndex = group is null || option < 0 ? -1 : option;
+            _selected = retained ?? (group is null ? null : group.Options[0]);
+        }
+        finally { _selecting = false; }
+    }
+
+    private void SelectLevel()
+    {
+        if (_selecting) return;
+        if (!IsOfferDisplayCurrent() || !_levels.IsEnabled || _checkpoint is not null)
+        { RefreshEnabledState(); return; }
+        var group = _qualities.SelectedIndex >= 0 && _qualities.SelectedIndex < _choices.Count
+            ? _choices[_qualities.SelectedIndex] : null;
+        _selected = group is not null && _levels.SelectedIndex >= 0 && _levels.SelectedIndex < group.Options.Count
+            ? group.Options[_levels.SelectedIndex] : null;
+        RefreshEnabledState();
+    }
+
+    private bool IsOfferDisplayCurrent()
+        => Coordinator.State.WorkspaceId == _editor.WorkspaceId
             && _checkpointAuthority.CurrentOwnerId != Guid.Empty
             && _checkpointAuthority.CurrentOwnerId == Sr5CareerQualityDraft.CheckpointOwnerId(_editor.OwnerId)
             && Coordinator.State.ContentRevision == _editor.WorkspaceRevision
             && Coordinator.State.SavedRevision == _editor.SavedRevision
             && !Coordinator.State.IsDirty
             && string.IsNullOrWhiteSpace(Coordinator.State.Error);
+
+    private void RefreshEnabledState()
+    {
+        bool revisionMatches = IsOfferDisplayCurrent();
         bool completeAuthority = _editor.OmittedCandidateCount == 0
             && _editor.OmittedReceiptCount == 0;
         bool reviewedOwned = _checkpoint is not null
@@ -225,8 +317,23 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
             && _checkpoint.MatchesActionDraft(_recoveryDraft)
             && _checkpointAuthority.OwnsReviewed(_checkpoint);
         _qualities.IsEnabled = revisionMatches && completeAuthority && _checkpoint is null;
-        _summary.Text = _selected is null
+        _qualities.IsVisible = _checkpoint is null;
+        var group = _qualities.SelectedIndex >= 0 && _qualities.SelectedIndex < _choices.Count
+            ? _choices[_qualities.SelectedIndex] : null;
+        _levels.IsVisible = _checkpoint is null && group?.Options.Count > 1;
+        _levelLabel.IsVisible = _checkpoint is null && group is not null;
+        _levelLabel.Text = group?.Options.Count == 1
+            ? group.Options[0].Definition.NoLevels
+                ? OperationLabel(group.Options[0].Operation)
+                : $"{Text("Level")} {group.Options[0].LevelBefore} → {group.Options[0].LevelAfter}"
+            : Text("Level");
+        _levels.IsEnabled = _qualities.IsEnabled && _levels.IsVisible;
+        _summary.Text = _checkpoint is not null && !_checkpointAuthority.OwnsCurrentRunner(_checkpoint)
+            ? Text("The saved runner revision changed. Reopen quality advancement.")
+            : _selected is null
             ? Text("No exact quality operation is available.")
+            : _checkpoint is not null
+                ? QualityLabel(_selected)
             : Format(
                 "{0} · Karma {1} → {2}",
                 KarmaChangeLabel(_selected.CharacterKarmaDelta),
@@ -412,6 +519,14 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
             if (!checkpoint.TryResume(_editor, out Sr5CareerQualityDraft draft, out blocker)
                 || !_checkpointAuthority.OwnsReviewed(checkpoint))
             {
+                // A current owner's retained intent is not a new catalogue
+                // offer. Keep it visible and locked even if its old quote is
+                // no longer admitted; filtering must never erase recovery.
+                if (_checkpointAuthority.OwnsCurrentRunner(checkpoint))
+                {
+                    _checkpoint = checkpoint;
+                    SetSelectedQuality(-1, checkpoint.Draft.Review.Quote);
+                }
                 _recovery.Text = string.IsNullOrWhiteSpace(blocker)
                     ? Text("A saved quality review is not authorized for this exact runner.")
                     : blocker;
@@ -422,12 +537,11 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
             _recoveryDraft = draft;
             _recovery.Text = Text("A durable reviewed quality operation can be resumed.");
             _recovery.TextColor = NativeTheme.Muted;
-            int index = _editor.Quotes
-                .Select((candidate, candidateIndex) => (candidate, candidateIndex))
-                .First(pair => pair.candidate.Operation == draft.Review.Quote.Operation
-                    && pair.candidate.Identity == draft.Review.Quote.Identity)
-                .candidateIndex;
-            _qualities.SelectedIndex = index;
+            int index = _choices.ToList().FindIndex(group => group.Options.Any(candidate =>
+                candidate.Operation == draft.Review.Quote.Operation
+                && candidate.Identity == draft.Review.Quote.Identity
+                && candidate.LogicalRevision == draft.Review.Quote.LogicalRevision));
+            SetSelectedQuality(index, draft.Review.Quote);
             return;
         }
         if (!_checkpointAuthority.OwnsCurrentRunner(checkpoint))
@@ -437,6 +551,7 @@ public sealed class Sr5CareerQualityWizardPage : NativePageBase
             return;
         }
         _checkpoint = checkpoint;
+        SetSelectedQuality(-1, checkpoint.Draft.Review.Quote);
         _recovery.Text = checkpoint.Phase == Sr5CareerCheckpointPhase.Applying
             ? Text("An interrupted atomic commit is locked and will be resolved without replay.")
             : Text("A verified saved quality receipt is awaiting acknowledgement or correction.");
