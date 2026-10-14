@@ -68,6 +68,7 @@ public sealed class Sr5AfterRunRewardPhoneModel
         && Status != Sr5AfterRunRewardPhoneStatus.JournalUnavailable;
     public bool CanConfirm => CanEdit && Review is { } review
         && review.Runner == _authority.Current && Status == Sr5AfterRunRewardPhoneStatus.Review;
+    public bool CanChangeReview => CanEdit && Review is not null;
     public bool CanRecover => !_busy && HasRetainedIntent && OwnsReloadableSelection();
     public bool CanRetry => CanRecover && OwnsSelection()
         && Checkpoint?.Phase != Sr5AfterRunRewardCheckpointPhase.Applied;
@@ -81,6 +82,15 @@ public sealed class Sr5AfterRunRewardPhoneModel
         Draft = draft;
         Review = null;
         Handoff = null;
+        Status = Sr5AfterRunRewardPhoneStatus.Editing;
+        return true;
+    }
+
+    /// <summary>Return an unconfirmed review to editing; never clear a retained operation.</summary>
+    public bool ChangeReview()
+    {
+        if (!CanChangeReview) return false;
+        Review = null;
         Status = Sr5AfterRunRewardPhoneStatus.Editing;
         return true;
     }

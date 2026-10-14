@@ -180,6 +180,10 @@
   <data name="AfterRunRewardNoAward" xml:space="preserve"><value>Explicitly record no reward (0 Karma / 0 Nuyen)</value></data>
   <data name="AfterRunRewardPreview" xml:space="preserve"><value>Review reward</value></data>
   <data name="AfterRunRewardConfirm" xml:space="preserve"><value>Confirm and save this reward</value></data>
+  <data name="AfterRunRewardChange" xml:space="preserve"><value>Change reward</value></data>
+  <data name="AfterRunRewardReviewStale" xml:space="preserve"><value>The runner changed. Change the reward and review the current balances before saving.</value></data>
+  <data name="AfterRunRewardOptions" xml:space="preserve"><value>More options</value></data>
+  <data name="AfterRunRewardHideOptions" xml:space="preserve"><value>Hide options</value></data>
   <data name="AfterRunRewardRecover" xml:space="preserve"><value>Check saved result</value></data>
   <data name="AfterRunRewardRetry" xml:space="preserve"><value>Retry the same confirmed reward</value></data>
   <data name="AfterRunRewardDone" xml:space="preserve"><value>Done · return to Career</value></data>

@@ -19,13 +19,13 @@ internal static partial class AfterRunAuthorityHarness
         var page = new Sr5AfterRunRewardWizardPage(runtime.Coordinator, reward);
         var navigation = new NavigationPage(page);
         var rewardView = (Sr5AfterRunRewardView)((ScrollView)page.Content!).Content;
-        var reputationButton = ((VerticalStackLayout)rewardView.Content!).Children.OfType<Button>()
-            .Single(control => control.AutomationId == "sr5-reward-reputation");
+        var reputationButton = RewardElement<Button>(rewardView, "sr5-reward-reputation");
         Require(!reputationButton.IsVisible && !reputationButton.IsEnabled,
             "Unconfirmed rewards exposed an authorized consequence entry.");
         await ExpectConsequencesRejectedAsync(() => page.OpenReputationAsync(default));
         await reward.ConfirmAsync();
         rewardView.Refresh();
+        await ExpandRewardOptionsAsync(rewardView);
         Require(reward.CanContinue && reputationButton.IsVisible && reputationButton.IsEnabled,
             "Saved rewards did not expose ordinary local reputation review.");
         var store = new FileWorkspaceStore(runtime.StateDirectory);

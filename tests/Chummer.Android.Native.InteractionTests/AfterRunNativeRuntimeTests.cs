@@ -21,6 +21,273 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    public static async Task RunRewardWizardStagesAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            await NativeRewardWizardStagesAsync(contentRoot, ui);
+            await NativeRewardStaleReviewCanChangeAsync(contentRoot, ui);
+            await NativeRewardRefreshFailureRecoversWithoutCreditAsync(contentRoot, cancel: false);
+            await NativeRewardRefreshFailureRecoversWithoutCreditAsync(contentRoot, cancel: true);
+            ui.AssertHealthy();
+        });
+        Console.WriteLine("PASS actual reward wizard staging, Change/review/save, continuation disclosure, lifetime/busy denial and retained-result recovery");
+    }
+
+    private static async Task NativeRewardWizardStagesAsync(string contentRoot, IssuedPageUiContext ui)
+    {
+        await using var runtime = new NativeRewardRuntime(contentRoot);
+        await runtime.LoadRunnerAsync();
+        var store = new FileWorkspaceStore(runtime.StateDirectory);
+        var original = store.Get(runtime.Id).Value!;
+        var model = runtime.Coordinator.CreateAfterRunRewardModel(new DateTime(2026, 9, 7, 12, 0, 0), runtime.Owner);
+        await model.InitializeAsync();
+        Task pending = Task.CompletedTask;
+        TaskCompletionSource? planning = null;
+        int done = 0, plans = 0, proposals = 0, reputations = 0;
+        var view = new Sr5AfterRunRewardView(model, action => pending = action(),
+            () => { done++; return Task.CompletedTask; },
+            _ => { proposals++; return Task.CompletedTask; },
+            _ => { plans++; return planning?.Task ?? Task.CompletedTask; },
+            _ => { reputations++; return Task.CompletedTask; });
+        using var firstLifetime = new CancellationTokenSource();
+        using var currentLifetime = new CancellationTokenSource();
+        using var returnedLifetime = new CancellationTokenSource();
+        view.SetLifetime(firstLifetime.Token);
+
+        Button Button(string id) => RewardElement<Button>(view, id);
+        bool Visible(string id) => MinimalVisible(view).Any(item => item.AutomationId == id);
+        void Stages(bool input, bool review, bool saved)
+        {
+            Require(Visible("sr5-reward-input-section") == input
+                && Visible("sr5-reward-review-section") == review
+                && Visible("sr5-reward-saved-section") == saved,
+                $"Reward stages differ: expected input={input}, review={review}, saved={saved}.");
+            if (!input)
+                Require(!MinimalVisible(view).Any(item => item is Entry or Microsoft.Maui.Controls.Editor or DatePicker or TimePicker or CheckBox),
+                    "A completed or retained reward stage still exposes its input form.");
+        }
+        async Task ClickAsync(string id)
+        {
+            var button = Button(id);
+            Require(Visible(id) && button.IsEnabled, "Reward action is not visibly available: " + id);
+            await ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked());
+            await pending;
+            await ui.DrainDispatchedAsyncVoidAsync();
+        }
+        async Task RetainedClickAsync(Button button)
+        {
+            // Deliver the registered handler even if the old control has since
+            // become hidden/disabled; do not enable it or call private actions.
+            await ui.BeginAsyncVoid(() => RewardPropagateClick(button));
+            await pending;
+            await ui.DrainDispatchedAsyncVoidAsync();
+        }
+
+        Stages(input: true, review: false, saved: false);
+        Require(!Visible("sr5-reward-options") && !Visible("sr5-reward-options-toggle"),
+            "An uncommitted reward exposes saved-result continuations.");
+        RewardElement<Entry>(view, "sr5-reward-karma").Text = "8";
+        RewardElement<Entry>(view, "sr5-reward-nuyen").Text = "12500";
+        RewardElement<Microsoft.Maui.Controls.Editor>(view, "sr5-reward-reason").Text = "Native wizard reward";
+        await ClickAsync("sr5-reward-preview");
+        Stages(input: false, review: true, saved: false);
+        Require(model.CanConfirm && Button("sr5-reward-change").IsEnabled,
+            "An exact uncommitted review cannot return to its inputs.");
+        var reviewed = model.Review;
+        var draft = model.Draft;
+        Guid operationId = model.OperationId, rewardId = model.RewardId;
+        var retainedConfirm = Button("sr5-reward-confirm");
+        var retainedChange = Button("sr5-reward-change");
+        RequireSameRewardDocument(original, store.Get(runtime.Id).Value!);
+
+        firstLifetime.Cancel();
+        view.SetLifetime(firstLifetime.Token);
+        await RetainedClickAsync(retainedChange);
+        Require(ReferenceEquals(model.Review, reviewed) && model.Draft == draft && !model.HasRetainedIntent,
+            "A departed Change callback altered the reviewed reward.");
+        view.SetLifetime(currentLifetime.Token);
+        view.Refresh();
+        await ClickAsync("sr5-reward-change");
+        Stages(input: true, review: false, saved: false);
+        Require(model.Review is null && !model.CanConfirm && model.CanEdit
+            && model.Draft == draft && model.OperationId == operationId && model.RewardId == rewardId
+            && !model.HasRetainedIntent && model.Checkpoint is null,
+            "Change must retire only the uncommitted preview, preserving draft and operation identities.");
+        await RetainedClickAsync(retainedConfirm);
+        Require(!model.HasRetainedIntent && model.Checkpoint is null,
+            "A retained Confirm accepted the discarded review.");
+        RequireSameRewardDocument(original, store.Get(runtime.Id).Value!);
+
+        RewardElement<Entry>(view, "sr5-reward-karma").Text = "9";
+        await ClickAsync("sr5-reward-preview");
+        Stages(input: false, review: true, saved: false);
+        Require(model.CanConfirm && !ReferenceEquals(model.Review, reviewed)
+            && model.Review!.Preview.Command.KarmaAmount == 9,
+            "Re-review retained the old reward amount or preview.");
+        await ClickAsync("sr5-reward-confirm");
+        Stages(input: false, review: false, saved: true);
+        Require(model.CanContinue && model.Handoff!.Snapshot.AvailableKarma == 39
+            && model.Handoff.Snapshot.AvailableNuyen == 13500,
+            "The actual Confirm handler did not save and reload the revised reward.");
+        var saved = store.Get(runtime.Id).Value!;
+        Require(saved.ContentRevision == original.ContentRevision + 1 && saved.SavedRevision == saved.ContentRevision
+            && saved.Document.AuxiliaryState.CharacterAfterRunRewardReceipts?.Count == 1,
+            "The revised reward did not produce exactly one saved successor and receipt.");
+        var checkpoint = model.Checkpoint;
+        Require(!Visible("sr5-reward-options") && Visible("sr5-reward-done")
+            && Visible("sr5-reward-options-toggle")
+            && !Visible("sr5-reward-downtime") && !Visible("sr5-reward-reputation")
+            && !Visible("sr5-reward-consequences"),
+            "Saved reward should show its primary completion action and initially folded optional actions.");
+        await RetainedClickAsync(retainedConfirm);
+        await RetainedClickAsync(retainedChange);
+        Require(ReferenceEquals(model.Checkpoint, checkpoint) && model.HasRetainedIntent && !model.CanEdit,
+            "Old Change/Confirm callbacks replaced or unlocked the committed reward.");
+        RequireSameRewardDocument(saved, store.Get(runtime.Id).Value!);
+
+        await RetainedClickAsync(Button("sr5-reward-downtime"));
+        Require(plans == 0, "A hidden optional continuation ran before expansion.");
+        await ClickAsync("sr5-reward-options-toggle");
+        Require(Visible("sr5-reward-options") && Visible("sr5-reward-downtime")
+            && Visible("sr5-reward-reputation") && Visible("sr5-reward-consequences"),
+            "Further actions did not disclose the available saved-result continuations.");
+        view.Refresh();
+        Require(Visible("sr5-reward-options"), "An unchanged render unexpectedly folded the chosen continuation panel.");
+
+        planning = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task navigation = ui.BeginAsyncVoid(() => ((IButtonController)Button("sr5-reward-downtime")).SendClicked());
+        try
+        {
+            Require(plans == 1 && !navigation.IsCompleted && !pending.IsCompleted
+                && Visible("sr5-reward-options") && !Button("sr5-reward-downtime").IsEnabled
+                && !Button("sr5-reward-options-toggle").IsEnabled && !Button("sr5-reward-done").IsEnabled,
+                "Awaited continuation did not preserve disclosure while rejecting overlapping actions.");
+            // Keep the original pending callback as the UI pump's completion
+            // owner. These overlapping handlers must reject synchronously.
+            int starts = ui.AsyncVoidStarts;
+            RewardPropagateClick(Button("sr5-reward-options-toggle"));
+            Require(pending.IsCompletedSuccessfully, "Busy disclosure did not reject synchronously.");
+            RewardPropagateClick(Button("sr5-reward-consequences"));
+            Require(pending.IsCompletedSuccessfully, "Busy consequences did not reject synchronously.");
+            RewardPropagateClick(Button("sr5-reward-done"));
+            Require(pending.IsCompletedSuccessfully && ui.AsyncVoidStarts == starts + 3,
+                "Busy completion did not reject through the actual handlers.");
+            Require(Visible("sr5-reward-options") && plans == 1 && proposals == 0 && done == 0,
+                "Busy callbacks changed disclosure or entered another continuation.");
+        }
+        finally
+        {
+            planning.TrySetResult();
+            await navigation;
+            await ui.DrainDispatchedAsyncVoidAsync();
+        }
+        Require(Button("sr5-reward-downtime").IsEnabled && Visible("sr5-reward-options"),
+            "Joined continuation did not restore its existing saved-result controls.");
+
+        var handoff = model.Handoff;
+        await model.RecoverAsync();
+        view.Refresh();
+        Require(model.CanContinue && !ReferenceEquals(model.Handoff, handoff) && !Visible("sr5-reward-options"),
+            "A replaced saved-result handoff inherited the prior expanded options.");
+        RequireSameRewardDocument(saved, store.Get(runtime.Id).Value!);
+        await ClickAsync("sr5-reward-options-toggle");
+        currentLifetime.Cancel();
+        view.SetLifetime(currentLifetime.Token);
+        Require(!Visible("sr5-reward-options"), "A departed appearance retained its expanded optional actions.");
+        await RetainedClickAsync(Button("sr5-reward-downtime"));
+        await RetainedClickAsync(Button("sr5-reward-options-toggle"));
+        await RetainedClickAsync(Button("sr5-reward-done"));
+        Require(plans == 1 && proposals == 0 && reputations == 0 && done == 0 && !Visible("sr5-reward-options"),
+            "A canceled appearance navigated, completed or reopened optional actions.");
+        view.SetLifetime(returnedLifetime.Token);
+        view.Refresh();
+        Stages(input: false, review: false, saved: true);
+        Require(!Visible("sr5-reward-options"), "A new appearance inherited the old expanded panel.");
+        await ClickAsync("sr5-reward-done");
+        Require(done == 1 && plans == 1 && proposals == 0 && reputations == 0,
+            "Primary Done did not finish exactly once without entering an optional destination.");
+        RequireSameRewardDocument(saved, store.Get(runtime.Id).Value!);
+        Console.WriteLine("PASS actual reward view buttons: staged input/review/saved, safe Change, fresh amount, one receipt, folded continuations, busy and departed callbacks");
+    }
+
+    private static async Task NativeRewardStaleReviewCanChangeAsync(string contentRoot, IssuedPageUiContext ui)
+    {
+        await using var runtime = new NativeRewardRuntime(contentRoot);
+        await runtime.LoadRunnerAsync();
+        var model = await runtime.PrepareRewardAsync();
+        var draft = model.Draft;
+        var oldReview = model.Review;
+        Guid operationId = model.OperationId, rewardId = model.RewardId;
+        Task pending = Task.CompletedTask;
+        var view = new Sr5AfterRunRewardView(model, action => pending = action(),
+            () => throw new InvalidOperationException("An uncommitted stale review invoked Done."));
+
+        // Advance the same runner through a second, real Core-owned reward.
+        // This is not an injected revision or replacement of the UI's model.
+        var unrelatedReward = await runtime.PrepareRewardAsync();
+        await unrelatedReward.ConfirmAsync();
+        var store = new FileWorkspaceStore(runtime.StateDirectory);
+        var advanced = store.Get(runtime.Id).Value!;
+        view.Refresh();
+        Require(model.CanEdit && !model.CanConfirm && advanced.SavedRevision == oldReview!.Runner.SavedRevision + 1,
+            "Fixture failed to produce a same-selection stale reward preview.");
+        var change = RewardElement<Button>(view, "sr5-reward-change");
+        var confirm = RewardElement<Button>(view, "sr5-reward-confirm");
+        Require(MinimalVisible(view).Contains(change) && change.IsEnabled && !confirm.IsEnabled,
+            "A stale same-runner preview cannot be saved but must still allow Change.");
+        await ui.BeginAsyncVoid(() => RewardPropagateClick(confirm));
+        await pending;
+        Require(ReferenceEquals(model.Review, oldReview) && !model.HasRetainedIntent,
+            "A stale confirmation consumed or replaced the uncommitted preview.");
+        await ui.BeginAsyncVoid(() => ((IButtonController)change).SendClicked());
+        await pending;
+        Require(model.Review is null && model.CanEdit && !model.CanConfirm && model.Draft == draft
+            && model.OperationId == operationId && model.RewardId == rewardId && !model.HasRetainedIntent
+            && MinimalVisible(view).Any(item => item.AutomationId == "sr5-reward-input-section"),
+            "Changing a stale preview lost its draft/identity or failed to reopen the inputs.");
+        RequireSameRewardDocument(advanced, store.Get(runtime.Id).Value!);
+        var preview = RewardElement<Button>(view, "sr5-reward-preview");
+        await ui.BeginAsyncVoid(() => ((IButtonController)preview).SendClicked());
+        await pending;
+        await ui.DrainDispatchedAsyncVoidAsync();
+        Require(model.CanConfirm && model.Review!.Runner.SavedRevision == advanced.SavedRevision
+            && !ReferenceEquals(model.Review, oldReview) && model.OperationId == operationId,
+            "A changed stale preview did not require a fresh current-revision review.");
+        RequireSameRewardDocument(advanced, store.Get(runtime.Id).Value!);
+        Console.WriteLine("PASS same-runner saved-revision change: stale Confirm denied, Change preserves draft/IDs/files, fresh review required");
+    }
+
+    private static IEnumerable<View> RewardElements(IView view)
+    {
+        if (view is View control) yield return control;
+        if (view is Layout layout)
+            foreach (var child in layout.Children)
+                foreach (var nested in RewardElements(child)) yield return nested;
+        if (view is ContentView { Content: { } content })
+            foreach (var nested in RewardElements(content)) yield return nested;
+    }
+
+    private static T RewardElement<T>(Sr5AfterRunRewardView view, string automationId) where T : View
+        => RewardElements(view).OfType<T>().Single(control => control.AutomationId == automationId);
+
+    private static void RewardPropagateClick(Button button)
+        => typeof(Button).Assembly.GetType("Microsoft.Maui.Controls.Internals.IButtonElement", throwOnError: true)!
+            .GetMethod("PropagateUpClicked")!.Invoke(button, null);
+
+    private static async Task ExpandRewardOptionsAsync(Sr5AfterRunRewardView view)
+    {
+        var button = RewardElement<Button>(view, "sr5-reward-options-toggle");
+        Require(button.IsVisible && button.IsEnabled, "Saved reward has no available further-actions disclosure.");
+        ((IButtonController)button).SendClicked();
+        // Expansion has no awaited provider/navigation work, but its actual
+        // callback must have synchronously disclosed the retained saved result.
+        Require(RewardElement<View>(view, "sr5-reward-options").IsVisible,
+            "The actual further-actions button did not expand its saved-result panel.");
+        await Task.CompletedTask;
+    }
+
     public static async Task RunNativeRuntimeCasesAsync(string contentRoot)
     {
         if (!Path.IsPathFullyQualified(contentRoot) || !Directory.Exists(Path.Combine(contentRoot, "data")))
@@ -48,14 +315,14 @@ internal static partial class AfterRunAuthorityHarness
         var page = new Sr5AfterRunRewardWizardPage(runtime.Coordinator, reward);
         var navigation = new NavigationPage(page);
         var view = (Sr5AfterRunRewardView)((ScrollView)page.Content!).Content;
-        var button = ((VerticalStackLayout)view.Content!).Children.OfType<Button>()
-            .SingleOrDefault(control => control.AutomationId == "sr5-reward-downtime");
+        var button = RewardElement<Button>(view, "sr5-reward-downtime");
         Require(button is not null, "Saved rewards have no ordinary local Downtime planning continuation.");
         Require(!button!.IsEnabled && !button.IsVisible, "An uncommitted reward enabled Downtime continuation.");
         await ExpectConsequencesRejectedAsync(() => InvokeTokenPageActionAsync(page, "OpenDowntimeAsync", default));
         Require(navigation.Navigation.NavigationStack.Count == 1, "Unconfirmed continuation changed navigation.");
         await reward.ConfirmAsync();
         view.Refresh();
+        await ExpandRewardOptionsAsync(view);
         Require(button.IsEnabled && button.IsVisible && reward.CanContinue, "Saved reward did not enable local planning.");
         var store = new FileWorkspaceStore(runtime.StateDirectory);
         var rewarded = store.Get(runtime.Id).Value!;
@@ -155,7 +422,8 @@ internal static partial class AfterRunAuthorityHarness
             () => throw new InvalidOperationException("Planning invoked Done."),
             _ => { proposals++; return Task.CompletedTask; },
             _ => { plans++; return response.Task; });
-        var buttons = ((VerticalStackLayout)view.Content!).Children.OfType<Button>().ToArray();
+        await ExpandRewardOptionsAsync(view);
+        var buttons = RewardElements(view).OfType<Button>().ToArray();
         var plan = buttons.Single(button => button.AutomationId == "sr5-reward-downtime");
         var consequences = buttons.Single(button => button.AutomationId == "sr5-reward-consequences");
         ((IButtonController)plan).SendClicked();
@@ -311,8 +579,7 @@ internal static partial class AfterRunAuthorityHarness
         var model = await runtime.PrepareRewardAsync();
         var page = new Sr5AfterRunRewardWizardPage(runtime.Coordinator, model);
         var view = (Sr5AfterRunRewardView)((ScrollView)page.Content!).Content;
-        var button = ((VerticalStackLayout)view.Content!).Children.OfType<Button>()
-            .SingleOrDefault(control => control.AutomationId == "sr5-reward-consequences");
+        var button = RewardElement<Button>(view, "sr5-reward-consequences");
         Require(button is not null, "The saved local reward has no continuation to independently reviewed run consequences.");
         Require(!button!.IsEnabled, "Uncommitted reward enabled run-consequence navigation.");
         int queries = 0;
@@ -325,6 +592,7 @@ internal static partial class AfterRunAuthorityHarness
         Require(queries == 0, "Unconfirmed reward queried governed proposals.");
         await model.ConfirmAsync();
         view.Refresh();
+        await ExpandRewardOptionsAsync(view);
         Require(model.CanContinue && button.IsEnabled && button.IsVisible,
             "Fresh saved reward did not enable the explicit read-only consequence query.");
         var stored = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
@@ -402,8 +670,8 @@ internal static partial class AfterRunAuthorityHarness
         var view = new Sr5AfterRunRewardView(model, action => pending = action(),
             () => throw new InvalidOperationException("Consequence click invoked Done."),
             _ => { queries++; return response.Task; });
-        var button = ((VerticalStackLayout)view.Content!).Children.OfType<Button>()
-            .Single(control => control.AutomationId == "sr5-reward-consequences");
+        await ExpandRewardOptionsAsync(view);
+        var button = RewardElement<Button>(view, "sr5-reward-consequences");
         ((IButtonController)button).SendClicked();
         Task first = pending;
         Require(!first.IsCompleted && queries == 1 && !button.IsEnabled,
@@ -501,12 +769,36 @@ internal static partial class AfterRunAuthorityHarness
             "The reward was not durably committed before refresh was interrupted.");
         string digest = model.Checkpoint!.CommandDigest;
         Guid operationId = model.OperationId;
-        await model.RecoverAsync();
+        Task pending = Task.CompletedTask;
+        var view = new Sr5AfterRunRewardView(model, action => pending = action(),
+            () => throw new InvalidOperationException("Recovery invoked Done."),
+            _ => throw new InvalidOperationException("Recovery entered consequences."),
+            _ => throw new InvalidOperationException("Recovery entered Calendar."));
+        Require(!RewardElement<View>(view, "sr5-reward-input-section").IsVisible
+            && !RewardElement<View>(view, "sr5-reward-review-section").IsVisible
+            && !RewardElement<View>(view, "sr5-reward-saved-section").IsVisible
+            && !RewardElement<View>(view, "sr5-reward-options").IsVisible
+            && RewardElement<Button>(view, "sr5-reward-recover") is { IsVisible: true, IsEnabled: true },
+            "Retained-result recovery exposes new inputs/review/success or hides its recovery action.");
+        var retained = model.Checkpoint;
+        RewardPropagateClick(RewardElement<Button>(view, "sr5-reward-change"));
+        await pending;
+        Require(ReferenceEquals(model.Checkpoint, retained) && model.HasRetainedIntent && !model.CanEdit
+            && model.OperationId == operationId && model.Checkpoint!.CommandDigest == digest,
+            "A retained Change callback cleared or replaced the uncertain saved-result intent.");
+        RequireSameRewardDocument(committed, cold.Get(runtime.Id).Value!);
+        ((IButtonController)RewardElement<Button>(view, "sr5-reward-recover")).SendClicked();
+        await pending;
         Require(model.CanContinue && model.Status == Sr5AfterRunRewardPhoneStatus.Recorded
                 && runtime.Presenter.State.Error is null && runtime.Presenter.State.Progress?.Karma == 38
                 && runtime.Presenter.State.SavedRevision == 2 && runtime.Shell.State.ActiveWorkspaceId == runtime.Id
                 && model.OperationId == operationId && model.Checkpoint!.CommandDigest == digest,
             $"Real reload/lookup did not recover the committed reward: {model.Status}; {runtime.Presenter.State.Error}");
+        Require(RewardElement<View>(view, "sr5-reward-saved-section").IsVisible
+            && !RewardElement<View>(view, "sr5-reward-input-section").IsVisible
+            && !RewardElement<View>(view, "sr5-reward-review-section").IsVisible
+            && !RewardElement<View>(view, "sr5-reward-options").IsVisible,
+            "Read-only recovery did not lead to the saved stage with fresh folded continuations.");
         RequireSameRewardDocument(committed, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
         Console.WriteLine($"PASS native reward refresh {(cancel ? "cancellation" : "preferences failure")} and exact read-only recovery");
     }

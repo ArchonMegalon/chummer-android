@@ -310,9 +310,8 @@ internal static partial class AfterRunAuthorityHarness
                 && reward.AutomationId == "sr5-after-run-local-reward-page",
             "Missing catalog and empty journals did not route to the actual local reward page.");
         var view = (Sr5AfterRunRewardView)((ScrollView)((ContentPage)reward).Content!).Content;
-        var body = (VerticalStackLayout)view.Content!;
-        Require(body.Children.OfType<Button>().Single(b => b.AutomationId == "sr5-reward-preview").IsEnabled
-                && !body.Children.OfType<Button>().Single(b => b.AutomationId == "sr5-reward-confirm").IsEnabled,
+        Require(RewardElement<Button>(view, "sr5-reward-preview").IsEnabled
+                && !RewardElement<Button>(view, "sr5-reward-confirm").IsEnabled,
             "Factory did not hand its prepared editable model to the actual native reward controls.");
         Require(fixture.Backend.Payload.Length == 0 && fixture.OwnerBackend.Payload.Length == 0
                 && fixture.RewardBackend.Writes == 0 && fixture.ServiceCalls == 0,
