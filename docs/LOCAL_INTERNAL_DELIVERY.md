@@ -132,7 +132,21 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 225 is the latest [observed Internal availability](../play/evidence/preview225-internal-observation.json),
+Preview 226 is the latest [observed Internal availability](../play/evidence/preview226-internal-observation.json),
+released on 14 October at 05:29 Europe/Vienna. Five Career advancement review/
+receipt pages keep effective values, costs and balances visible and technical
+details collapsed. Android #763 merged normally with the tested tree; Core/UI
+inputs remain unchanged from225. Actual Core/MAUI compact skill route and
+EN/DE/ES checks passed. Native API36 x64 Release/Internal smoke gained12 Karma,
+advanced Chemistry1to2 for4, continued and reopened balance8 after process
+restart; all37 files remained byte-identical across restart. Local ARM64 build,
+isolated original-key signing, independent keyless checks and one Play upload/
+confirmation passed. Physical226, full device coverage of all five dialogs,
+startup/reload closure and complete Creation/Career/Origin remain unverified.
+Manual economy save feedback and the remaining Career actions are next.
+Version226 is consumed; retain it and prior rollback packets.
+
+Preview 225's historical [observed Internal availability](../play/evidence/preview225-internal-observation.json),
 released on 14 October at 04:28 Europe/Vienna. Career advances skills/groups
 using the total free-plus-paid rating while preserving Life Modules grants.
 Specialization checks no longer reject unrelated skill groups. Core #162,
