@@ -132,7 +132,21 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 229 is the latest [observed Internal availability](../play/evidence/preview229-internal-observation.json),
+Preview 230 is the latest [observed Internal availability](../play/evidence/preview230-internal-observation.json),
+released on 14 October at 10:57 Europe/Vienna. Android #771 fixes recovery from
+an unapplied Calendar preview made stale by another saved change. Explicit
+discard preserves the runner; a fresh preview and confirmation are required.
+Core/UI are unchanged. Actual Core/native regression, nine authority cases,
+four source/driver checks and 886-key localization parity passed. The affected
+API36 x64 Release/Internal route passed discard, fresh confirmation/save and
+three process restarts; all 37 files were unchanged after discard and identical
+across the final restart. Local ARM64 build, original-key isolated signing,
+independent keyless verification and one Play upload/final confirmation passed.
+Physical230, startup/reload reliability, minimal Calendar UX, full Career and
+live Origin remain unverified. Version230 is consumed; retain its exact packet
+and previous rollback artifacts, and do not rebuild/re-upload it.
+
+Preview 229's historical [observed Internal availability](../play/evidence/preview229-internal-observation.json),
 released on 14 October at 08:53 Europe/Vienna. Four nonstructural Career
 Karma/Nuyen gain/edit saves avoid a redundant full refresh only when the exact
 durable owner/revision/SR5/roster/catalog state matches the initialized shell;
