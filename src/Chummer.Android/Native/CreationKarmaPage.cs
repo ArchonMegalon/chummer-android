@@ -495,6 +495,7 @@ internal sealed partial class CreationKarmaPage : NativePageBase
 
         void AddChoice(CreationQualityCatalogGroup group, bool checkedAvailability)
         {
+            string familyId = group.Members[0].OptionId;
             var option = group.Members.FirstOrDefault(member => selected.Contains(member.OptionId, StringComparer.Ordinal))
                 ?? group.Available[0];
             var ratings = group.Available;
@@ -504,8 +505,9 @@ internal sealed partial class CreationKarmaPage : NativePageBase
             var heading = new Grid { ColumnDefinitions = [new(GridLength.Star), new(GridLength.Auto)], ColumnSpacing = 10 };
             var title = NativeTheme.Body(string.Empty);
             var summary = NativeTheme.Body(string.Empty, NativeTheme.Muted);
-            summary.AutomationId = "karma-quality-summary-" + group.Members[0].OptionId;
+            summary.AutomationId = "karma-quality-summary-" + familyId;
             var info = NativeTheme.SecondaryButton(CreationKarmaCopy.QualityInfo);
+            info.AutomationId = "karma-quality-info-" + familyId;
             info.WidthRequest = 50; info.Padding = 0;
             void Show()
             {
@@ -513,7 +515,6 @@ internal sealed partial class CreationKarmaPage : NativePageBase
                     ? CreationFlowStrings.Get("Common.SelectedPrefix", "Selected · ") : string.Empty)
                     + CreationKarmaCopy.QualitySourceCost(option.Name, option.Rating, option.KarmaCost);
                 summary.Text = page?.Summaries?.GetValueOrDefault(option.OptionId) ?? string.Empty;
-                info.AutomationId = "karma-quality-info-" + option.OptionId;
                 SemanticProperties.SetDescription(info, CreationFlowStrings.Format("Qualities.Info.Accessible", "Explain {0}", option.Name));
             }
             Show();
@@ -528,7 +529,7 @@ internal sealed partial class CreationKarmaPage : NativePageBase
             {
                 picker = new Picker
                 {
-                    AutomationId = "karma-quality-rating-" + group.Members[0].OptionId,
+                    AutomationId = "karma-quality-rating-" + familyId,
                     Title = CreationFlowStrings.Get("Common.Rating", "Rating"),
                     ItemsSource = ratings.Select(item => CreationFlowStrings.Format("Qualities.Info.Cost", "Rating {0} · Karma {1}",
                         item.Rating, CreationQualitiesPage.Signed(item.KarmaCost))).ToArray(),
@@ -541,7 +542,9 @@ internal sealed partial class CreationKarmaPage : NativePageBase
             Button? apply = null;
             if (ratings.Length > 0)
             {
-                apply = AddButton(CreationKarmaCopy.UseSelection, "karma-add-quality-" + option.OptionId, async () =>
+                // MAUI automation IDs are write-once. The control identifies
+                // this family; its closure retains the exact admitted option.
+                apply = AddButton(CreationKarmaCopy.UseSelection, "karma-add-quality-" + familyId, async () =>
                 {
                     if (!ReferenceEquals(selection, _session.Selection)
                         || !ratings.Any(member => member.OptionId == option.OptionId)
@@ -556,8 +559,7 @@ internal sealed partial class CreationKarmaPage : NativePageBase
             {
                 if (!CurrentChoice() || picker.SelectedIndex < 0 || picker.SelectedIndex >= ratings.Length) return;
                 option = ratings[picker.SelectedIndex]; Show();
-                apply!.AutomationId = "karma-add-quality-" + option.OptionId;
-                apply.IsEnabled = !selected.Contains(option.OptionId, StringComparer.Ordinal);
+                apply!.IsEnabled = !selected.Contains(option.OptionId, StringComparer.Ordinal);
             };
             foreach (var retained in group.Members.Where(member => selected.Contains(member.OptionId, StringComparer.Ordinal)))
             {

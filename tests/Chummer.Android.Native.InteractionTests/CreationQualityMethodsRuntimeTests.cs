@@ -82,9 +82,13 @@ internal static partial class AfterRunAuthorityHarness
             AssertSelected(1, 10);
 
             var obsoletePicker = RatingPicker();
+            var obsoleteAdd = Element<Button>("karma-add-quality-" + spike[0].OptionId);
+            var obsoleteInfo = Element<Button>("karma-quality-info-" + spike[0].OptionId);
             obsoletePicker.SelectedIndex = admitted.FindIndex(option => option.Rating == 2);
             AssertOffer(2);
-            var obsoleteAdd = Element<Button>("karma-add-quality-" + spike[1].OptionId);
+            Require(ReferenceEquals(obsoleteAdd, Element<Button>("karma-add-quality-" + spike[0].OptionId))
+                && ReferenceEquals(obsoleteInfo, Element<Button>("karma-quality-info-" + spike[0].OptionId)),
+                "Changing the offered rating must keep each native control and its write-once family automation ID.");
             Require(session.Selection!.QualityOptionIds!.Single() == spike[0].OptionId,
                 "Choosing an offered rating must not silently change the selected draft before its action.");
             await Click(obsoleteAdd.AutomationId);
@@ -152,9 +156,11 @@ internal static partial class AfterRunAuthorityHarness
                 "A now-unaffordable selected rating must remain removable, not appear among admitted alternatives.");
             await Click("karma-remove-quality-" + spike[1].OptionId);
             Require(session.Selection!.QualityOptionIds!.Count == 0
-                && !IssuedElements(Current()).OfType<Button>().Any(button =>
-                    button.AutomationId == "karma-add-quality-" + spike[1].OptionId),
+                && !IssuedElements(Current()).OfType<Picker>().Any(picker =>
+                    picker.AutomationId?.StartsWith("karma-quality-rating-", StringComparison.Ordinal) == true)
+                && Element<Button>("karma-add-quality-" + spike[0].OptionId).IsEnabled,
                 "Removing an invalid selected rating exposed it again as an admitted purchase.");
+            AssertOffer(1);
             session.Change(reducedBudget);
             await Back();
             await Click("karma-open-qualities");
@@ -173,7 +179,7 @@ internal static partial class AfterRunAuthorityHarness
             AssertSelected(1, 10);
             var departedPicker = RatingPicker();
             departedPicker.SelectedIndex = admitted.FindIndex(option => option.Rating == 2);
-            var departedAction = Element<Button>("karma-add-quality-" + spike[1].OptionId);
+            var departedAction = Element<Button>("karma-add-quality-" + spike[0].OptionId);
             await Back();
             var departedSelection = session.Selection;
             int departedReads = probe.QualityBatchCalls;
@@ -214,7 +220,7 @@ internal static partial class AfterRunAuthorityHarness
             await SearchQualities("Spike Resistance");
             var ownerPicker = RatingPicker();
             ownerPicker.SelectedIndex = admitted.FindIndex(option => option.Rating == 2);
-            var ownerAction = Element<Button>("karma-add-quality-" + spike[1].OptionId);
+            var ownerAction = Element<Button>("karma-add-quality-" + spike[0].OptionId);
             var ownerSelection = session.Selection;
             var beforeOwnerChange = new FileWorkspaceStore(runtime.StateDirectory).Get(workspaceId).Value!;
             int ownerReads = probe.QualityBatchCalls, confirmations = probe.ConfirmCalls;
@@ -263,7 +269,7 @@ internal static partial class AfterRunAuthorityHarness
                 Require(IssuedElements(Current()).OfType<Label>().Any(label => label.Text?.EndsWith(cost, StringComparison.Ordinal) == true)
                     && IssuedElements(Current()).OfType<Label>().Single(label =>
                         label.AutomationId?.StartsWith("karma-quality-summary-", StringComparison.Ordinal) == true).Text == summary
-                    && IssuedElements(Current()).OfType<Button>().Any(button => button.AutomationId == "karma-quality-info-" + option.OptionId),
+                    && IssuedElements(Current()).OfType<Button>().Any(button => button.AutomationId == "karma-quality-info-" + spike[0].OptionId),
                     "The offered rating, exact cost, effect summary and information action did not update together.");
             }
             async Task Appear()
