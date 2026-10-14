@@ -1,0 +1,91 @@
+{
+  "status": "Available on Play Internal; physical Play227 installation not yet verified",
+  "readbackRecordedAtUtc": "2026-10-14T04:29:58Z",
+  "playDisplayedReleaseTime": "14 Oct 06:29 Europe/Vienna",
+  "packageId": "com.myexternalbrain.chummer",
+  "versionName": "0.1.0-preview.227",
+  "versionCode": 227,
+  "track": "internal",
+  "playReleaseId": "220",
+  "standingUploadApproval": "Owner2026-10-05: verified builds to existing Internal track and tester audience only",
+  "change": "Compact manual Career Karma/Nuyen forms with optional date/refund/conversion controls, visible pending state, one-shot submission and owner/page-lifetime-safe automatic return. Core rules and dependency graph unchanged.",
+  "androidProducerCommit": "04df014c9f8240b8562f9519a39abbd8fe586f86",
+  "androidProducerTree": "1e1f9dd89c00f66fcb23fec470058d4656977b52",
+  "testedReviewCommit": "f270f94366bb91c9095058a662692cd52a0f6e60",
+  "productPullRequests": [
+    "https://github.com/ArchonMegalon/chummer-android/pull/765"
+  ],
+  "mergeTreeEqualsReviewedTree": true,
+  "dependencyMode": "locked_package_closure_with_pinned_presentation_source_and_core_content",
+  "sourceCheckoutsPresent": true,
+  "ambientSiblingRootsAllowed": false,
+  "presentationCommit": "1392b4c4470a482d9426884bceb8412c4968ba64",
+  "presentationProtectedMerge": "da8201f5c4ed1db7002d3b597f2edae8659b35fb",
+  "coreRecipeCommit": "05c159c03cd39528b0d22002bafc9f72cd3b3e2d",
+  "coreRuntimeCommit": "439c89b2fe4c6b5e3da5f4a59b1d14d50aff3e36",
+  "coreProtectedMerge": "a69a705bbe1474ef4b4a1fe0b4cf2fd7fee90e0e",
+  "packageBindingSha256": "ffc411b3b93c62e76daebe1a58e57d44ce303b6f8afc87a0aed25fcd2433ad33",
+  "uiVerificationSha256": "99731a76a12f3bc2ee4f7eea2c20a3944c73732778735c7a162eb1db0e7f6022",
+  "diagnosticsContractSha256": "a0f59210e35abb9e88eda2b6b4f4ad497ea27577f77c294876120773e6aed7a2",
+  "diagnosticsContractDistribution": "Exact retained local package; published package authority absent",
+  "execution": "local offline Docker build, isolated original-key signer, independent keyless verifier",
+  "distributionChannel": "internal",
+  "buildImage": "sha256:9ce8fdc9a9e55bbf4c5893694f85949f9639de9ebd95545ea93588e602596f9e",
+  "toolchain": "Local .NET10.0.112/JDK17.0.20.1/API36; locked restore/ARM64 publish/bundle passed; non-concurrent SGen retained",
+  "unsignedAabSha256": "28af891bddf7d3086620406acaa3eedee6216271dc42ec2ccd265f090f6a6866",
+  "unsignedAabBytes": 36282309,
+  "signedAabSha256": "5b3dd58c71dbc48646f992a748f51a6dbe9fb926f5b9a4737a71a9457e5b3ef7",
+  "signedAabBytes": 36455387,
+  "uploadCertificateSha256": "d9c4b635121544d5522abf1ec2dfda3c1938aab93d6726bb93c9871ec9ed1d15",
+  "verification": {
+    "unsignedSourceContentAndPackages": "passed;1558 Android/28684 Presentation exported files,331 Core content files; exact package bytes checked",
+    "unsignedInputsReceiptSha256": "6551be1e5ace74005c4a8b5fa0885c05e3e27847ff0ddf09afa83b981de5d61a",
+    "bundleManifest": "package/version/ARM64/minimum24/target36 passed",
+    "proofExclusionAndCredentialHygiene": "passed",
+    "strictJarSignature": "passed",
+    "unchangedNonSignaturePayloadEntries": 1787,
+    "signedVerificationSha256": "a514faa2f191e8e920f55fd837ccfb396693ee193573e8449cb7c7972c12b65b",
+    "buildLogSha256": "b080684b83433f02ecd21d36b4dfb38c23cc29ecedfed8123281f878fd8f325c"
+  },
+  "affectedChecks": {
+    "focusedReceiptSha256": "e1f2e5c5f5d7c35865cf0fe18b01549fc5300016dd771e3898ab9adab52144e7",
+    "managedLogSha256": "c00ba20e4f0a723fe0404093bb394e9dfa8e52d0fa607a7689a0f6d53f8bdc57",
+    "managed": "324 native sources compile with zero warnings/errors;8 actual Core/MAUI scenarios across both currencies: success, departure, post-commit shell failure and pre-action owner ABA. One-shot pending, options, balances, revision, expenses and unchanged grants checked.",
+    "localization": "EN/DE/ES873 keys usage/parity/placeholders/layout/fallback passed.",
+    "focusedSourceChecks": 6,
+    "nativeScope": "API36 x64 Release/Internal separate SDK-test package/key; retained synthetic app-finalized Life Modules character, testUID networking blocked. Not production ARM64 or Play-installed.",
+    "nativeApkSha256": "47a210ed400d3e0f8757d7a5b42f7374b317547ec469c543785bb5be8c786c75",
+    "nativeBuildLogSha256": "10ec8f7fb75c4f4f143ff630b48eaf747fbd1722ee22441ab3690eafa45575c7",
+    "nativeSmokeReceiptSha256": "a4dcae0e3e9aa344dec8cfe2a4d945c169695e1aef880969b8e817c8f7ac0845",
+    "native": "Karma8+5-2=11;Nuyen120+100at150%-50=220;exactly4 expenses/revision15. Compact/options/pending/automatic return and verified new-process reopen passed. Grants and36 unrelated files unchanged;all37 files byte-identical across restart. Emulator and owned UID rules removed.",
+    "limits": [
+      "SystemUI boot ANR and failed initial package-service installation retained; one reconciled retry after increasing only owned emulator memory succeeded. No Chummer ANR inferred.",
+      "Slow cold restoration and post-commit return remain: revision15/balance220 were on disk while pending UI remained visible. No startup or save-latency fix claimed.",
+      "Not every refund/date/conversion combination repeated natively.",
+      "Physical Play227, interrupted-before-ack specialization recovery and complete Creation/Career/live multi-chapter Origin remain unverified.",
+      "Original uncertain FirstBook successor remains fenced; no paid-operation replay."
+    ]
+  },
+  "play": {
+    "transport": "authenticated scoped Play Console browser, not Publisher API",
+    "uploadCount": 1,
+    "finalConfirmationCount": 1,
+    "status": "Available to internal testers",
+    "supportedPhoneCount": 8738,
+    "newlyUnsupportedPhoneCount": 0,
+    "submittedReleaseNoteLocales": [
+      "en-US"
+    ],
+    "warnings": [
+      "No deobfuscation mapping uploaded",
+      "No native debug symbols uploaded"
+    ],
+    "executionReceiptSha256": "93112d5affcb7e3ab761e167ff5a3c8a2e08d88d7d55cf85188eb3c9de5db866",
+    "availabilityScreenshotSha256": "311e22e32280400889d242bd2be1e522db90a31960808b9df26b204d7744ab41",
+    "internalTestLink": "https://play.google.com/apps/internaltest/4700678198570024687"
+  },
+  "retention": "Private exact source/build/signature/native/readback packet and prior rollback packets retained.227 consumed; no rebuild/re-upload.",
+  "physicalPlayInstallationVerified": false,
+  "fullCreationCareerOrBetaCompletionClaimed": false,
+  "publicTrackOrAudienceChanged": false
+}
