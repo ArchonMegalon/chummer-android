@@ -29,6 +29,12 @@ public sealed class Sr5AfterRunRewardWizardPage : NativePageBase
         Content = new ScrollView { Content = _view };
     }
 
+    // A completed child may advance the runner revision and retire CanContinue.
+    // Leaving this saved parent must not recover or reapply its reward.
+    internal bool IsSavedContinuationFor(RunnerSessionCoordinator coordinator)
+        => UsesCoordinator(coordinator)
+           && _model.Checkpoint?.Phase == Sr5AfterRunRewardCheckpointPhase.Applied;
+
     internal async Task OpenDowntimeAsync(CancellationToken cancellationToken)
     {
         var saved = _model.Handoff;

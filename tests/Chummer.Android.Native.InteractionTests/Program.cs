@@ -13,6 +13,11 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "--career-reputation-finish-content-root")
+        {
+            await AfterRunAuthorityHarness.RunReputationFinishAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--career-reputation-content-root")
         {
             foreach (var (name, run) in Chummer.Android.Sr5AfterRunReward.Tests.ReputationTests.Cases
