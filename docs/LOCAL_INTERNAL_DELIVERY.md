@@ -132,7 +132,21 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 224 is the latest [observed Internal availability](../play/evidence/preview224-internal-observation.json),
+Preview 225 is the latest [observed Internal availability](../play/evidence/preview225-internal-observation.json),
+released on 14 October at 04:28 Europe/Vienna. Career advances skills/groups
+using the total free-plus-paid rating while preserving Life Modules grants.
+Specialization checks no longer reject unrelated skill groups. Core #162,
+UI #462 and Android #761 merged normally with their tested trees. Actual
+saved-runner Core/MAUI checks passed. Native API36 x64 Release/Internal smoke
+advanced Computer5to6 and CloseCombat1to2, bought a specialization and reached
+zero Karma; all37 saved files remained byte-identical after process restart.
+Local ARM64 build, isolated original-key signing, independent keyless checks
+and one Play upload/confirmation passed. Physical225, startup/reload closure,
+interrupted-before-ack specialization recovery and complete Creation/Career/Origin
+remain unverified. Career review/receipt minimalism is the next scoped UX fix.
+Version225 is consumed; retain it and prior rollback packets.
+
+Preview 224's historical [observed Internal availability](../play/evidence/preview224-internal-observation.json),
 released on 14 October at 01:41 Europe/Vienna. Career refreshes its same-owner,
 same-runner action list after saving and retains unchanged-entry caching and
 owner/stale-callback checks. Android #759 merged normally with the tested tree;
