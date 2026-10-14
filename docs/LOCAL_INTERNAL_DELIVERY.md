@@ -132,7 +132,41 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 236 is the latest [observed Internal availability](../play/evidence/preview236-internal-observation.json),
+Preview 237 is the latest [observed Internal availability](../play/evidence/preview237-internal-observation.json),
+released on 14 October at 18:14 Europe/Vienna. Its exact local ARM64 build,
+original-key isolated signing, independent keyless verification and one Play
+upload/save-and-publish/final confirmation completed under the standing approval.
+Android #785 groups Karma Creation quality families into exact admitted ratings
+and Career qualities into exact acquisitions with separate removal quotes.
+Dependencies are unchanged from Preview236. Career managed run 07 passed with
+324 native sources compiled and zero warnings/errors. Karma's passing subsuite
+from run 06 is reused only for unchanged inputs; that whole combined run exited
+134 on a Career fixture assertion, not a full-suite pass or a current-head Karma
+rerun. The failed attempts remain retained alongside the corrected Career check.
+
+The API 36 x64 Release/Internal native build had zero warnings/errors. Actual
+Karma controls offered one family with ratings 1/10 and 2/20, hid the unavailable
+rating 3 and replaced the pending rating rather than adding a duplicate purchase.
+One confirmation saved revisions 2/2 to 3/3, cost 20 and 780 of 800 Karma remaining;
+raw character and unrelated fields stayed unchanged. A new process restored the
+same selection/budget and byte-identical workspace. Career controls offered the
+exact 1-to-2 acquisition and separate removal quotes. One apply cost 20 Karma,
+changed 980 to 960 and revisions 2/2 to 3/3, and appended one transaction and a
+second distinct quality instance while preserving prior and unrelated state.
+A new process reopened the unacknowledged receipt without another apply; workspace
+and both allowlisted checkpoint preferences matched the saved bytes.
+
+This is bounded Karma/Career quality acceptance, not all quality operations,
+Life Modules discretionary ratings, quality autosave or full wizard completion.
+SystemUI boot and accessibility-observer limitations remain recorded. Career
+review admission completed slowly without immediate busy feedback; progress
+indication remains a follow-up, and no startup/reload or latency fix is claimed.
+Physical Preview237 installation, complete Creation/Career, live Origin and wider
+beta readiness remain unverified. Play reported 8749 supported phones, zero newly
+unsupported phones and only missing mapping/native-symbol warnings. Version237
+is consumed; retain its exact packet and prior rollback artifacts without replay.
+
+Preview 236 was previously [observed on Internal](../play/evidence/preview236-internal-observation.json),
 released on 14 October at 16:54 Europe/Vienna. Its exact local ARM64 build,
 original-key isolated signing, independent keyless verification and one Play
 upload/save-and-publish/final confirmation completed. Android #783 continues
