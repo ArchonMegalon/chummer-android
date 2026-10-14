@@ -214,6 +214,23 @@ internal static partial class AfterRunAuthorityHarness
                     File.Copy(file, target, overwrite: false);
                 }
                 Console.WriteLine("Quality methods synthetic Karma fixture: " + workspaceId.Value);
+
+                // The direct fixture save is not a page action/refresh. Retire
+                // its old rendered controls and use the real durable-open path
+                // before exercising owner guards on an editable session.
+                IssuedPageLifecycle(Current(), "OnDisappearing");
+                await HydrateFinalizationOwnerAsync(runtime, owners, saved);
+                int opensBeforeReopen = probe.OpenCalls;
+                var savedSession = session;
+                await navigation.PushAsync(new CreationKarmaPage(runtime.Coordinator), false);
+                await Appear();
+                session = Session();
+                Require(!ReferenceEquals(session, savedSession) && session.Ready
+                    && session.Selection!.QualityOptionIds!.SequenceEqual([spike[0].OptionId])
+                    && probe.OpenCalls == opensBeforeReopen + 1
+                    && probe.ConfirmCalls == 1 && probe.FinalConfirmCalls == 0,
+                    "Owner-guard setup did not reopen the exact saved quality in a fresh editable session without another write.");
+                RequireSameRewardDocument(saved, new FileWorkspaceStore(runtime.StateDirectory).Get(workspaceId).Value!);
             }
 
             await Click("karma-open-qualities");
