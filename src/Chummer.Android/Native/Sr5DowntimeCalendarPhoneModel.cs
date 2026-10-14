@@ -534,6 +534,48 @@ internal sealed class Sr5DowntimeCalendarJournalStore
         }
     }
 
+    public bool TryDiscardUnappliedReview(Sr5DowntimeCalendarJournal expected, out string blocker)
+    {
+        ArgumentNullException.ThrowIfNull(expected);
+        blocker = string.Empty;
+        if (!expected.IsExact()
+            || expected.Phase != Sr5DowntimeCalendarJournalPhase.Review)
+        {
+            blocker = "Only an exact unapplied Downtime Calendar review can be discarded.";
+            return false;
+        }
+        // A Review can also be a proven-not-applied recovery from Applying. Its
+        // journal must survive until the previous shared owner is reconciled.
+        if (!TryReconcileResolvedOwner(expected, out blocker))
+        {
+            blocker = string.IsNullOrWhiteSpace(blocker)
+                ? "The resolved Downtime Calendar mutation owner could not be reconciled."
+                : blocker;
+            return false;
+        }
+        lock (Gate)
+        {
+            if (!TryRequireLocked(expected, out blocker))
+                return false;
+            try
+            {
+                _backend.Remove();
+                if (!string.IsNullOrEmpty(_backend.Read()))
+                {
+                    blocker = "The Downtime Calendar review discard failed read-back.";
+                    return false;
+                }
+                blocker = string.Empty;
+                return true;
+            }
+            catch (Exception exception) when (exception is not OutOfMemoryException)
+            {
+                blocker = $"The Downtime Calendar review could not be discarded: {exception.Message}";
+                return false;
+            }
+        }
+    }
+
     private bool TryReconcileResolvedOwner(
         Sr5DowntimeCalendarJournal journal,
         out string blocker)

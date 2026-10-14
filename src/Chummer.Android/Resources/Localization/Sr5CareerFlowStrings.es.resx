@@ -1038,4 +1038,8 @@ Vista previa: {3}…</value></data>
   <data name="No reason" xml:space="preserve"><value>Sin motivo</value></data>
   <data name="Only manually recorded amounts can be changed." xml:space="preserve"><value>Solo se pueden cambiar los importes registrados manualmente.</value></data>
   <data name="Check the amount, reason and date before saving." xml:space="preserve"><value>Revisa el importe, el motivo y la fecha antes de guardar.</value></data>
+  <data name="Discard preview and continue" xml:space="preserve"><value>Descartar vista previa y continuar</value></data>
+  <data name="Your runner changed after this preview. Discard the preview to plan a new change. Nothing from this preview was saved." xml:space="preserve"><value>Tu runner cambió después de esta vista previa. Descártala para planificar un nuevo cambio. No se guardó nada de esta vista previa.</value></data>
+  <data name="Preview discarded. Choose your new calendar change." xml:space="preserve"><value>Vista previa descartada. Elige tu nuevo cambio de calendario.</value></data>
+  <data name="Only an exact unapplied Downtime Calendar review can be discarded." xml:space="preserve"><value>Solo se puede descartar una vista previa de calendario sin cambios y aún no guardada.</value></data>
 </root>

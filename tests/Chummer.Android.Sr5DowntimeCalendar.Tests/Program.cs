@@ -14,7 +14,12 @@ internal static class Program
         RestartDropsConfirmationAndStaleCasFails();
         UnexpectedPostconditionFailsClosed();
         ResolvedJournalCannotOrphanSharedMutationOwner();
-        Console.WriteLine("SR5 Downtime Calendar Android authority tests passed: 4");
+        ReviewDiscardUsesExactCasAndAllowsFreshReview();
+        ReviewDiscardRejectsApplyingAndApplied();
+        ReviewDiscardRetainsCorruptAndUnreadableJournals();
+        ReviewDiscardRequiresRemovalReadback();
+        ReturnedReviewCannotOrphanSharedMutationOwner();
+        Console.WriteLine("SR5 Downtime Calendar Android authority tests passed: 9");
         return 0;
     }
 
@@ -147,6 +152,137 @@ internal static class Program
             "reconciled resolved journal was not cleared");
     }
 
+    private static void ReviewDiscardUsesExactCasAndAllowsFreshReview()
+    {
+        CareerCalendarEditorState before = Editor(41, "old notes");
+        var session = new Sr5DowntimeCalendarDesktopSession();
+        session.Bind(Binding(before, 41, 'a', 'b'), before);
+        Require(session.TryPreviewEdit(WeekId, "first preview", "Chocolate", out string blocker), blocker);
+        var backend = new DiscardBackend();
+        var store = Sr5DowntimeCalendarJournalStore.CreateIsolated(backend);
+        Require(store.TryWriteReview(session, Guid.NewGuid(), out var first, out blocker), blocker);
+        Require(session.TryPreviewEdit(WeekId, "replacement preview", "Chocolate", out blocker), blocker);
+        Require(store.TryWriteReview(session, Guid.NewGuid(), out var current, out blocker), blocker);
+        string payload = backend.Payload;
+        Require(!store.TryDiscardUnappliedReview(first, out blocker), "stale review cleared its replacement");
+        Require(!store.TryDiscardUnappliedReview(current with { Version = current.Version + 1 }, out blocker),
+            "forged review was discarded");
+        Require(backend.Payload == payload && backend.RemoveCalls == 0,
+            "rejected discard touched the current journal");
+
+        CareerCalendarEditorState changed = Editor(42, "old notes");
+        var restarted = new Sr5DowntimeCalendarDesktopSession();
+        Require(!restarted.Bind(Binding(changed, 42, 'c', 'd'), changed, current.Review).Resume.Restored,
+            "stale runner revision unexpectedly restored review");
+        Require(store.TryDiscardUnappliedReview(current, out blocker), blocker);
+        Require(backend.Payload.Length == 0 && backend.RemoveCalls == 1, "review discard was not durable");
+        Require(!store.TryBeginApplying(current, out _, out blocker), "discarded review entered Applying");
+        Require(restarted.TryPreviewEdit(WeekId, "fresh preview", "Chocolate", out blocker), blocker);
+        Require(store.TryWriteReview(restarted, Guid.NewGuid(), out var fresh, out blocker), blocker);
+        Require(fresh.Review.WorkspaceRevision == 42 && !restarted.State.CanApply,
+            "fresh review lost the current revision or inherited confirmation");
+    }
+
+    private static void ReviewDiscardRejectsApplyingAndApplied()
+    {
+        CareerCalendarEditorState before = Editor(41, "old notes");
+        var session = new Sr5DowntimeCalendarDesktopSession();
+        session.Bind(Binding(before, 41, 'a', 'b'), before);
+        Require(session.TryPreviewEdit(WeekId, "saved notes", "Chocolate", out string blocker), blocker);
+        var backend = new DiscardBackend();
+        var store = Sr5DowntimeCalendarJournalStore.CreateIsolated(backend);
+        Require(store.TryWriteReview(session, Guid.NewGuid(), out var review, out blocker), blocker);
+        Require(store.TryBeginApplying(review, out var applying, out blocker), blocker);
+        string applyingPayload = backend.Payload;
+        Require(!store.TryDiscardUnappliedReview(applying, out blocker), "Applying journal was discarded");
+        Require(!store.TryDiscardUnappliedReview(review, out blocker), "old Review cleared Applying");
+        Require(backend.Payload == applyingPayload && backend.RemoveCalls == 0,
+            "Applying journal was touched by review discard");
+
+        CareerCalendarEditorState after = Editor(42, "saved notes");
+        var receipt = Sr5DowntimeCalendarPersistenceReceipt.Create(applying, Binding(after, 42, 'c', 'd'), after);
+        Require(store.TryComplete(applying, receipt, out var applied, out blocker), blocker);
+        string appliedPayload = backend.Payload;
+        Require(!store.TryDiscardUnappliedReview(applied, out blocker), "Applied receipt was discarded as a review");
+        Require(!store.TryDiscardUnappliedReview(review, out blocker), "old Review cleared Applied");
+        Require(backend.Payload == appliedPayload && backend.RemoveCalls == 0,
+            "Applied receipt was touched by review discard");
+    }
+
+    private static void ReviewDiscardRetainsCorruptAndUnreadableJournals()
+    {
+        CareerCalendarEditorState before = Editor(41, "old notes");
+        var session = new Sr5DowntimeCalendarDesktopSession();
+        session.Bind(Binding(before, 41, 'a', 'b'), before);
+        Require(session.TryPreviewDelete(WeekId, out string blocker), blocker);
+        var backend = new DiscardBackend();
+        var store = Sr5DowntimeCalendarJournalStore.CreateIsolated(backend);
+        Require(store.TryWriteReview(session, Guid.NewGuid(), out var review, out blocker), blocker);
+        string validPayload = backend.Payload;
+        backend.Write("{unreadable journal");
+        Require(!store.TryDiscardUnappliedReview(review, out blocker), "corrupt journal was discarded");
+        Require(backend.Payload == "{unreadable journal" && backend.RemoveCalls == 0,
+            "corrupt journal was not retained");
+        backend.Write(validPayload);
+        backend.FailRead = true;
+        Require(!store.TryDiscardUnappliedReview(review, out blocker), "unreadable journal was discarded");
+        Require(backend.Payload == validPayload && backend.RemoveCalls == 0,
+            "read failure removed the review");
+        backend.FailRead = false;
+        Require(store.TryDiscardUnappliedReview(review, out blocker), blocker);
+    }
+
+    private static void ReviewDiscardRequiresRemovalReadback()
+    {
+        CareerCalendarEditorState before = Editor(41, "old notes");
+        var session = new Sr5DowntimeCalendarDesktopSession();
+        session.Bind(Binding(before, 41, 'a', 'b'), before);
+        Require(session.TryPreviewDelete(WeekId, out string blocker), blocker);
+        var backend = new DiscardBackend();
+        var store = Sr5DowntimeCalendarJournalStore.CreateIsolated(backend);
+        Require(store.TryWriteReview(session, Guid.NewGuid(), out var review, out blocker), blocker);
+        string payload = backend.Payload;
+        backend.IgnoreRemove = true;
+        Require(!store.TryDiscardUnappliedReview(review, out blocker), "failed removal read-back reported success");
+        Require(backend.Payload == payload, "failed removal did not retain review");
+        backend.IgnoreRemove = false;
+        backend.FailReadAfterRemove = true;
+        Require(!store.TryDiscardUnappliedReview(review, out blocker), "unreadable removal result reported success");
+        Require(backend.Payload.Length == 0, "simulated successful removal did not run");
+    }
+
+    private static void ReturnedReviewCannotOrphanSharedMutationOwner()
+    {
+        CareerCalendarEditorState before = Editor(41, "old notes");
+        var session = new Sr5DowntimeCalendarDesktopSession();
+        session.Bind(Binding(before, 41, 'a', 'b'), before);
+        Require(session.TryPreviewDelete(WeekId, out string blocker), blocker);
+        var journalBackend = new DiscardBackend();
+        var ownerBackend = new FaultingRemoveBackend();
+        var ownerStore = new Sr5CareerMutationOwnerStore(ownerBackend);
+        var store = new Sr5DowntimeCalendarJournalStore(journalBackend, ownerStore);
+        Require(store.TryWriteReview(session, Guid.NewGuid(), out var review, out blocker), blocker);
+        Require(store.TryBeginApplying(review, out var applying, out blocker), blocker);
+        ownerBackend.FailRemove = true;
+        Require(!store.TryReturnToReview(applying, out var returned, out blocker), "owner-release failure was hidden");
+        Require(returned.IsExact() && returned.Version >= 3
+            && returned.Phase == Sr5DowntimeCalendarJournalPhase.Review, "returned Review was not durable");
+        string payload = journalBackend.Payload;
+        Require(!store.TryDiscardUnappliedReview(returned, out blocker),
+            "returned Review was discarded while its shared owner remained");
+        Require(journalBackend.Payload == payload && journalBackend.RemoveCalls == 0,
+            "failed owner reconciliation removed the returned Review");
+        Require(!ownerStore.TryRunWhenUnowned(() => (true, string.Empty), out _),
+            "another Career mutation entered while the shared owner remained");
+
+        ownerBackend.FailRemove = false;
+        Require(store.TryDiscardUnappliedReview(returned, out blocker), blocker);
+        Require(journalBackend.Payload.Length == 0 && journalBackend.RemoveCalls == 1,
+            "reconciled returned Review was not discarded");
+        Require(ownerStore.TryRunWhenUnowned(() => (true, string.Empty), out blocker), blocker);
+        Require(!store.TryBeginApplying(returned, out _, out blocker), "discarded recovery Review was replayed");
+    }
+
     private static CareerCalendarEditorState Editor(long revision, string notes)
     {
         string raw = $"<week><guid>{WeekId:D}</guid><year>2081</year><week>12</week><notes>{notes}</notes><notesColor>Chocolate</notesColor></week>";
@@ -174,5 +310,23 @@ internal static class Program
     {
         try { action(); } catch (T) { return; }
         throw new InvalidOperationException(message);
+    }
+
+    private sealed class DiscardBackend : ISr5CareerCheckpointBackend
+    {
+        public string Payload { get; private set; } = string.Empty;
+        public int RemoveCalls { get; private set; }
+        public bool FailRead { get; set; }
+        public bool IgnoreRemove { get; set; }
+        public bool FailReadAfterRemove { get; set; }
+
+        public string Read() => FailRead ? throw new IOException("Simulated read failure.") : Payload;
+        public void Write(string payload) => Payload = payload;
+        public void Remove()
+        {
+            RemoveCalls++;
+            if (!IgnoreRemove) Payload = string.Empty;
+            if (FailReadAfterRemove) FailRead = true;
+        }
     }
 }
