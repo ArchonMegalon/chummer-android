@@ -10,6 +10,16 @@ FIXTURE = REPO / "tests/fixtures/career-manual-nuyen-e2e.chum5"
 
 
 class Api36CareerManualNuyenDriverTests(unittest.TestCase):
+    def test_optional_fields_remain_user_driven_and_exchange_amount_is_set_last(self) -> None:
+        source = DRIVER.read_text(encoding="utf-8")
+        self.assertEqual(2, source.count('device.tap("career-manual-nuyen-options-toggle"'))
+        exchange = source.index('device.tap("career-manual-nuyen-exchange"')
+        amount = source.index('device.set_text("career-manual-nuyen-amount", "Amount", "3000")')
+        spend = source.index('device.tap("career-manual-nuyen-spend"')
+        self.assertLess(exchange, amount, "Exchange prefill must not replace the tested3000 amount")
+        self.assertLess(amount, spend)
+        self.assertIn('shared.reset_scroll_to_top', source[exchange:amount])
+
     def test_driver_is_phone_only_api36_full_graph_and_restart_bound(self) -> None:
         source = DRIVER.read_text(encoding="utf-8")
         ast.parse(source)
