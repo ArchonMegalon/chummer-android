@@ -186,6 +186,12 @@ internal static class Program
             await AfterRunAuthorityHarness.RunCareerQualityAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--career-quality-choices-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCareerQualityChoicesAsync(args[1]);
+            await AfterRunAuthorityHarness.RunCareerQualityAsync(args[1]);
+            return;
+        }
         if (args.Length is 2 or 3 && args[0] == "--creation-racial-quality-content-root")
         {
             await AfterRunAuthorityHarness.RunCreationQualityDetailsAsync(args[1], args.Length == 3 ? args[2] : null,

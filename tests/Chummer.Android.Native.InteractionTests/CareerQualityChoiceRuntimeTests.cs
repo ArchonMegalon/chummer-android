@@ -16,6 +16,39 @@ internal static partial class AfterRunAuthorityHarness
         using var culture = new QualityTestCulture("en-GB");
         await ui.RunAsync(async () =>
         {
+            // Prove unaffordability using real Core state, rather than assuming
+            // the generously funded mutation fixture must contain blocked quotes.
+            await using (var constrained = new NativeRewardRuntime(contentRoot,
+                careerQualityWorkspaceFactory: client => new AndroidCareerQualityAtomicWorkspace(client)))
+            {
+                await constrained.Coordinator.InitializeAsync();
+                await AccountStartupTask(constrained.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
+                await constrained.LoadRunnerAsync($"""
+                    <character><name>Career zero-Karma choices</name><gameedition>SR5</gameedition>
+                    <settings>{CharacterCreationBootstrapProfiles.PrioritySettingsProfileId}</settings>
+                    <metatype>Human</metatype><metatypeguid>a53d885d-a4a4-443d-b6a6-b0a55b0a96c7</metatypeguid>
+                    <buildmethod>Priority</buildmethod><createdversion>5.225.0</createdversion><appversion>5.225.0</appversion>
+                    <created>True</created><karma>0</karma><nuyen>1000</nuyen>
+                    <qualities/><improvements/><contacts/><expenses/><notes>Retain unrelated data</notes></character>
+                    """);
+                var constrainedPresenter = new RunnerSessionSr5CareerQualityPresenter(constrained.Coordinator);
+                var constrainedAuthority = new Sr5CareerQualityCoordinator(constrainedPresenter, constrainedPresenter);
+                var constrainedEditor = await constrainedAuthority.PrepareAsync()
+                    ?? throw new InvalidOperationException("SETUP: actual zero-Karma Core editor missing.");
+                var constrainedOffers = Sr5CareerQualityWizardPage.SelectableChoices(constrainedEditor)
+                    .SelectMany(group => group.Options).ToArray();
+                Require(constrainedEditor.Quotes.Count > 0 && constrainedEditor.Quotes.All(quote => quote.AvailableKarma == 0),
+                    "SETUP: constrained fixture did not project actual zero-Karma authority.");
+                Require(constrainedOffers.Any(quote => quote.CanApply
+                        && quote.Definition.Type == CharacterCareerQualityType.Negative)
+                    && !constrainedOffers.Any(quote => !quote.CanApply
+                        || quote.Definition.Name == "Erased"),
+                    "Zero-Karma choices must retain an admitted free negative quality and hide the unaffordable Erased purchase.");
+                // Core may retain a blocked quote or omit it before UI intake;
+                // neither representation may turn it into an available offer.
+                Require(constrainedEditor.Quotes.Where(quote => quote.Definition.Name == "Erased")
+                    .All(quote => !quote.CanApply), "Core admitted the 16-Karma Erased purchase at zero Karma.");
+            }
             var owners = new ControlledLinkedOwner();
             owners.Set(OwnerScope.LocalSingleUser);
             await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
@@ -49,8 +82,12 @@ internal static partial class AfterRunAuthorityHarness
                     && quote.Authority.Effects.UnsupportedFamilies.Count == 0
                     && editor.Quotes.Any(original => ReferenceEquals(original, quote))),
                     "Filtered choices must retain original exact admitted Core quotes only.");
-                Require(editor.Quotes.Any(quote => !quote.CanApply)
-                    && !offered.Any(quote => !quote.CanApply), "Unavailable qualities leaked into offers.");
+                Require(!offered.Any(quote => !quote.CanApply), "Unavailable qualities leaked into offers.");
+                if (level == 0)
+                    Require(offered.Any(quote => quote.Definition.Name == "Erased"
+                        && quote.Operation == CharacterCareerQualityOperation.AcquireLevel
+                        && quote.CharacterKarmaDelta == -16),
+                        "The same source profile must admit Erased with sufficient Karma; the zero-Karma absence cannot be a missing source.");
                 Require(Sr5CareerQualityWizardPage.SelectableChoices(editor with { OmittedCandidateCount = 1 }).Count == 0
                     && Sr5CareerQualityWizardPage.SelectableChoices(editor with { OmittedReceiptCount = 1 }).Count == 0,
                     "An incomplete authority must not offer an apparently selectable quality.");
