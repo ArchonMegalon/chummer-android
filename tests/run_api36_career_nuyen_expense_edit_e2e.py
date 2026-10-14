@@ -100,7 +100,7 @@ def matching_root(device: shared.Device, nuyen: str, manual_reason: str, locked_
 
 
 def select_locked_expense(device: shared.Device) -> None:
-    label = "2081-05-10 10:00 · -500 · Armor"
+    label = "2081-05-10 10:00 · -500 Nuyen · Armor"
     device.tap("career-nuyen-expense-picker", timeout=60, scroll=True, max_scrolls=12)
     device.tap(label, timeout=60, scroll=True, max_scrolls=8)
     time.sleep(0.5)

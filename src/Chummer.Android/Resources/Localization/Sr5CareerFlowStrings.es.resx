@@ -1029,4 +1029,13 @@ Vista previa: {3}…</value></data>
   <data name="The amount, percentage, or exchange multiple does not permit this gain." xml:space="preserve"><value>La cantidad, el porcentaje o el múltiplo de intercambio no permiten este ingreso.</value></data>
   <data name="Working for the People records {0} Nuyen in the expense and changes the balance by {1}. Working for the Man uses {1} for both." xml:space="preserve"><value>Trabajar para la gente registra {0} Nuyen y cambia el saldo en {1}. Trabajar para el sistema usa {1} en ambos casos.</value></data>
   <data name="Exchange uses multiples of {0} Nuyen. Working for the Man uses {1} Nuyen per Karma." xml:space="preserve"><value>El intercambio usa múltiplos de {0} Nuyen. Trabajar para el sistema usa {1} Nuyen por Karma.</value></data>
+  <data name="Edit Karma entry" xml:space="preserve"><value>Editar registro de Karma</value></data>
+  <data name="Edit Nuyen entry" xml:space="preserve"><value>Editar registro de nuyen</value></data>
+  <data name="{0} Karma available" xml:space="preserve"><value>{0} Karma disponible</value></data>
+  <data name="{0} Nuyen available" xml:space="preserve"><value>{0} nuyen disponibles</value></data>
+  <data name="Saved entry" xml:space="preserve"><value>Registro guardado</value></data>
+  <data name="Save entry" xml:space="preserve"><value>Guardar registro</value></data>
+  <data name="No reason" xml:space="preserve"><value>Sin motivo</value></data>
+  <data name="Only manually recorded amounts can be changed." xml:space="preserve"><value>Solo se pueden cambiar los importes registrados manualmente.</value></data>
+  <data name="Check the amount, reason and date before saving." xml:space="preserve"><value>Revisa el importe, el motivo y la fecha antes de guardar.</value></data>
 </root>

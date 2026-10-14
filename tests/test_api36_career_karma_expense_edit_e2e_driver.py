@@ -42,11 +42,9 @@ class Api36CareerKarmaExpenseEditDriverTests(unittest.TestCase):
         self.assertIn('manual.findtext("amount") != "2"', source)
         self.assertIn('rounded_root.findtext("karma") != "11"', source)
         self.assertIn('amount_node.attributes.get("enabled") != "false"', source)
-        self.assertIn("device.tap(LOCKED_ID", source)
-        self.assertNotIn(
-            'device.tap("2081-05-10 10:00:00 · 3.5 Karma · Locked quality"',
-            source,
-        )
+        self.assertNotIn("device.tap(LOCKED_ID", source)
+        self.assertIn('device.tap("2081-05-10 10:00 · 3.5 Karma · Locked quality"', source)
+        self.assertIn("assert_locked_metadata", source)
         self.assertNotIn('"tablet"', source)
 
     def test_fixture_has_exact_manual_locked_nuyen_and_nested_authorities(self) -> None:

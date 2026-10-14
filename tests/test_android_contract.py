@@ -3223,17 +3223,17 @@ class AndroidContractTests(unittest.TestCase):
             '"career-karma-expense-reason"',
             'AutomationId = "career-karma-expense-date"',
             'AutomationId = "career-karma-expense-time"',
-            'AutomationId = "career-karma-expense-locked-metadata"',
+            'AutomationId = "career-karma-expense-save-progress"',
             'AutomationId = "career-karma-expense-save"',
-            "_amount.IsEnabled = revisionMatches && _selected.AmountEditable",
+            "_amount.IsEnabled = current && _selected.AmountEditable",
             "CharacterCareerKarmaExpenseEditRules.TryEdit",
-            "_selected.KarmaUndoTypeElementPresent",
-            "_selected.RawKarmaUndoType",
             "_editor.ReasonNormalizationLanguage",
             "Coordinator.State.Preferences.Language",
             "DesktopLocalizationCatalog.NormalizeOrDefault",
-            "{expense.ExpenseId:D}",
-            "{expense.ExpenseDateLocal:yyyy-MM-dd HH:mm:ss}",
+            "{expense.ExpenseDateLocal:yyyy-MM-dd HH:mm}",
+            "Coordinator.IsCareerNavigationOwnerCurrent(_ownerContext)",
+            "IsCurrentAppearanceGeneration(appearance)",
+            "ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), this)",
         ):
             self.assertIn(token, page)
 
@@ -3286,13 +3286,14 @@ class AndroidContractTests(unittest.TestCase):
         authority_match = coordinator.index("authority.Matches(State)", authority)
         self.assertLess(durable_postcondition, authority)
         self.assertLess(authority, authority_match)
-        self.assertIn("if (persisted)", page)
+        self.assertIn("_recorded = persisted &&", page)
+        self.assertNotIn("{expense.ExpenseId:D}", page)
         locale_page_guard = page.index("_editor.ReasonNormalizationLanguage")
         page_request = page.rindex("_editor.ReasonNormalizationLanguage")
         self.assertLess(locale_page_guard, page.index("_save.IsEnabled"))
         self.assertLess(page.index("_save.IsEnabled"), page_request)
-        self.assertIn("await Navigation.PopAsync()", page[page.index("if (persisted)"):])
-        self.assertNotIn("Navigation.PopAsync", page[:page.index("if (persisted)")])
+        self.assertIn("await Navigation.PopAsync()", page[page.index("if (_recorded"):])
+        self.assertNotIn("Navigation.PopAsync", page[:page.index("if (_recorded")])
 
         self.assertIn("karmaUndoTypeElementPresent", rules)
         self.assertIn("rawKarmaUndoType", rules)

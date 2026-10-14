@@ -13,6 +13,11 @@ internal static class Program
 {
     private static async Task Main(string[] args)
     {
+        if (args.Length == 3 && args[0] == "--career-expense-feedback-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCareerExpenseFeedbackAsync(args[1], args[2]);
+            return;
+        }
         if (args.Length == 3 && args[0] == "--career-economy-feedback-content-root")
         {
             await AfterRunAuthorityHarness.RunCareerEconomyFeedbackAsync(args[1], args[2]);

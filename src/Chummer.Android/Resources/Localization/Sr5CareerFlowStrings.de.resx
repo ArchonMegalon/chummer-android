@@ -1029,4 +1029,13 @@ Vorschau: {3}…</value></data>
   <data name="The amount, percentage, or exchange multiple does not permit this gain." xml:space="preserve"><value>Betrag, Prozentsatz oder Tauschschritt erlauben diese Einnahme nicht.</value></data>
   <data name="Working for the People records {0} Nuyen in the expense and changes the balance by {1}. Working for the Man uses {1} for both." xml:space="preserve"><value>Arbeit für die Leute verbucht {0} Nuyen im Eintrag und ändert das Guthaben um {1}. Arbeit für den Konzern verwendet für beides {1}.</value></data>
   <data name="Exchange uses multiples of {0} Nuyen. Working for the Man uses {1} Nuyen per Karma." xml:space="preserve"><value>Der Tausch erfolgt in Schritten von {0} Nuyen. Arbeit für den Konzern verwendet {1} Nuyen pro Karma.</value></data>
+  <data name="Edit Karma entry" xml:space="preserve"><value>Karma-Buchung bearbeiten</value></data>
+  <data name="Edit Nuyen entry" xml:space="preserve"><value>Nuyen-Buchung bearbeiten</value></data>
+  <data name="{0} Karma available" xml:space="preserve"><value>{0} Karma verfügbar</value></data>
+  <data name="{0} Nuyen available" xml:space="preserve"><value>{0} Nuyen verfügbar</value></data>
+  <data name="Saved entry" xml:space="preserve"><value>Gespeicherte Buchung</value></data>
+  <data name="Save entry" xml:space="preserve"><value>Buchung speichern</value></data>
+  <data name="No reason" xml:space="preserve"><value>Ohne Grund</value></data>
+  <data name="Only manually recorded amounts can be changed." xml:space="preserve"><value>Nur manuell gebuchte Beträge lassen sich ändern.</value></data>
+  <data name="Check the amount, reason and date before saving." xml:space="preserve"><value>Prüfe Betrag, Grund und Datum vor dem Speichern.</value></data>
 </root>
