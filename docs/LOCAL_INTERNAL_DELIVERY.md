@@ -132,7 +132,37 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 234 is the latest [observed Internal availability](../play/evidence/preview234-internal-observation.json),
+Preview 235 is the latest [observed Internal availability](../play/evidence/preview235-internal-observation.json),
+released on 14 October at 16:06 Europe/Vienna. Its exact local ARM64 build,
+original-key isolated signing, independent keyless verification and one Play
+upload/save-and-publish/final confirmation completed. Android #781 groups
+Priority/Sum-to-Ten Creation Qualities into exact admitted rating/cost choices,
+hides unavailable offers and retains already-selected invalid items for removal.
+It does not add autosave, Karma/Life Modules selectors or Career rating controls.
+Seven unchanged-input model checks were reused; current managed run 07 compiled
+324 native sources with zero warnings/errors, and 21 focused Python checks passed.
+The corrected API 36 x64 Release/Internal build also had zero warnings/errors.
+Its Priority touch route verified grouped levels, rating replacement and responsive
+search/filtering, then one explicit save: revisions 15/15 to 16/16, draft 2 to 3,
+one appended receipt, rating 1/cost 10 and 15 Karma remaining. A new process
+restored the same choice/budget/receipt; all 39 saved/restarted files were
+byte-identical. Raw character and unrelated state stayed unchanged because effects
+remain staged until finalization. No Sum-to-Ten touch journey is claimed.
+
+Acceptance is deliberately narrower than forward wizard completion. Automatic
+navigation after Save and cold receipt Continue failed on the retained fixture:
+its pre-existing Magic draft bound Attributes revision 1 while current Attributes
+was revision 5, so the unchanged exact Core binding correctly rejected it.
+The original partial attempt and earlier application search ANR remain retained,
+not rewritten as full passes. No application ANR was observed in the corrected
+route; this does not establish a general ANR, startup or reload fix. SystemUI boot
+and observer limitations also remain recorded. Stale Magic recovery, automatic
+next-step success, full Creation/Career/Origin and physical Preview 235 installation
+are not claimed. Play reported 8739 supported phones, zero newly unsupported
+phones and only missing mapping/native-symbol warnings. Version 235 is consumed;
+retain its exact packet and prior rollback artifacts, and do not rebuild/re-upload it.
+
+Preview 234 was previously [observed on Internal](../play/evidence/preview234-internal-observation.json),
 released on 14 October at 14:47 Europe/Vienna. Its local ARM64 build, original-key
 isolated signing, independent keyless checks and one Play upload/final confirmation
 passed. Android #779 makes Reputation Done return directly to the
