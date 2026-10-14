@@ -25,6 +25,9 @@ public abstract class NativePageBase : ContentPage
 
     protected RunnerSessionCoordinator Coordinator { get; }
 
+    internal bool UsesCoordinator(RunnerSessionCoordinator coordinator)
+        => ReferenceEquals(Coordinator, coordinator);
+
     // Display-only mapping of one known refusal; the presenter keeps the exact
     // workspace identity and admission. Unknown notices must remain visible.
     protected bool HasUnsavedWorkspaceSwitchNotice

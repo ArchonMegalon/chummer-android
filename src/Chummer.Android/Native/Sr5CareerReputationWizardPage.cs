@@ -19,7 +19,7 @@ public sealed class Sr5CareerReputationWizardPage : NativePageBase
         _entryStillCurrent = entryStillCurrent;
         Title = PhoneStrings.Get("ReputationWizardTitle", "Career · Reputation");
         AutomationId = "sr5-career-reputation-page";
-        _view = new(model, RunAsync, async () => { if (model.CanFinish) await Navigation.PopAsync(); });
+        _view = new(model, RunAsync, FinishAsync);
         // No action is authorized until the owning page actually appears.
         _view.SetLifetime(new CancellationToken(canceled: true));
         Content = new ScrollView { Content = _view };
@@ -30,6 +30,36 @@ public sealed class Sr5CareerReputationWizardPage : NativePageBase
         token.ThrowIfCancellationRequested();
         if (!_model.HasCurrentSelection || !_entryAccepted && _entryStillCurrent?.Invoke() == false)
             throw new InvalidOperationException(PhoneStrings.Get("ReputationWizardRunnerChanged", "The selected runner changed."));
+    }
+
+    private async Task FinishAsync()
+    {
+        var lifetime = _lifetime;
+        var navigation = Navigation;
+        Page[] stack = navigation.NavigationStack.ToArray();
+        bool Current() => lifetime is not null && ReferenceEquals(lifetime, _lifetime)
+            && !lifetime.IsCancellationRequested && _entryAccepted && _model.CanFinish
+            && ReferenceEquals(stack.LastOrDefault(), this)
+            && navigation.NavigationStack.SequenceEqual(stack) && navigation.ModalStack.Count == 0;
+        if (!Current()) return;
+
+        int parentIndex = stack.Length - 2;
+        var reward = parentIndex >= 0 ? stack[parentIndex] as Sr5AfterRunRewardWizardPage : null;
+        if (reward is not null)
+        {
+            if (!reward.IsSavedContinuationFor(Coordinator)) return;
+            parentIndex--;
+        }
+        Page? origin = parentIndex >= 0 ? stack[parentIndex] : null;
+        // Only retire this exact completed flow. Never unwind arbitrary editors,
+        // another session, or the whole shell to find a Career page.
+        if (origin is not null && (origin is not (BuildPage or Sr5CareerWizardPage or PhoneTablePage)
+            || origin is not NativePageBase native || !native.UsesCoordinator(Coordinator))) return;
+        Page? career = origin is BuildPage or Sr5CareerWizardPage ? null : new BuildPage(Coordinator);
+        if (!Current() || reward is not null && !reward.IsSavedContinuationFor(Coordinator)) return;
+        if (career is not null) navigation.InsertPageBefore(career, this);
+        if (reward is not null) navigation.RemovePage(reward);
+        await navigation.PopAsync();
     }
 
     protected override void OnAppearing()

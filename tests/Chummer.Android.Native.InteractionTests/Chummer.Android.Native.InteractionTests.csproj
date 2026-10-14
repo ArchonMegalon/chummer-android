@@ -86,6 +86,7 @@
     <Compile Include="AccountErasureOwnerRuntimeTests.cs" />
     <Compile Include="RunnerDeletionRuntimeTests.cs" />
     <Compile Include="ReputationNativeRuntimeTests.cs" />
+    <Compile Include="ReputationFinishRuntimeTests.cs" />
     <Compile Include="../Chummer.Android.Sr5AfterRunReward.Tests/ReputationTests.cs" Link="ReputationTests.cs" />
     <Compile Include="../Chummer.Android.Sr5AfterRunReward.Tests/ReputationViewTests.cs" Link="ReputationViewTests.cs" />
     <None Include="$(ChummerCoreEngineRoot)/Chummer/data/settings.xml" Link="core-data/settings.xml" CopyToOutputDirectory="PreserveNewest" />
