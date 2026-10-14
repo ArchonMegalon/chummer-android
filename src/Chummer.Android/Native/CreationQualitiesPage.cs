@@ -609,9 +609,9 @@ public sealed class CreationQualitiesPage : NativePageBase
         // on clear can send the next Enter key to a different action (Review).
         _catalog.Clear();
 
-        CharacterCreationQualitiesDesktopOption[] matches = _filters.Apply(_availableOptions,
+        var matches = CreationQualityRatingChoices.Group(_filters.Apply(_availableOptions,
             option => QualityCatalogStrings.MatchesSearch(option.SourceId, option.Name, option.FollowUpChoiceLabel, _filter),
-            _draft.IsSelected, _fitHints);
+            _draft.IsSelected, _fitHints));
         if (_filters.Sort == 3)
         {
             _catalog.Add(NativeTheme.Body(CreationFlowStrings.Get(
@@ -655,9 +655,12 @@ public sealed class CreationQualitiesPage : NativePageBase
         pager.Add(next);
         _catalog.Add(pager);
 
-        CharacterCreationQualitiesDesktopOption[] visible = matches.Skip(_catalogOffset).Take(CatalogPageSize).ToArray();
-        foreach (CharacterCreationQualitiesDesktopOption option in visible)
+        foreach (var group in matches.Skip(_catalogOffset).Take(CatalogPageSize))
         {
+                var option = group.FirstOrDefault(candidate => _draft.IsSelected(candidate.OptionId))
+                    ?? group.FirstOrDefault(candidate => _draft.IsAdmitted(candidate.OptionId)) ?? group[0];
+                var ratings = group.Where(candidate => _draft.IsAdmitted(candidate.OptionId))
+                    .OrderBy(candidate => candidate.Rating).ToArray();
                 bool selected = _draft.IsSelected(option.OptionId);
                 bool exact = CreationQualitiesPhoneAuthority.IsOptionConfigurable(option);
                 string followUp = string.IsNullOrWhiteSpace(option.FollowUpChoiceLabel)
@@ -679,19 +682,22 @@ public sealed class CreationQualitiesPage : NativePageBase
                 name = (option.Type == CharacterCreationQualityType.Positive ? "+ " : "− ") + name;
                 if (_filters.Sort == 3 && _fitHints.TryGetValue(option.OptionId, out var hint))
                     detail += " · " + CreationFlowStrings.Format("Qualities.Filter.Related", "Related to {0}", hint.SkillName);
-                Border row = NativeTheme.NavigationRow(
+                Border? row = null;
+                row = NativeTheme.NavigationRow(
                     name,
                     detail,
-                    () => Navigation.PushAsync(new CreationQualityConfigurePage(
+                    () => !ReferenceEquals(row?.Parent, _catalog) || !IsCatalogCurrent() || checkpointOwnsLane
+                        ? Task.CompletedTask : Navigation.PushAsync(new CreationQualityConfigurePage(
                         Coordinator,
                         state,
                         editor,
                         option,
                         _draft,
-                        original: _loadedDisplay!)),
+                        original: _loadedDisplay!, ratingOptions: group)),
                     enabled: !checkpointOwnsLane,
                     automationId: $"creation-quality-option-{Token(option.OptionId)}");
                 var rowGrid = (Grid)row.Content!;
+                var rowAction = rowGrid.Children.OfType<Button>().Single();
                 rowGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
                 Button info = NativeTheme.SecondaryButton("!");
                 info.AutomationId = $"creation-quality-info-{Token(option.OptionId)}";
@@ -710,8 +716,64 @@ public sealed class CreationQualitiesPage : NativePageBase
                     await OpenInfoAsync(new CreationQualityInfoPage(Coordinator, original, source), original);
                 };
                 rowGrid.Add(info, 2);
+                var extras = new VerticalStackLayout { Spacing = 6 };
+                var explanation = NativeTheme.Body(string.Empty, NativeTheme.Muted);
+                explanation.AutomationId = $"creation-quality-summary-{Token(group[0].OptionId)}";
+                void Explain()
+                {
+                    var source = state.Authority.Options.Single(item => item.OptionId == option.OptionId);
+                    explanation.Text = CreationQualityInfo.Effects(source.SourceNodeXml, option.Rating).FirstOrDefault();
+                }
+                Explain();
+                extras.Add(explanation);
+                foreach (var retained in group.Where(candidate => _draft.IsSelected(candidate.OptionId)
+                    && !_draft.IsAdmitted(candidate.OptionId)))
+                    extras.Add(NativeTheme.Body(CreationFlowStrings.Get("Common.SelectedPrefix", "Selected · ")
+                        + RatingLabel(retained) + " · " + UnavailableReason(retained.DisableReasonKey), NativeTheme.Danger));
+                if (ratings.Length > 1 || ratings.Length == 1 && ratings[0].OptionId != option.OptionId)
+                {
+                    var picker = RatingPicker(ratings, option, $"creation-quality-rating-{Token(group[0].OptionId)}");
+                    picker.IsEnabled = !checkpointOwnsLane;
+                    var detailLabel = rowGrid.Children.OfType<VerticalStackLayout>().Single().Children.OfType<Label>().Last();
+                    picker.SelectedIndexChanged += (_, _) =>
+                    {
+                        if (!ReferenceEquals(row.Parent, _catalog) || !IsCatalogCurrent() || checkpointOwnsLane
+                            || !picker.IsEnabled || picker.SelectedIndex < 0 || picker.SelectedIndex >= ratings.Length) return;
+                        option = ratings[picker.SelectedIndex];
+                        detailLabel.Text = (_draft.IsSelected(option.OptionId)
+                            ? CreationFlowStrings.Get("Common.SelectedPrefix", "Selected · ") : string.Empty)
+                            + RatingLabel(option) + followUp;
+                        SemanticProperties.SetDescription(row, $"{name}. {detailLabel.Text}");
+                        SemanticProperties.SetDescription(rowAction, $"{name}. {detailLabel.Text}");
+                        Explain();
+                    };
+                    extras.Add(picker);
+                }
+                rowGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+                rowGrid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+                rowGrid.Add(extras, 0, 1);
+                Grid.SetColumnSpan(extras, 3);
                 _catalog.Add(row);
         }
+    }
+
+    internal static string RatingLabel(CharacterCreationQualitiesDesktopOption option)
+        => CreationFlowStrings.Format("Qualities.OptionDetail", "{0}rating {1} · Karma {2}{3}",
+            string.Empty, option.Rating.ToString(CultureInfo.InvariantCulture), Signed(option.KarmaCost), string.Empty);
+
+    internal static Picker RatingPicker(IReadOnlyList<CharacterCreationQualitiesDesktopOption> ratings,
+        CharacterCreationQualitiesDesktopOption selected, string automationId)
+    {
+        var picker = new Picker
+        {
+            AutomationId = automationId,
+            Title = CreationFlowStrings.Get("Common.Rating", "Rating"),
+            ItemsSource = ratings.Select(RatingLabel).ToArray(),
+            SelectedIndex = ratings.ToList().FindIndex(option => option.OptionId == selected.OptionId),
+            TextColor = NativeTheme.Text, BackgroundColor = NativeTheme.Surface
+        };
+        SemanticProperties.SetDescription(picker, CreationFlowStrings.Get("Common.Rating", "Rating"));
+        return picker;
     }
 
     private void ApplyFilter(string? value)
@@ -1658,8 +1720,11 @@ public sealed class CreationQualityConfigurePage : NativePageBase
     private readonly CharacterOverviewState _original;
     private readonly CharacterCreationQualitiesState _state;
     private readonly CharacterCreationQualitiesEditorState _editor;
-    private readonly CharacterCreationQualitiesDesktopOption _option;
+    private CharacterCreationQualitiesDesktopOption _option;
+    private readonly IReadOnlyList<CharacterCreationQualitiesDesktopOption> _ratings;
+    private readonly IReadOnlyList<CharacterCreationQualitiesDesktopOption> _ratingFamily;
     private readonly CreationQualitiesPhoneDraft _draft;
+    private readonly VerticalStackLayout _details = new() { Spacing = 14 };
     private readonly VerticalStackLayout _body = new()
     {
         Padding = new Thickness(20, 18, 20, 40),
@@ -1673,13 +1738,30 @@ public sealed class CreationQualityConfigurePage : NativePageBase
         CharacterCreationQualitiesEditorState editor,
         CharacterCreationQualitiesDesktopOption option,
         CreationQualitiesPhoneDraft draft,
-        CharacterOverviewState? original = null) : base(coordinator)
+        CharacterOverviewState? original = null,
+        IReadOnlyList<CharacterCreationQualitiesDesktopOption>? ratingOptions = null) : base(coordinator)
     {
         _original = original ?? coordinator.State;
         _state = state ?? throw new ArgumentNullException(nameof(state));
         _editor = editor ?? throw new ArgumentNullException(nameof(editor));
         _option = option ?? throw new ArgumentNullException(nameof(option));
+        _ratingFamily = (ratingOptions ?? [option]).Where(candidate =>
+                CreationQualityRatingChoices.SameQuality(option, candidate)
+                && editor.Options.Any(exact => exact == candidate)).OrderBy(candidate => candidate.Rating).ToArray();
         _draft = draft ?? throw new ArgumentNullException(nameof(draft));
+        _ratings = _ratingFamily.Where(candidate => _draft.IsAdmitted(candidate.OptionId)).ToArray();
+        if (ratingOptions is null && Coordinator.IsCreationCatalogDisplayCurrent(_original)
+            && _draft.Matches(_state, _original))
+        {
+            // Legacy single-option callers may not have loaded the catalog.
+            // Prove this exact proposal with Core; source-configurable alone
+            // does not mean the rating fits the current selection or budget.
+            var proposed = _draft.SelectedOptionIds.Where(id => id != option.OptionId)
+                .Append(option.OptionId).ToArray();
+            var preview = CharacterCreationQualitiesRules.Evaluate(new(_state.Binding, _state.Authority, proposed));
+            _ratings = preview.Blockers.All(blocker => blocker == CharacterCreationQualitiesBlockers.MetagenicImbalanced)
+                ? _ratingFamily : [];
+        }
         Title = CreationFlowStrings.Get("Qualities.Configure.PageTitle", "Configure quality");
         AutomationId = "creation-quality-configure-page";
         Content = new ScrollView { Content = _body };
@@ -1688,6 +1770,7 @@ public sealed class CreationQualityConfigurePage : NativePageBase
     protected override void Refresh()
     {
         _body.Clear();
+        _body.IsEnabled = Coordinator.IsCreationCatalogDisplayCurrent(_original);
         _body.Add(NativeTheme.Eyebrow(CreationFlowStrings.Get("Qualities.Step2", "SR5 · 2 of 4")));
         if (!Coordinator.IsCreationCatalogDisplayCurrent(_original))
         {
@@ -1696,6 +1779,29 @@ public sealed class CreationQualityConfigurePage : NativePageBase
             return;
         }
         _body.Add(NativeTheme.Title(QualityCatalogStrings.Name(_option.SourceId, _option.Name)));
+        if (_ratings.Count > 1 || _ratings.Count == 1 && _ratings[0].OptionId != _option.OptionId)
+        {
+            var picker = CreationQualitiesPage.RatingPicker(_ratings, _option, "creation-quality-configure-rating");
+            long appearance = CaptureAppearanceGeneration();
+            picker.SelectedIndexChanged += (_, _) =>
+            {
+                if (!ReferenceEquals(picker.Parent, _body) || !_body.IsEnabled || !IsCurrentAppearanceGeneration(appearance)
+                    || !Coordinator.IsCreationCatalogDisplayCurrent(_original) || !picker.IsEnabled
+                    || picker.SelectedIndex < 0 || picker.SelectedIndex >= _ratings.Count) return;
+                _option = _ratings[picker.SelectedIndex];
+                _blockers = [];
+                RefreshSelectionDetails();
+            };
+            _body.Add(picker);
+        }
+        _body.Add(_details);
+        RefreshSelectionDetails();
+    }
+
+    private void RefreshSelectionDetails()
+    {
+        // Keep the active native Picker attached while only its dependent copy changes.
+        _details.Clear();
         VerticalStackLayout details = new() { Spacing = 6 };
         VerticalStackLayout technical = new() { Spacing = 6 };
         technical.Add(NativeTheme.Metric(CreationFlowStrings.Get("Qualities.StableOption", "Stable option"), _option.OptionId));
@@ -1717,18 +1823,18 @@ public sealed class CreationQualityConfigurePage : NativePageBase
             NativeTheme.Muted));
         Border detailCard = NativeTheme.Card(details);
         detailCard.AutomationId = "creation-quality-configure-authority";
-        _body.Add(detailCard);
+        _details.Add(detailCard);
 
         // Explain the exact catalog option next to its cost and add action.
         // Use the same source-bound original summaries and level warnings as !.
         var source = _state.Authority.Options.SingleOrDefault(item => item.OptionId == _option.OptionId);
         if (source is not null)
-            CreationQualityInfoPage.AddEffects(_body,
+            CreationQualityInfoPage.AddEffects(_details,
                 CreationQualityInfo.Effects(source.SourceNodeXml, _option.Rating), _option.Rating,
                 "creation-quality-configure", () => Coordinator.IsCreationCatalogDisplayCurrent(_original));
 
         CharacterCreationQualitiesPreview preview = _draft.Preview ?? _state.Preview;
-        _body.Add(NativeTheme.Body(
+        _details.Add(NativeTheme.Body(
             CreationFlowStrings.Format(
                 "Qualities.Configure.Preview",
                 "Selected: +{0} positive · -{1} negative · {2} Karma remaining",
@@ -1738,9 +1844,11 @@ public sealed class CreationQualityConfigurePage : NativePageBase
             preview.Blockers.Count == 0 ? NativeTheme.Muted : NativeTheme.Danger));
 
         foreach (string blocker in preview.Blockers.Concat(_blockers).Distinct(StringComparer.Ordinal))
-            _body.Add(NativeTheme.Body($"• {blocker}", NativeTheme.Danger));
+            _details.Add(NativeTheme.Body($"• {blocker}", NativeTheme.Danger));
 
-        bool exact = CreationQualitiesPhoneAuthority.IsOptionConfigurable(_option)
+        bool exact = (_draft.IsSelected(_option.OptionId)
+                     || CreationQualitiesPhoneAuthority.IsOptionConfigurable(_option)
+                        && _ratings.Any(candidate => candidate.OptionId == _option.OptionId))
                      && Coordinator.IsCreationCatalogDisplayCurrent(_original)
                      && _draft.Matches(_state, Coordinator.State)
                      && _editor.Options.Count(candidate => string.Equals(
@@ -1753,35 +1861,53 @@ public sealed class CreationQualityConfigurePage : NativePageBase
                 : CreationFlowStrings.Get("Qualities.Configure.Add", "Add to draft"));
         toggle.AutomationId = "creation-quality-configure-toggle";
         toggle.IsEnabled = exact;
-        toggle.Clicked += async (_, _) => await RunAsync(ToggleAsync);
-        _body.Add(toggle);
+        long generation = CaptureAppearanceGeneration();
+        toggle.Clicked += async (_, _) =>
+        {
+            if (!ReferenceEquals(toggle.Parent, _details) || !_body.IsEnabled || !toggle.IsEnabled
+                || !IsCurrentAppearanceGeneration(generation)
+                || !Coordinator.IsCreationCatalogDisplayCurrent(_original)) return;
+            await RunAsync(ToggleAsync);
+        };
+        _details.Add(toggle);
         if (!exact)
         {
             Label disabled = NativeTheme.Body(
                 CreationQualitiesPage.UnavailableReason(_option.DisableReasonKey),
                 NativeTheme.Danger);
             disabled.AutomationId = "creation-quality-configure-disabled-reason";
-            _body.Add(disabled);
+            _details.Add(disabled);
         }
         Button done = NativeTheme.SecondaryButton(CreationFlowStrings.Get(
             "Qualities.Configure.Back",
             "Back to qualities"));
         done.AutomationId = "creation-quality-configure-done";
         done.Clicked += async (_, _) => await Navigation.PopAsync();
-        _body.Add(done);
-        _body.Add(NativeTheme.TechnicalDetails(technical, "creation-quality-configure-technical-details"));
+        _details.Add(done);
+        _details.Add(NativeTheme.TechnicalDetails(technical, "creation-quality-configure-technical-details"));
     }
 
     private async Task ToggleAsync()
     {
-        IReadOnlyList<string> proposed = _draft.WithToggle(_option);
-        CharacterCreationFoundationResult<CharacterCreationQualitiesPreview> result =
-            await Task.Run(() => Coordinator.ReadCreationAuthority(_original,
-                () => Coordinator.PreviewCreationQualities(_state.Binding, proposed, _original), CancellationToken.None));
         if (!Coordinator.IsCreationCatalogDisplayCurrent(_original)) return;
-        _blockers = result.Blockers;
-        _draft.TryAdopt(_state, Coordinator.State, result, proposed);
-        Refresh();
+        long appearance = CaptureAppearanceGeneration();
+        _body.IsEnabled = false;
+        IReadOnlyList<string> proposed = _draft.WithToggle(_option, _ratingFamily);
+        try
+        {
+            CharacterCreationFoundationResult<CharacterCreationQualitiesPreview> result =
+                await Task.Run(() => Coordinator.ReadCreationAuthority(_original,
+                    () => Coordinator.PreviewCreationQualities(_state.Binding, proposed, _original), CancellationToken.None));
+            if (!IsCurrentAppearanceGeneration(appearance) || !Coordinator.IsCreationCatalogDisplayCurrent(_original)) return;
+            _blockers = result.Blockers;
+            _draft.TryAdopt(_state, Coordinator.State, result, proposed);
+            Refresh();
+        }
+        finally
+        {
+            if (IsCurrentAppearanceGeneration(appearance) && Coordinator.IsCreationCatalogDisplayCurrent(_original))
+                _body.IsEnabled = true;
+        }
     }
 }
 

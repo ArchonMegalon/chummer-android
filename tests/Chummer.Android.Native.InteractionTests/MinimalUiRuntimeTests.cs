@@ -3626,8 +3626,8 @@ internal static partial class AfterRunAuthorityHarness
             var state = loaded.Value ?? throw new InvalidOperationException("SETUP: quality authority missing.");
             VerifyQualitiesSinglePassBinding(state, original);
             var catalogPage = new CreationQualitiesPage(coordinator);
-            await MinimalPrepareAsync(catalogPage);
             var catalogNavigation = new NavigationPage(catalogPage);
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(catalogPage, "OnAppearing")));
             SearchBar Search() => MinimalVisible(catalogPage).OfType<SearchBar>().Single();
             var retainedSearch = Search();
             var retainedReview = MinimalVisible(catalogPage).OfType<Button>().Single(item =>
@@ -3657,6 +3657,7 @@ internal static partial class AfterRunAuthorityHarness
             Require(ReferenceEquals(Search(), retainedSearch) && MinimalVisibleText(catalogPage) == secondPage,
                 "Paging detached the editor or a detached pager changed the new result list.");
             await VerifyQualityHelpScrollReturnAsync(ui, catalogPage, catalogNavigation);
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(catalogPage, "OnAppearing")));
             retainedSearch = Search();
             retainedSearch.Text = "Ambidextrous";
             ((ISearchBarController)retainedSearch).OnSearchButtonPressed();
@@ -3674,16 +3675,133 @@ internal static partial class AfterRunAuthorityHarness
             var editor = CreationQualitiesPhoneAuthority.ProjectEditor(state, original);
             var draft = new CreationQualitiesPhoneDraft();
             draft.Bind(state, original);
-            var option = draft.AvailableOptions(state, original, editor, default)
-                .Where(item => !item.IsMetagenic && (!racialVision || item.Name == "Ambidextrous"))
-                .OrderByDescending(item => !string.IsNullOrWhiteSpace(item.FollowUpChoiceLabel)).First();
+            var available = draft.AvailableOptions(state, original, editor, default);
+            var willToLiveId = Guid.Parse("18d2a522-6460-4654-916b-a96631f11323");
+            var willToLive = state.Authority.Options.Where(item => item.SourceId == willToLiveId).ToArray();
+            Require(willToLive.Length == 3 && willToLive.All(item => !item.IsSelectable
+                    && item.DisableReasonKey == CharacterCreationQualitiesBlockers.EffectsNotProjectable)
+                && !available.Any(item => item.SourceId == willToLiveId),
+                "Unprojectable real Will to Live ratings must stay hidden, not gain UI-created admission.");
+            var ratedSourceId = Guid.Parse("60972204-7dc5-4882-be7d-781f533dabef");
+            var ratedSource = state.Authority.Options.Where(item => item.SourceId == ratedSourceId)
+                .OrderBy(item => item.Rating).ToArray();
+            Require(ratedSource.Select(item => item.Rating).SequenceEqual([1, 2, 3])
+                && ratedSource.Select(item => item.KarmaCost).SequenceEqual([10, 20, 30])
+                && ratedSource.All(item => item.SelectionKey == ratedSourceId.ToString("D")
+                    && item.FollowUpChoiceId is null && item.IsSelectable),
+                "SETUP: real Spike Resistance must retain exact source-bound rating identities and costs.");
+            var ratings = CreationQualityRatingChoices.Group(available).Single(group =>
+                group[0].SourceId == ratedSourceId).OrderBy(item => item.Rating).ToArray();
+            Require(state.Preview.KarmaRemaining == 25 && ratings.Select(item => item.Rating).SequenceEqual([1, 2]),
+                "The real 30-Karma rating must be hidden while its affordable exact lower ratings remain offered.");
+            var ratedConfigure = new CreationQualityConfigurePage(coordinator, state, editor,
+                ratings[0], draft, original, ratings);
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(ratedConfigure, "OnAppearing")));
+            Picker Rating() => MinimalVisible(ratedConfigure).OfType<Picker>().Single(item =>
+                item.AutomationId == "creation-quality-configure-rating");
+            Button RatingAction() => MinimalVisible(ratedConfigure).OfType<Button>().Single(item =>
+                item.AutomationId == "creation-quality-configure-toggle");
+            var firstPicker = Rating();
+            Require(firstPicker.Items.SequenceEqual(ratings.Select(CreationQualitiesPage.RatingLabel)),
+                "The native rating picker must contain only the exact admitted rating/cost pairs.");
+            firstPicker.SelectedIndex = ratings.Length - 1;
+            Require(ReferenceEquals(firstPicker, Rating())
+                && MinimalVisibleText(ratedConfigure).Contains(CreationQualitiesPage.Signed(ratings[^1].KarmaCost))
+                && CreationQualityInfo.Effects(ratedSource[^2].SourceNodeXml, ratings[^1].Rating)
+                    .All(effect => MinimalVisibleText(ratedConfigure).Contains(effect)),
+                "Changing a rating must keep the Picker attached and refresh its exact cost/effect level.");
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)RatingAction()).SendClicked()));
+            Require(draft.SelectedOptionIds.SequenceEqual([ratings[^1].OptionId])
+                && draft.Preview!.KarmaRemaining == state.Preview.KarmaRemaining - ratings[^1].KarmaCost,
+                "The actual rating action lost the exact Core OptionId or Karma cost.");
+            Require(Rating().SelectedIndex == ratings.Length - 1,
+                "Refreshing a selected quality reset it to the first rating.");
+            var currentPicker = Rating();
+            firstPicker.SelectedIndex = 0;
+            Require(currentPicker.SelectedIndex == ratings.Length - 1,
+                "A detached rating picker changed the current selection.");
+            currentPicker.SelectedIndex = 0;
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)RatingAction()).SendClicked()));
+            Require(draft.SelectedOptionIds.SequenceEqual([ratings[0].OptionId])
+                && draft.Preview!.KarmaRemaining == state.Preview.KarmaRemaining - ratings[0].KarmaCost,
+                "Changing the selected rating added a duplicate or retained its old budget charge.");
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)RatingAction()).SendClicked()));
+            Require(draft.SelectedOptionIds.Count == 0, "Removing a selected rating left a hidden sibling selected.");
+            var departedPicker = Rating();
+            string departedText = MinimalVisibleText(ratedConfigure);
+            IssuedPageLifecycle(ratedConfigure, "OnDisappearing");
+            departedPicker.SelectedIndex = ratings.Length - 1;
+            Require(MinimalVisibleText(ratedConfigure) == departedText && draft.SelectedOptionIds.Count == 0,
+                "A departed quality picker changed its detail view or draft.");
+
+            var unavailableDraft = new CreationQualitiesPhoneDraft();
+            unavailableDraft.Bind(state, original);
+            string unavailableId = ratedSource[^1].OptionId;
+            var unavailablePreview = coordinator.PreviewCreationQualities(state.Binding, [unavailableId], original);
+            Require(unavailablePreview.Value is { CanConfirm: false }
+                && unavailableDraft.TryAdopt(state, original, unavailablePreview, [unavailableId]),
+                "SETUP: the retained 30-Karma rating must have an authoritative blocked preview.");
+            var retainedFamily = CreationQualityRatingChoices.Group(unavailableDraft.AvailableOptions(
+                state, original, editor, default)).Single(group => group[0].SourceId == ratedSourceId);
+            var unavailableConfigure = new CreationQualityConfigurePage(coordinator, state, editor,
+                retainedFamily.Single(item => item.OptionId == unavailableId), unavailableDraft, original, retainedFamily);
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(unavailableConfigure, "OnAppearing")));
+            Button UnavailableAction() => MinimalVisible(unavailableConfigure).OfType<Button>().Single(item =>
+                item.AutomationId == "creation-quality-configure-toggle");
+            Require(UnavailableAction().IsEnabled
+                && MinimalVisible(unavailableConfigure).OfType<Picker>().Single().Items
+                    .SequenceEqual(ratings.Select(CreationQualitiesPage.RatingLabel)),
+                "The retained invalid rating must remain removable but must not enter the admitted picker.");
+            await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)UnavailableAction()).SendClicked()));
+            Require(unavailableDraft.SelectedOptionIds.Count == 0 && !UnavailableAction().IsEnabled,
+                "Removing an unavailable rating must not offer to add that inadmissible rating again.");
+            ((IButtonController)UnavailableAction()).SendClicked();
+            Require(unavailableDraft.SelectedOptionIds.Count == 0,
+                "A retained unavailable Add callback reintroduced the removed invalid rating.");
+            IssuedPageLifecycle(unavailableConfigure, "OnDisappearing");
+            foreach (var candidate in new[] { ratings[0], retainedFamily.Single(item => item.OptionId == unavailableId) })
+            {
+                var directDraft = new CreationQualitiesPhoneDraft();
+                directDraft.Bind(state, original);
+                var directConfigure = new CreationQualityConfigurePage(coordinator, state, editor,
+                    candidate, directDraft, original);
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(directConfigure, "OnAppearing")));
+                Require(MinimalVisible(directConfigure).OfType<Button>().Single(item =>
+                    item.AutomationId == "creation-quality-configure-toggle").IsEnabled == (candidate.OptionId == ratings[0].OptionId),
+                    "A direct single-option editor must prove current Core budget admission before enabling Add.");
+                IssuedPageLifecycle(directConfigure, "OnDisappearing");
+            }
+
+            var liveSearch = Search();
+            liveSearch.Text = "Spike Resistance";
+            ((ISearchBarController)liveSearch).OnSearchButtonPressed();
+            var ratedRows = MinimalVisible(catalogPage).OfType<Button>().Where(item =>
+                item.AutomationId?.StartsWith("creation-quality-option-", StringComparison.Ordinal) == true).ToArray();
+            var catalogPicker = MinimalVisible(catalogPage).OfType<Picker>().Single(item =>
+                item.AutomationId?.StartsWith("creation-quality-rating-", StringComparison.Ordinal) == true);
+            Require(ratedRows.Length == 1 && catalogPicker.Items.SequenceEqual(ratings.Select(CreationQualitiesPage.RatingLabel)),
+                "A rated quality still appears as several catalog entries or offers invented ratings.");
+            catalogPicker.SelectedIndex = ratings.Length - 1;
+            Require(MinimalVisibleText(catalogPage).Contains(CreationQualitiesPage.RatingLabel(ratings[^1]))
+                && SemanticProperties.GetDescription(ratedRows[0]).Contains(CreationQualitiesPage.RatingLabel(ratings[^1])),
+                "Inline rating selection did not update both the displayed and accessible cost.");
+            liveSearch.Text = "Ambidextrous";
+            ((ISearchBarController)liveSearch).OnSearchButtonPressed();
+            Require(!MinimalVisible(catalogPage).OfType<Picker>().Any(item =>
+                item.AutomationId?.StartsWith("creation-quality-rating-", StringComparison.Ordinal) == true),
+                "A fixed quality must not expose a rating selector.");
+            string fixedText = MinimalVisibleText(catalogPage);
+            catalogPicker.SelectedIndex = 0;
+            Require(MinimalVisibleText(catalogPage) == fixedText, "A filtered-out rating picker changed current rows.");
+
+            var option = racialVision ? available.Single(item => item.Name == "Ambidextrous") : ratings[^1];
             var configure = new CreationQualityConfigurePage(coordinator, state, editor, option, draft, original);
             var previewResult = coordinator.PreviewCreationQualities(state.Binding, [option.OptionId], original);
             if (racialVision)
             {
                 Require(state.Authority.GrantedQualities.Any(item => item.Name == "Low-Light Vision")
                     && option.KarmaCost == 4, "SETUP: real racial vision and exact paid Ambidextrous are required.");
-                MinimalRender(configure);
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(configure, "OnAppearing")));
                 var add = MinimalVisible(configure).OfType<Button>().Single(item =>
                     item.AutomationId == "creation-quality-configure-toggle");
                 Require(add.IsEnabled, "Racial vision incorrectly disables the native Add to draft action.");
@@ -3799,6 +3917,9 @@ internal static partial class AfterRunAuthorityHarness
                 var retainedHelpDetails = retainedHelpBody.Children.OfType<VerticalStackLayout>().Single();
                 var retainedHelpToggle = retainedHelpBody.Children.OfType<Button>().Single(button =>
                     button.AutomationId == "creation-quality-info-effects-toggle");
+                // Retain the control before save/owner notifications invalidate
+                // its live catalog. A stale page correctly has no current editor.
+                var staleSearch = Search();
 
                 Require(store.TryBeginApply(CharacterCreationQualitiesCheckpointCas.From(checkpoint), out var applying, out blocker), blocker);
                 var result = await coordinator.ConfirmCreationQualitiesAsync(applying, display: original);
@@ -3812,6 +3933,9 @@ internal static partial class AfterRunAuthorityHarness
                 var cold = coordinator.LoadCreationQualities().Value!;
                 Require(CreationQualitiesPhoneAuthority.ReceiptMatchesPersistedState(applying, result.Receipt!, cold),
                     "Exact quality selection/receipt did not survive cold-store reopen.");
+                Require(cold.PendingDraft!.SelectedOptionIds.SequenceEqual([option.OptionId])
+                    && cold.Preview.KarmaRemaining == preview.KarmaRemaining,
+                    "Cold reread lost the exact selected rating identity or its Karma cost.");
                 if (racialVision)
                 {
                     var selection = saved.Document.AuxiliaryState.CharacterCreationQualitiesDraft!.Selections.Single();
@@ -3838,21 +3962,20 @@ internal static partial class AfterRunAuthorityHarness
                 Require(store.TryAcknowledgeApplied(CharacterCreationQualitiesCheckpointCas.From(applied), out blocker), blocker);
                 var owner = owners.Current;
                 var freshCatalogPage = new CreationQualitiesPage(coordinator);
-                await MinimalPrepareAsync(freshCatalogPage);
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(freshCatalogPage, "OnAppearing")));
                 await VerifyQualityHelpScrollReturnAsync(ui, freshCatalogPage, new NavigationPage(freshCatalogPage), () =>
                 {
                     owners.Set(ContactsOwnerB);
                     owners.Set(owner);
                 });
                 string staleCatalog = MinimalVisibleText(catalogPage);
-                var staleSearch = Search();
                 staleSearch.Text = "Catlike";
                 ((ISearchBarController)staleSearch).OnSearchButtonPressed();
                 Require(MinimalVisibleText(catalogPage) == staleCatalog,
                     "A search callback admitted catalog work across an owner A→B→A transition.");
                 ((IButtonController)retainedHelpToggle).SendClicked();
                 Require(!retainedHelpDetails.IsVisible, "An expired help disclosure reopened old effect data.");
-                foreach (NativePageBase stale in new NativePageBase[] { configure, review, receipt, retainedHelp })
+                foreach (NativePageBase stale in new NativePageBase[] { configure, ratedConfigure, review, receipt, retainedHelp })
                 {
                     MinimalRender(stale);
                     Require(!MinimalVisible(stale).OfType<Button>().Any(), "Stale owner generation still exposes quality actions or diagnostics.");
@@ -3869,7 +3992,7 @@ internal static partial class AfterRunAuthorityHarness
         IssuedPageUiContext ui, CreationQualitiesPage page, NavigationPage navigation, Action? invalidateBeforeDispatch = null)
     {
         const double savedY = 735;
-        var scroll = (ScrollView)page.Content!;
+        var scroll = ((Grid)page.Content!).Children.OfType<ScrollView>().Single();
         var controller = (IScrollViewController)scroll;
         var observed = new List<double>();
         controller.ScrollToRequested += (_, request) =>
@@ -3964,8 +4087,8 @@ internal static partial class AfterRunAuthorityHarness
         MinimalRender(page);
         MinimalRequireNoMachineValues(page);
         Require(!MinimalVisibleText(page).Contains("CharacterDocumentChanged"), "Ordinary guidance leaks implementation jargon.");
-        var body = (VerticalStackLayout)((ScrollView)page.Content!).Content!;
-        var panel = body.Children.OfType<VerticalStackLayout>().Single(item => item.AutomationId == panelId);
+        var panel = MinimalVisible(page).OfType<VerticalStackLayout>().Single(item => item.AutomationId == panelId);
+        var body = (VerticalStackLayout)panel.Parent!;
         var toggle = panel.Children.OfType<Button>().Single();
         var action = MinimalVisible(page).OfType<Button>().Single(item => item.AutomationId == actionId);
         Require(action.IsEnabled && body.Children.IndexOf(action) < body.Children.IndexOf(panel)

@@ -9,6 +9,7 @@ internal sealed class CreationQualitiesPhoneDraft
     private CharacterCreationQualitiesBinding? _binding;
     private string? _snapshotDigest;
     private readonly HashSet<string> _selectedOptionIds = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _admittedOptionIds = new(StringComparer.Ordinal);
     private CharacterCreationQualitiesPreview? _preview;
 
     public IReadOnlyList<string> SelectedOptionIds => _selectedOptionIds
@@ -28,6 +29,7 @@ internal sealed class CreationQualitiesPhoneDraft
             _preview = _preview
         };
         copy._selectedOptionIds.UnionWith(_selectedOptionIds);
+        copy._admittedOptionIds.UnionWith(_admittedOptionIds);
         return copy;
     }
 
@@ -45,6 +47,7 @@ internal sealed class CreationQualitiesPhoneDraft
         _snapshotDigest = null;
         _preview = null;
         _selectedOptionIds.Clear();
+        _admittedOptionIds.Clear();
         if (!ready)
             return false;
         _binding = state.Binding;
@@ -62,6 +65,7 @@ internal sealed class CreationQualitiesPhoneDraft
            && CharacterCreationQualitiesRules.DigestsEqual(_snapshotDigest, state.SnapshotDigest);
 
     public bool IsSelected(string optionId) => _selectedOptionIds.Contains(optionId);
+    public bool IsAdmitted(string optionId) => _admittedOptionIds.Contains(optionId);
 
     // Filter against Core's complete proposed selection, not a second phone
     // implementation of Karma, duplicate, granted-quality or profile limits.
@@ -72,6 +76,7 @@ internal sealed class CreationQualitiesPhoneDraft
         CharacterCreationQualitiesEditorState editor,
         CancellationToken cancellationToken)
     {
+        _admittedOptionIds.Clear();
         if (!Matches(state, overview)) return [];
         var available = new List<CharacterCreationQualitiesDesktopOption>();
         var additions = editor.Options
@@ -83,6 +88,22 @@ internal sealed class CreationQualitiesPhoneDraft
         // No admission is cached across appearances, owner changes or revisions.
         var previews = CharacterCreationQualitiesRules.EvaluateAdditions(
             new(state.Binding, state.Authority, SelectedOptionIds), additions, cancellationToken);
+        bool selectionAdmitted = (_preview ?? state.Preview).Blockers.All(
+            blocker => blocker == CharacterCreationQualitiesBlockers.MetagenicImbalanced);
+        var replacementPreviews = new Dictionary<string, CharacterCreationQualitiesPreview>(StringComparer.Ordinal);
+        foreach (var ratings in CreationQualityRatingChoices.Group(editor.Options)
+            .Where(group => group.Length > 1 && group.Any(option => IsSelected(option.OptionId))))
+        {
+            // Another rating replaces this exact typed choice. Adding it beside
+            // the old rating would make Core reject a duplicate, hiding valid changes.
+            var ids = ratings.Select(option => option.OptionId).ToHashSet(StringComparer.Ordinal);
+            var candidates = ratings.Where(CreationQualitiesPhoneAuthority.IsOptionConfigurable).ToArray();
+            var replacements = CharacterCreationQualitiesRules.EvaluateAdditions(
+                new(state.Binding, state.Authority, SelectedOptionIds.Where(id => !ids.Contains(id)).ToArray()),
+                candidates.Select(option => option.OptionId).ToArray(), cancellationToken);
+            for (int i = 0; i < candidates.Length; i++)
+                replacementPreviews.Add(candidates[i].OptionId, replacements[i]);
+        }
         int additionIndex = 0;
         foreach (var option in editor.Options)
         {
@@ -92,26 +113,42 @@ internal sealed class CreationQualitiesPhoneDraft
             if (IsSelected(option.OptionId))
             {
                 available.Add(option);
+                if (selectionAdmitted || replacementPreviews.TryGetValue(option.OptionId, out var retained)
+                    && retained.Blockers.All(blocker => blocker == CharacterCreationQualitiesBlockers.MetagenicImbalanced))
+                    _admittedOptionIds.Add(option.OptionId);
                 continue;
             }
             if (!CreationQualitiesPhoneAuthority.IsOptionConfigurable(option)) continue;
             var preview = previews[additionIndex++];
+            if (replacementPreviews.TryGetValue(option.OptionId, out var replacement)) preview = replacement;
             // Metagenic pairs are assembled one choice at a time. Core still
             // requires balance before review/confirmation can be enabled.
             if (preview.Blockers.All(blocker => blocker == CharacterCreationQualitiesBlockers.MetagenicImbalanced))
+            {
                 available.Add(option);
+                _admittedOptionIds.Add(option.OptionId);
+            }
         }
         return available;
     }
 
     public IReadOnlyList<string> WithToggle(CharacterCreationQualitiesDesktopOption option)
+        => WithToggle(option, null);
+
+    public IReadOnlyList<string> WithToggle(CharacterCreationQualitiesDesktopOption option,
+        IReadOnlyList<CharacterCreationQualitiesDesktopOption>? ratings)
     {
         ArgumentNullException.ThrowIfNull(option);
         HashSet<string> next = new(_selectedOptionIds, StringComparer.Ordinal);
+        if (next.Remove(option.OptionId))
+            return next.OrderBy(static item => item, StringComparer.Ordinal).ToArray();
         if (!CreationQualitiesPhoneAuthority.IsOptionConfigurable(option))
             return next.OrderBy(static item => item, StringComparer.Ordinal).ToArray();
-        if (!next.Remove(option.OptionId))
-            next.Add(option.OptionId);
+        // Only exact siblings supplied by the admitted editor may be replaced.
+        // Similar labels or other follow-up variants are unrelated choices.
+        foreach (var sibling in ratings ?? [])
+            if (CreationQualityRatingChoices.SameQuality(option, sibling)) next.Remove(sibling.OptionId);
+        next.Add(option.OptionId);
         return next.OrderBy(static item => item, StringComparer.Ordinal).ToArray();
     }
 
@@ -137,4 +174,24 @@ internal sealed class CreationQualitiesPhoneDraft
         _preview = preview;
         return true;
     }
+}
+
+/// <summary>Display grouping only; every member retains its unchanged Core OptionId.</summary>
+internal static class CreationQualityRatingChoices
+{
+    internal static bool SameQuality(CharacterCreationQualitiesDesktopOption left,
+        CharacterCreationQualitiesDesktopOption right)
+        => left.SourceId != Guid.Empty && left.SourceId == right.SourceId
+           && !string.IsNullOrWhiteSpace(left.SelectionKey) && left.SelectionKey == right.SelectionKey
+           && left.Type == right.Type && left.FollowUpChoiceId == right.FollowUpChoiceId
+           && left.IsMetagenic == right.IsMetagenic && left.IsFreeOrGranted == right.IsFreeOrGranted;
+
+    internal static CharacterCreationQualitiesDesktopOption[][] Group(
+        IEnumerable<CharacterCreationQualitiesDesktopOption> options)
+        => options.GroupBy(option => (option.SourceId, option.SelectionKey, option.Type,
+                option.FollowUpChoiceId, option.IsMetagenic, option.IsFreeOrGranted))
+            .SelectMany(group => group.Key.SourceId == Guid.Empty || string.IsNullOrWhiteSpace(group.Key.SelectionKey)
+                || group.GroupBy(option => option.Rating).Any(rating => rating.Count() != 1)
+                ? group.Select(option => new[] { option }) : new[] { group.ToArray() })
+            .ToArray();
 }

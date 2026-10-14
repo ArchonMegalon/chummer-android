@@ -52,7 +52,7 @@ class CreationQualitiesSourceContractTests(unittest.TestCase):
         configure = page[page.index("public sealed class CreationQualityConfigurePage"):
                          page.index("public sealed class CreationQualitiesReviewPage")]
         self.assertIn("_state.Authority.Options.SingleOrDefault(item => item.OptionId == _option.OptionId)", configure)
-        self.assertIn("CreationQualityInfoPage.AddEffects(_body", configure)
+        self.assertIn("CreationQualityInfoPage.AddEffects(_details", configure)
         self.assertIn("CreationQualityInfo.Effects(source.SourceNodeXml, _option.Rating)", configure)
         self.assertLess(configure.index("CreationQualityInfoPage.AddEffects"), configure.index('"creation-quality-configure-toggle"'))
 

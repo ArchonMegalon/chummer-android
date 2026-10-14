@@ -6,6 +6,9 @@ using Chummer.Presentation.Overview;
 var tests = new (string Name, Action Run)[]
 {
     ("Core projection and stable OptionId draft", ProjectionAndDraft),
+    ("Rated qualities group by typed identity without inventing levels", RatedQualityGrouping),
+    ("Changing a quality rating preserves unrelated selections", RatedQualityReplacement),
+    ("Selected quality keeps only Core-admitted alternative ratings", RatedQualityAvailability),
     ("Durable Reviewed Applying Applied CAS", DurableCheckpointLifecycle),
     ("Malformed checkpoint is a replay-blocking lock", MalformedCheckpointLocks),
     ("Reordered identities produce one command binding", StableCommandBinding),
@@ -53,6 +56,136 @@ static void ProjectionAndDraft()
     Assert(!CreationQualitiesPhoneAuthority.IsOptionConfigurable(
         editor.Options.Single(option => option.OptionId == "unsupported")),
         "inexact/unsupported requirement must stay disabled");
+}
+
+static void RatedQualityGrouping()
+{
+    CharacterCreationQualityCatalogOption first = RatedOption("rated-1", 1, 4);
+    CharacterCreationQualityCatalogOption third = RatedOption("rated-3", 3, 12);
+    CharacterCreationQualityCatalogOption seventh = RatedOption("rated-7", 7, 24);
+    CharacterCreationQualitiesState state = State([
+        seventh, first, third,
+        Rehash(first with { OptionId = "other-source", SourceId = Guid.Parse("44444444-4444-4444-4444-444444444444") }),
+        Rehash(first with { OptionId = "follow-a", FollowUpChoiceId = "choice-a", FollowUpChoiceLabel = "Same choice" }),
+        Rehash(third with { OptionId = "follow-b", FollowUpChoiceId = "choice-b", FollowUpChoiceLabel = "Same choice" })
+    ]);
+    CharacterCreationQualitiesEditorState editor = CreationQualitiesPhoneAuthority.ProjectEditor(
+        state, Overview(state.Binding));
+    CharacterCreationQualitiesDesktopOption[][] groups = CreationQualityRatingChoices.Group(editor.Options);
+    Assert(groups.Length == 4, "equal names or follow-up labels must not merge distinct typed qualities");
+    CharacterCreationQualitiesDesktopOption[] ratings = groups.Single(group => group.Length == 3);
+    Assert(ratings.Select(option => option.Rating).Order().SequenceEqual([1, 3, 7]),
+        "sparse Core ratings must remain sparse without synthesized intermediate levels");
+    Assert(groups.SelectMany(group => group).Select(option => option.OptionId).Order(StringComparer.Ordinal)
+        .SequenceEqual(editor.Options.Select(option => option.OptionId).Order(StringComparer.Ordinal)),
+        "grouping must retain every exact Core OptionId once");
+
+    CharacterCreationQualitiesDesktopOption original = ratings.Single(option => option.Rating == 1);
+    foreach (CharacterCreationQualitiesDesktopOption distinct in new[]
+    {
+        original with { SelectionKey = "another-selection" },
+        original with { Type = CharacterCreationQualityType.Negative },
+        original with { IsMetagenic = true },
+        original with { IsFreeOrGranted = true }
+    })
+        Assert(!CreationQualityRatingChoices.SameQuality(original, distinct),
+            "a different typed selection, category or grant must not replace an existing quality");
+
+    CharacterCreationQualitiesDesktopOption[][] ambiguous = CreationQualityRatingChoices.Group([
+        original,
+        ratings.Single(option => option.Rating == 3),
+        original with { OptionId = "ambiguous-same-rating" }
+    ]);
+    Assert(ambiguous.Length == 3 && ambiguous.All(group => group.Length == 1),
+        "repeated ratings must remain separate instead of silently choosing one option identity");
+}
+
+static void RatedQualityReplacement()
+{
+    CharacterCreationQualitiesState state = State([
+        RatedOption("rated-1", 1, 4),
+        RatedOption("rated-3", 3, 12),
+        Option("positive", CharacterCreationQualityType.Positive, 6, selectable: true, exact: true),
+        Option("negative", CharacterCreationQualityType.Negative, -4, selectable: true, exact: true)
+    ]);
+    CharacterOverviewState overview = Overview(state.Binding);
+    CharacterCreationQualitiesEditorState editor = CreationQualitiesPhoneAuthority.ProjectEditor(state, overview);
+    var draft = new CreationQualitiesPhoneDraft();
+    Assert(draft.Bind(state, overview), "rated fixture must bind to its rehashed Core authority");
+    AdoptSelection(draft, state, overview, ["rated-1", "positive", "negative"]);
+    CharacterCreationQualitiesDesktopOption target = editor.Options.Single(option => option.OptionId == "rated-3");
+
+    // Even a broader supplied list may only replace exact typed siblings.
+    IReadOnlyList<string> replacement = draft.WithToggle(target, editor.Options);
+    Assert(replacement.SequenceEqual(["negative", "positive", "rated-3"]),
+        "changing a rating must replace its previous OptionId and preserve unrelated selected qualities");
+    Assert(draft.SelectedOptionIds.SequenceEqual(["negative", "positive", "rated-1"]),
+        "proposing a replacement must not change the draft before Core accepts its preview");
+    AdoptSelection(draft, state, overview, replacement);
+    Assert(draft.Preview is { CanConfirm: true, KarmaRemaining: 11 }
+        && draft.Preview.Selections.Single(option => option.OptionId == "rated-3").Rating == 3,
+        "the adopted preview must preserve the target rating and its exact Core budget");
+    Assert(draft.WithToggle(target, editor.Options).SequenceEqual(["negative", "positive"]),
+        "toggling the current rating must remove that quality without selecting another level");
+}
+
+static void RatedQualityAvailability()
+{
+    CharacterCreationQualitiesState state = State([
+        RatedOption("rated-1", 1, 4),
+        RatedOption("rated-3", 3, 12),
+        RatedOption("rated-5", 5, 24),
+        Rehash(RatedOption("rated-disabled", 7, 8) with
+        {
+            IsSelectable = false,
+            DisableReasonKey = "unsupported-variable-or-requirement"
+        }),
+        Option("blocked-whole", CharacterCreationQualityType.Positive, 26, selectable: true, exact: true),
+        Option("positive", CharacterCreationQualityType.Positive, 6, selectable: true, exact: true)
+    ]);
+    CharacterOverviewState overview = Overview(state.Binding);
+    CharacterCreationQualitiesEditorState editor = CreationQualitiesPhoneAuthority.ProjectEditor(state, overview);
+    var draft = new CreationQualitiesPhoneDraft();
+    Assert(draft.Bind(state, overview), "rating availability fixture must bind");
+    Assert(draft.AvailableOptions(state, overview, editor, default).Any(option => option.OptionId == "rated-5"),
+        "the high rating must be valid on its own so this case checks the current draft budget");
+    AdoptSelection(draft, state, overview, ["rated-3", "positive"]);
+
+    string[] available = draft.AvailableOptions(state, overview, editor, default)
+        .Select(option => option.OptionId).Order(StringComparer.Ordinal).ToArray();
+    Assert(available.SequenceEqual(["positive", "rated-1", "rated-3"]),
+        "an affordable replacement must remain reachable while unaffordable and disabled ratings stay absent");
+    Assert(draft.SelectedOptionIds.SequenceEqual(["positive", "rated-3"])
+        && draft.Preview is { KarmaRemaining: 7 },
+        "checking alternate ratings must not remove the selected quality or change its current preview");
+    Assert(draft.WithToggle(editor.Options.Single(option => option.OptionId == "rated-disabled"), editor.Options)
+        .SequenceEqual(draft.SelectedOptionIds), "a disabled variant must not replace the selected rating");
+
+    string[] invalidSelection = ["positive", "rated-5"];
+    var invalidPreview = CharacterCreationQualitiesRules.Evaluate(new(state.Binding, state.Authority, invalidSelection));
+    Assert(!invalidPreview.CanConfirm && draft.TryAdopt(state, overview,
+        new(CharacterCreationFoundationOutcomes.Blocked, invalidPreview, invalidPreview.Blockers), invalidSelection),
+        "an exact invalid draft must remain visible for correction");
+    var retained = draft.AvailableOptions(state, overview, editor, default);
+    Assert(retained.Any(option => option.OptionId == "rated-5") && !draft.IsAdmitted("rated-5")
+        && !retained.Any(option => option.OptionId == "blocked-whole")
+        && draft.IsAdmitted("rated-1") && draft.IsAdmitted("rated-3"),
+        "an invalid chosen rating must remain removable, stay out of the selectable ratings, and leave valid replacements reachable");
+    Assert(draft.WithToggle(editor.Options.Single(option => option.OptionId == "rated-5"), editor.Options)
+        .SequenceEqual(["positive"]), "an unavailable retained rating must remain removable");
+    Assert(draft.WithToggle(editor.Options.Single(option => option.OptionId == "rated-5") with
+        { IsSelectable = false, DisableReasonKey = "creation-qualities-source-disabled" }, editor.Options)
+        .SequenceEqual(["positive"]), "loss of configurability must not trap a retained selected rating");
+}
+
+static void AdoptSelection(CreationQualitiesPhoneDraft draft, CharacterCreationQualitiesState state,
+    CharacterOverviewState overview, IReadOnlyList<string> selected)
+{
+    CharacterCreationQualitiesPreview preview = CharacterCreationQualitiesRules.Evaluate(new(
+        state.Binding, state.Authority, selected));
+    Assert(preview.CanConfirm, $"fixture selection must be Core-admitted: {string.Join(',', preview.Blockers)}");
+    Assert(draft.TryAdopt(state, overview, new(CharacterCreationFoundationOutcomes.Success, preview, preview.Blockers), selected),
+        "draft must adopt the exact Core evaluation for the selected OptionIds");
 }
 
 static void DurableCheckpointLifecycle()
@@ -133,7 +266,7 @@ static void StableCommandBinding()
     Assert(left == right, "selection order must not alter the exact command binding");
 }
 
-static CharacterCreationQualitiesState State()
+static CharacterCreationQualitiesState State(CharacterCreationQualityCatalogOption[]? options = null)
 {
     CharacterCreationQualityCatalogOption positive = Option(
         "positive", CharacterCreationQualityType.Positive, 6, selectable: true, exact: true);
@@ -141,7 +274,7 @@ static CharacterCreationQualitiesState State()
         "negative", CharacterCreationQualityType.Negative, -4, selectable: true, exact: true);
     CharacterCreationQualityCatalogOption unsupported = Option(
         "unsupported", CharacterCreationQualityType.Positive, 9, selectable: false, exact: false);
-    CharacterCreationQualitiesAuthority authority = Authority(positive, negative, unsupported);
+    CharacterCreationQualitiesAuthority authority = Authority(options ?? [positive, negative, unsupported]);
     CharacterCreationQualitiesBinding binding = new(
         new CharacterWorkspaceId("quality-workspace"),
         ContentRevision: 7,
@@ -229,6 +362,18 @@ static CharacterCreationQualityCatalogOption Option(
         OptionDigest = CharacterCreationQualitiesRules.ComputeOptionDigest(option)
     };
 }
+
+static CharacterCreationQualityCatalogOption RatedOption(string id, int rating, int cost)
+    => Rehash(Option("positive", CharacterCreationQualityType.Positive, cost, selectable: true, exact: true) with
+    {
+        OptionId = id,
+        SelectionKey = "rated-quality",
+        Name = "Same quality",
+        Rating = rating
+    });
+
+static CharacterCreationQualityCatalogOption Rehash(CharacterCreationQualityCatalogOption option)
+    => option with { OptionDigest = CharacterCreationQualitiesRules.ComputeOptionDigest(option) };
 
 static CharacterCreationQualitiesAuthority Authority(
     params CharacterCreationQualityCatalogOption[] options)
