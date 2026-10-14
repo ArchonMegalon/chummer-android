@@ -132,7 +132,28 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 231 is the latest [observed Internal availability](../play/evidence/preview231-internal-observation.json),
+Preview 232 is the latest [observed Internal availability](../play/evidence/preview232-internal-observation.json),
+released on 14 October at 12:47 Europe/Vienna. Android #775 separates After Run
+reward input, review and saved stages. Change preserves an unconfirmed draft;
+Done returns directly to Career, with optional follow-up actions under More
+options. Exact owner, revision, operation identity and persistence guards remain.
+Core/UI are unchanged. Actual Core/native stage, callback-admission, stale-review
+and post-commit recovery checks compiled 324 native sources with zero
+warnings/errors; 21 focused Python cases passed. The API 36 x64 Release/Internal
+route revised a reward and verified no saved mutation before confirmation.
+Uncommitted draft values were reentered after process restart, not restored.
+One confirmation saved 1 Karma/125 Nuyen at revision 22 to 23, with one Core
+receipt and its exact Applied host journal; Done returned to Career. A second
+new process reopened the same reward without recredit, with all 38 saved files
+byte-identical across restart. Local ARM64 build, isolated original-key signing,
+independent keyless verification and one Play upload/final confirmation passed.
+Physical Preview 232, optional downstream routes in this smoke, startup/reload
+performance, full Career and live Origin remain unverified. SystemUI boot trouble
+and slow restoration are recorded, not presented as performance fixes.
+Version 232 is consumed; retain its exact packet and prior rollback artifacts,
+and do not rebuild/re-upload it.
+
+Preview 231's historical [observed Internal availability](../play/evidence/preview231-internal-observation.json),
 released on 14 October at 12:00 Europe/Vienna. Android #773 separates Calendar
 input, immutable review and saved stages. Readable week labels replace machine
 IDs in ordinary ready-state UI; changing a preview requires a fresh review, and
