@@ -54,6 +54,7 @@
     <Compile Include="CareerMinimalUiRuntimeTests.cs" />
     <Compile Include="CareerEconomyFeedbackRuntimeTests.cs" />
     <Compile Include="CareerExpenseFeedbackRuntimeTests.cs" />
+    <Compile Include="CareerCalendarRecoveryRuntimeTests.cs" />
     <Compile Include="CareerQualityRuntimeTests.cs" />
     <Compile Include="CareerSavedProfileRuntimeTests.cs" />
     <Compile Include="CreationPrerequisiteOwnerRuntimeTests.cs" />

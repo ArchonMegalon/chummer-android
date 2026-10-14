@@ -27,11 +27,13 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
     private readonly Button _confirm;
     private readonly Button _apply;
     private readonly Button _clear;
+    private readonly Button _discardReview;
     private Sr5DowntimeCalendarPhoneLoadResult? _load;
     private Sr5DowntimeCalendarDesktopSession? _session;
     private Sr5DowntimeCalendarJournal? _journal;
     private bool _loaded;
     private bool _outcomeUnknown;
+    private bool _staleReview;
 
     public Sr5DowntimeCalendarWizardPage(RunnerSessionCoordinator coordinator)
         : this(coordinator, new RunnerSessionSr5DowntimeCalendarAuthority(coordinator),
@@ -57,6 +59,11 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
         _binding = NativeTheme.Body(Text("Loading exact runner authority…"), NativeTheme.Muted);
         _binding.AutomationId = "sr5-downtime-calendar-binding";
         body.Add(NativeTheme.Card(_binding));
+        _discardReview = NativeTheme.PrimaryButton(Text("Discard preview and continue"));
+        _discardReview.AutomationId = "sr5-downtime-calendar-discard-review";
+        SemanticProperties.SetDescription(_discardReview, Text("Discard preview and continue"));
+        _discardReview.Clicked += async (_, _) => await RunAsync(DiscardStaleReviewAsync);
+        body.Add(_discardReview);
         _operation = new Picker
         {
             AutomationId = "sr5-downtime-calendar-operation", Title = Text("Calendar action"),
@@ -224,7 +231,11 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
             _session = new Sr5DowntimeCalendarDesktopSession();
             if (!_session.Bind(_load.Binding!, _load.Editor!, journal.Review).Resume.Restored)
             {
-                MarkOutcomeUnknown(Text("The durable review no longer matches the exact runner snapshot."));
+                // A Review has not dispatched a save. Keep it until an explicit
+                // discard instead of labelling it as an uncertain Applying.
+                _staleReview = true;
+                _status.Text = Text("Your runner changed after this preview. Discard the preview to plan a new change. Nothing from this preview was saved.");
+                _status.TextColor = NativeTheme.Muted;
                 return;
             }
             _status.Text = Text("Reviewed preview restored. Confirm it again before saving.");
@@ -293,6 +304,8 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
         if (_session is null || _load is not { IsReady: true }) return;
         if (!CurrentBindingMatches())
             throw new InvalidOperationException(Text("The saved runner changed. Reopen Downtime before reviewing."));
+        if (_staleReview)
+            throw new InvalidOperationException(Text("Your runner changed after this preview. Discard the preview to plan a new change. Nothing from this preview was saved."));
         if (_journal is { Phase: Sr5DowntimeCalendarJournalPhase.Applying })
             throw new InvalidOperationException(Text("Resolve the interrupted Calendar save first."));
         bool previewed;
@@ -391,6 +404,26 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
         MarkOutcomeUnknown(Text("Calendar result is outside its exact expected+1 CAS/postcondition boundary."));
     }
 
+    private Task DiscardStaleReviewAsync()
+    {
+        RequireCurrentEntry(CancellationToken.None);
+        if (_load is not { IsReady: true } || !CurrentBindingMatches())
+            throw new InvalidOperationException(Text("The saved runner changed. Reopen Downtime before reviewing."));
+        string blocker = string.Empty;
+        if (!_staleReview || _outcomeUnknown
+            || _journal is not { Phase: Sr5DowntimeCalendarJournalPhase.Review } review
+            || !_journalStore.TryDiscardUnappliedReview(review, out blocker))
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(blocker)
+                ? Text("Only an exact unapplied Downtime Calendar review can be discarded.") : blocker);
+        _journal = null;
+        _staleReview = false;
+        _session = new Sr5DowntimeCalendarDesktopSession();
+        _session.Bind(_load.Binding!, _load.Editor!);
+        _status.Text = Text("Preview discarded. Choose your new calendar change.");
+        _status.TextColor = NativeTheme.Muted;
+        return Task.CompletedTask;
+    }
+
     private async Task ClearAppliedAsync()
     {
         string blocker = string.Empty;
@@ -422,10 +455,13 @@ public class Sr5DowntimeCalendarWizardPage : NativePageBase
 
     private void RefreshEnabledState()
     {
-        bool ready = _load is { IsReady: true } && !_outcomeUnknown && CurrentBindingMatches();
+        bool current = _load is { IsReady: true } && !_outcomeUnknown && CurrentBindingMatches();
+        bool ready = current && !_staleReview;
         bool review = _journal?.Phase == Sr5DowntimeCalendarJournalPhase.Review;
         bool applying = _journal?.Phase == Sr5DowntimeCalendarJournalPhase.Applying;
         bool applied = _journal?.Phase == Sr5DowntimeCalendarJournalPhase.Applied;
+        _discardReview.IsVisible = _staleReview && review && !_outcomeUnknown;
+        _discardReview.IsEnabled = _discardReview.IsVisible && current && _entryStillCurrent?.Invoke() != false;
         bool targetRequired = _operation.SelectedIndex is 1 or 2;
         _operation.IsEnabled = ready && !applying && !applied;
         _weekPicker.IsVisible = targetRequired; _weekPicker.IsEnabled = ready && targetRequired && !applying && !applied;

@@ -1038,4 +1038,8 @@ Preview: {3}…</value></data>
   <data name="No reason" xml:space="preserve"><value>No reason</value></data>
   <data name="Only manually recorded amounts can be changed." xml:space="preserve"><value>Only manually recorded amounts can be changed.</value></data>
   <data name="Check the amount, reason and date before saving." xml:space="preserve"><value>Check the amount, reason and date before saving.</value></data>
+  <data name="Discard preview and continue" xml:space="preserve"><value>Discard preview and continue</value></data>
+  <data name="Your runner changed after this preview. Discard the preview to plan a new change. Nothing from this preview was saved." xml:space="preserve"><value>Your runner changed after this preview. Discard the preview to plan a new change. Nothing from this preview was saved.</value></data>
+  <data name="Preview discarded. Choose your new calendar change." xml:space="preserve"><value>Preview discarded. Choose your new calendar change.</value></data>
+  <data name="Only an exact unapplied Downtime Calendar review can be discarded." xml:space="preserve"><value>Only an exact unapplied Downtime Calendar review can be discarded.</value></data>
 </root>
