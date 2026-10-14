@@ -403,7 +403,8 @@ public sealed class AndroidCharacterCareerSkillGroupAdvanceWorkspace :
         ICharacterSourceDataContext sourceContext = _sourceData.TryCreateContext(rawXml)
             ?? throw new WorkspaceAuthorityUnavailableException(
                 "exact_skill_source_profile_unavailable");
-        XElement settings = ResolveExactSettings(root, _settingsCatalog.ReadCatalogJson());
+        XElement settings = ResolveExactSettings(root, _settingsCatalog.ReadCatalogJson(),
+            sourceContext, out string settingsAuthority);
         CharacterCareerSkillGroupAdvanceSettings rules = new(
             ReadRequiredNonNegativeInt(settings, "karmacost", "karmanewskillgroup"),
             ReadRequiredNonNegativeInt(settings, "karmacost", "karmaimproveskillgroup"));
@@ -426,6 +427,7 @@ public sealed class AndroidCharacterCareerSkillGroupAdvanceWorkspace :
         }
         XElement? improvements = improvementContainers.SingleOrDefault();
         string rawRuleState = settings.ToString(SaveOptions.DisableFormatting)
+            + (settingsAuthority.Length == 0 ? string.Empty : "\n" + settingsAuthority)
             + "\n"
             + (improvements?.ToString(SaveOptions.DisableFormatting) ?? "<improvements />");
 
@@ -469,7 +471,11 @@ public sealed class AndroidCharacterCareerSkillGroupAdvanceWorkspace :
         int groupBase = ReadRequiredNonNegativeInt(target, "base");
         int groupKarma = ReadRequiredNonNegativeInt(target, "karma");
         bool broken = ReadRequiredBool(target, "isbroken");
-        List<CharacterCareerSkillGroupMember> members = [];
+        if (!CharacterCareerSkillRatingRules.TryReadFreePoints(improvements, groupName, true, out var freeGroup))
+            throw new WorkspaceAuthorityUnavailableException("skill_group_free_rating_unavailable");
+        var groupPoints = new CharacterCareerSkillRatingPoints(groupBase, groupKarma, freeGroup.Base, freeGroup.Levels);
+        List<(Guid Id, CharacterActiveSkillSource Source, CharacterCareerSkillRatingPoints Points, bool Enabled)> observed = [];
+        HashSet<Guid> memberSourceIds = [];
         List<string> rawSources = [];
         foreach (XElement skill in skills)
         {
@@ -499,7 +505,8 @@ public sealed class AndroidCharacterCareerSkillGroupAdvanceWorkspace :
                 || source.RequiresGroundMovement
                 || source.RequiresSwimMovement
                 || source.RequiresFlyMovement
-                || HasUnsupportedRatingAuthority(improvements, source.Name, groupName))
+                || !memberSourceIds.Add(sourceId)
+                || HasUnsupportedRatingAuthority(improvements, source))
             {
                 throw new WorkspaceAuthorityUnavailableException(
                     "skill_group_member_authority_unavailable");
@@ -507,35 +514,40 @@ public sealed class AndroidCharacterCareerSkillGroupAdvanceWorkspace :
 
             int skillBase = ReadRequiredNonNegativeInt(skill, "base");
             int skillKarma = ReadRequiredNonNegativeInt(skill, "karma");
-            int effectiveBase = groupBase > 0 && !usePointsOnBrokenGroups
-                ? groupBase
-                : checked(groupBase + skillBase);
-            int effectiveKarma = checked(groupKarma + skillKarma);
-            int totalBaseRating = checked(
-                Math.Min(effectiveBase, maximumRating)
-                + Math.Min(effectiveKarma, maximumRating));
-            if (totalBaseRating > maximumRating)
-            {
-                throw new WorkspaceAuthorityUnavailableException(
-                    "skill_group_member_rating_unavailable");
-            }
-            members.Add(new CharacterCareerSkillGroupMember(
-                skillId,
-                totalBaseRating,
-                !IsSkillDisabled(improvements, source.Name, category),
-                category));
+            if (!CharacterCareerSkillRatingRules.TryReadFreePoints(improvements, source.Name, false, out var freeSkill))
+                throw new WorkspaceAuthorityUnavailableException("skill_group_member_free_rating_unavailable");
+            observed.Add((skillId, source,
+                new(skillBase, skillKarma, freeSkill.Base, freeSkill.Levels),
+                !IsSkillDisabled(improvements, source.Name, category)));
             rawSources.Add(source.RawSourceXml);
         }
-        if (members.Count == 0)
+        if (observed.Count == 0)
         {
             throw new WorkspaceAuthorityUnavailableException(
                 "skill_group_has_no_exact_members");
         }
 
-        string[] categories = members
-            .Select(member => member.SkillCategory)
+        string[] categories = observed
+            .Select(member => member.Source.SkillCategory)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
+        bool disabled = IsGroupDisabled(improvements, groupName, categories);
+        int freeRating = freeGroup.Base + freeGroup.Levels;
+        if (!CharacterCareerSkillRatingRules.TryProjectGroup(groupPoints,
+                observed.Select(member => member.Points).ToArray(), disabled, maximumRating, out var groupRating)
+            || !disabled && (!groupRating.KarmaUnbroken
+                || groupRating.Rating != groupBase + groupKarma + freeRating)
+            || disabled && freeRating != 0)
+            throw new WorkspaceAuthorityUnavailableException("skill_group_rating_transition_unavailable");
+        List<CharacterCareerSkillGroupMember> members = [];
+        foreach (var member in observed)
+        {
+            if (!CharacterCareerSkillRatingRules.TryProjectSkill(member.Points, groupRating,
+                    usePointsOnBrokenGroups, maximumRating, out var rating)
+                || rating.TotalBaseRating > maximumRating)
+                throw new WorkspaceAuthorityUnavailableException("skill_group_member_rating_unavailable");
+            members.Add(new(member.Id, rating.TotalBaseRating, member.Enabled, member.Source.SkillCategory));
+        }
         if (!TryResolveCostModifiers(
                 improvements,
                 groupName,
@@ -557,13 +569,13 @@ public sealed class AndroidCharacterCareerSkillGroupAdvanceWorkspace :
             groupKarma,
             maximumRating,
             availableKarma,
-            IsGroupDisabled(improvements, groupName, categories),
+            disabled,
             broken,
             rules,
             members,
             modifiers,
             string.Join("\n", rawSources.OrderBy(value => value, StringComparer.Ordinal)),
-            rawRuleState);
+            rawRuleState) { FreeRatingPoints = freeRating };
     }
 
     private static void ApplyPlan(
@@ -946,12 +958,13 @@ public sealed class AndroidCharacterCareerSkillGroupAdvanceWorkspace :
             : throw new InvalidOperationException($"missing_or_duplicate_{name}");
     }
 
-    private static XElement ResolveExactSettings(XElement root, string catalogJson)
+    private static XElement ResolveExactSettings(XElement root, string catalogJson,
+        ICharacterSourceDataContext sourceContext, out string authority)
     {
+        authority = string.Empty;
         if (string.IsNullOrWhiteSpace(catalogJson))
         {
-            throw new WorkspaceAuthorityUnavailableException(
-                "character_settings_catalog_unavailable");
+            return ResolveSourceSettings(root, sourceContext, out authority);
         }
         string settingsId = ReadRequiredText(root, "settings");
         using JsonDocument catalog = JsonDocument.Parse(catalogJson);
@@ -983,8 +996,7 @@ public sealed class AndroidCharacterCareerSkillGroupAdvanceWorkspace :
         }
         if (matches == 0)
         {
-            throw new WorkspaceAuthorityUnavailableException(
-                "exact_character_settings_profile_unavailable");
+            return ResolveSourceSettings(root, sourceContext, out authority);
         }
         if (matches != 1 || string.IsNullOrWhiteSpace(settingsXml))
         {
@@ -994,6 +1006,21 @@ public sealed class AndroidCharacterCareerSkillGroupAdvanceWorkspace :
         return settings.Name == XName.Get("settings")
             ? settings
             : throw new InvalidOperationException("character_settings_root_invalid");
+    }
+
+    private static XElement ResolveSourceSettings(XElement root,
+        ICharacterSourceDataContext sourceContext, out string authority)
+    {
+        if (!sourceContext.TryResolveCareerSettingsProfile(out string xml, out authority)
+            || string.IsNullOrWhiteSpace(authority))
+            throw new WorkspaceAuthorityUnavailableException("exact_character_settings_profile_unavailable");
+        XElement settings = XElement.Parse(xml, LoadOptions.PreserveWhitespace);
+        XElement[] ids = settings.Elements("id").Take(2).ToArray();
+        if (settings.Name != XName.Get("settings") || ids.Length != 1
+            || ids[0].HasElements || ids[0].HasAttributes
+            || ids[0].Value.Trim() != ReadRequiredText(root, "settings"))
+            throw new WorkspaceAuthorityUnavailableException("exact_character_settings_profile_mismatch");
+        return settings;
     }
 
     private static bool TryGetUniqueProperty(
@@ -1016,18 +1043,30 @@ public sealed class AndroidCharacterCareerSkillGroupAdvanceWorkspace :
 
     private static bool HasUnsupportedRatingAuthority(
         XElement? improvements,
-        string skillName,
-        string groupName)
-        => (improvements?.Elements("improvement") ?? [])
-            .Any(improvement => IsEnabledInCareer(improvement)
-                && ReadOptionalText(improvement, "improvementttype", string.Empty) is
-                    "Skill" or "SkillBase" or "SkillLevel" or "SkillGroup" or "SkillGroupLevel"
-                && (TargetMatches(
-                        ReadOptionalText(improvement, "improvedname", string.Empty),
-                        skillName)
-                    || TargetMatches(
-                        ReadOptionalText(improvement, "improvedname", string.Empty),
-                        groupName)));
+        CharacterActiveSkillSource source)
+    {
+        foreach (XElement row in improvements?.Elements("improvement") ?? [])
+        {
+            if (!IsEnabledInCareer(row)) continue;
+            string type = ReadOptionalText(row, "improvementttype", string.Empty);
+            string target = ReadOptionalText(row, "improvedname", string.Empty);
+            bool rating = ReadOptionalBool(row, "addtorating", false);
+            bool relevant = type switch
+            {
+                "Skill" => TargetMatches(target, source.Name),
+                "SkillGroup" => TargetMatches(target, source.SkillGroup),
+                "SkillBase" or "SkillLevel" => rating && TargetMatches(target, source.Name),
+                "SkillGroupBase" or "SkillGroupLevel" => rating && TargetMatches(target, source.SkillGroup),
+                "SkillCategory" => rating && TargetMatches(target, source.SkillCategory),
+                "SkillAttribute" or "SkillLinkedAttribute" => rating && TargetMatches(target, source.DefaultAttribute),
+                "SwapSkillAttribute" or "SwapSkillSpecAttribute" => ReadOptionalText(row, "target", string.Empty) == source.Name,
+                "EnhancedArticulation" => rating && source.SkillCategory == "Physical Active",
+                _ => false
+            };
+            if (relevant) return true;
+        }
+        return false;
+    }
 
     private static bool IsSkillDisabled(
         XElement? improvements,
@@ -1230,7 +1269,7 @@ public sealed class AndroidCharacterCareerSkillGroupAdvanceWorkspace :
     private static bool ReadRequiredBool(XElement parent, string name)
     {
         XElement[] values = parent.Elements(name).Take(2).ToArray();
-        if (values.Length != 1 || !bool.TryParse(values[0].Value.Trim(), out bool value))
+        if (values.Length != 1 || !TryReadBoolean(values[0].Value.Trim(), out bool value))
         {
             throw new InvalidOperationException($"invalid_or_duplicate_{name}");
         }
@@ -1359,11 +1398,18 @@ public sealed class AndroidCharacterCareerSkillGroupAdvanceWorkspace :
         {
             return fallback;
         }
-        if (values.Length != 1 || !bool.TryParse(values[0].Value.Trim(), out bool value))
+        if (values.Length != 1 || !TryReadBoolean(values[0].Value.Trim(), out bool value))
         {
             throw new InvalidOperationException($"invalid_or_duplicate_{name}");
         }
         return value;
+    }
+
+    private static bool TryReadBoolean(string text, out bool value)
+    {
+        if (text == "1") { value = true; return true; }
+        if (text == "0") { value = false; return true; }
+        return bool.TryParse(text, out value);
     }
 
     private static string ReadOptionalText(

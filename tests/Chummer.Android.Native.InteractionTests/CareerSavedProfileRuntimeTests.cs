@@ -27,7 +27,8 @@ internal static partial class AfterRunAuthorityHarness
             await using var runtime = new NativeRewardRuntime(contentRoot,
                 linkedOwners: owners,
                 productionCreationOverview: true,
-                careerQualityWorkspaceFactory: client => quality = new(new AndroidCareerQualityAtomicWorkspace(client)));
+                careerQualityWorkspaceFactory: client => quality = new(new AndroidCareerQualityAtomicWorkspace(client)),
+                careerSkillGroups: true);
             await runtime.Coordinator.InitializeAsync();
             await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
             await runtime.LoadRunnerAsync(xml);
@@ -37,12 +38,9 @@ internal static partial class AfterRunAuthorityHarness
             foreach (var (name, read, minimum) in new (string, Func<Task<int?>>, int)[]
             {
                 ("attributes", async () => (await c.PrepareCareerAttributeAdvanceAsync())?.Attributes.Count, 8),
-                // An admitted empty editor is distinct from missing profile
-                // authority. This test does not claim support for free skill
-                // grants that the current projectors explicitly exclude.
-                ("active-skills", async () => (await c.PrepareCareerActiveSkillAdvanceAsync())?.Skills.Count, 0),
-                ("skill-groups", async () => (await c.PrepareCareerSkillGroupAdvanceAsync())?.SkillGroups.Count, 0),
-                ("specializations", async () => (await c.PrepareCareerSkillSpecializationAsync())?.Skills.Count, 0),
+                ("active-skills", async () => (await c.PrepareCareerActiveSkillAdvanceAsync())?.Skills.Count, 1),
+                ("skill-groups", async () => (await c.PrepareCareerSkillGroupAdvanceAsync())?.SkillGroups.Count, 1),
+                ("specializations", async () => (await c.PrepareCareerSkillSpecializationAsync())?.Skills.Count, 2),
                 ("knowledge-skills", async () => (await c.PrepareCareerKnowledgeSkillAdvanceAsync())?.Skills.Count, 0),
                 ("karma", async () => await c.PrepareCareerManualKarmaEditAsync() is null ? null : 1, 1),
                 ("nuyen", async () => await c.PrepareCareerManualNuyenEditAsync() is null ? null : 1, 1),
@@ -138,6 +136,7 @@ internal static partial class AfterRunAuthorityHarness
                 .GetField("_session", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(family)!;
             Require(currentSession.State.Snapshot.Binding.WorkspaceRevision == saved.ContentRevision,
                 "Family did not bind the persisted advancement revision.");
+            saved = await RunSavedFreeSkillsAsync(runtime);
             // Equal account names after an intervening owner are not the same
             // navigation authority, even if stale overview IDs still match.
             OwnerScope originalOwner = owners.Current;
@@ -164,5 +163,108 @@ internal static partial class AfterRunAuthorityHarness
             && MinimalVisible(page).OfType<Button>().Any(x => x.AutomationId == "sr5-career-action-karma" && x.IsEnabled),
             "Career family remained stale instead of offering the freshly saved runner's actions.");
         MinimalRequireNoMachineValues(page);
+    }
+
+    private static async Task<Chummer.Application.Workspaces.WorkspaceStoredDocument> RunSavedFreeSkillsAsync(NativeRewardRuntime runtime)
+    {
+        var c = runtime.Coordinator;
+        var store = new FileWorkspaceStore(runtime.StateDirectory);
+        var before = XElement.Parse(store.Get(runtime.Id).Value!.Document.Content);
+        var active = (await c.PrepareCareerActiveSkillAdvanceAsync())!;
+        var computer = active.Skills.Single(row => row.Name == "Computer");
+        Require(computer.TotalBaseRating == 5 && computer.KarmaPoints == 0 && computer.KarmaCost == 12
+            && computer.CanAdvance && computer.AvailableKarma == 22,
+            "Computer must price its two module levels plus three Electronics levels exactly.");
+        var skillRequest = new CareerActiveSkillAdvanceRequest(active.WorkspaceId, active.ContentRevision,
+            computer, computer.RuleDigest, true, Guid.NewGuid(), new DateTime(2026, 10, 14, 12, 2, 0));
+        Require(await c.ApplyCareerActiveSkillAdvanceAsync(skillRequest),
+            "Actual native granted-skill handler did not save: " + c.State.Error);
+        var skillSaved = store.Get(runtime.Id).Value!;
+        var skillXml = XElement.Parse(skillSaved.Document.Content);
+        Require(skillSaved.ContentRevision == 4 && skillSaved.SavedRevision == 4
+            && skillXml.Element("karma")!.Value == "10"
+            && XNode.DeepEquals(before.Element("improvements"), skillXml.Element("improvements")),
+            "Skill purchase must change paid allocation and budget, never module grants.");
+        bool replayRejected = false;
+        try { await c.ApplyCareerActiveSkillAdvanceAsync(skillRequest); }
+        catch (InvalidOperationException) { replayRejected = true; }
+        Require(replayRejected, "A stale skill request was applied twice.");
+
+        var groups = (await c.PrepareCareerSkillGroupAdvanceAsync())!;
+        var closeCombat = groups.SkillGroups.Single(row => row.Name == "Close Combat");
+        Require(closeCombat.CanAdvance && closeCombat.GroupRating == 1 && closeCombat.CostRating == 1
+            && closeCombat.KarmaPoints == 0 && closeCombat.KarmaCost == 10 && closeCombat.AvailableKarma == 10,
+            "Close Combat's free level must remain separate from the first paid group point.");
+        Require(CharacterCareerSkillGroupAdvanceServiceIntegrity.TryComputeBindingDigest(
+            groups.WorkspaceId, groups.ContentRevision, closeCombat, out string binding),
+            "UI group quote did not bind to the exact atomic Core transaction.");
+        var command = new CharacterCareerSkillGroupAdvanceCommand(
+            CharacterCareerSkillGroupAdvanceServiceSchemas.CommandV1, groups.WorkspaceId,
+            groups.ContentRevision, closeCombat.Identity, closeCombat.LogicalRevision,
+            closeCombat.SourceRevision, closeCombat.RuleDigest, binding, Guid.NewGuid(),
+            new DateTime(2026, 10, 14, 12, 3, 0), true);
+        var result = await c.AdvanceCareerSkillGroupAsync(command);
+        Require(result?.Outcome == CharacterCareerSkillGroupAdvanceServiceOutcome.Applied,
+            "Actual atomic skill-group handler did not apply the reviewed UI quote: "
+                + result?.Outcome + " " + string.Join(",", result?.Blockers ?? []));
+        var saved = store.Get(runtime.Id).Value!;
+        var savedXml = XElement.Parse(saved.Document.Content);
+        Require(saved.ContentRevision == 5 && saved.SavedRevision == 5
+            && savedXml.Element("karma")!.Value == "0"
+            && XNode.DeepEquals(before.Element("improvements"), savedXml.Element("improvements"))
+            && XNode.DeepEquals(skillXml.Element("newskills")!.Element("skills"), savedXml.Element("newskills")!.Element("skills")),
+            "Atomic group save must retain grants and individual allocations with the exact budget.");
+        var replay = await c.AdvanceCareerSkillGroupAsync(command);
+        Require(replay?.Outcome == CharacterCareerSkillGroupAdvanceServiceOutcome.Replayed
+            && replay.Receipt == result!.Receipt, "Group recovery must return its exact original receipt.");
+        await runtime.Presenter.LoadAsync(runtime.Id, default);
+        var finalSkill = (await c.PrepareCareerActiveSkillAdvanceAsync())!.Skills.Single(row => row.Name == "Computer");
+        var finalGroup = (await c.PrepareCareerSkillGroupAdvanceAsync())!.SkillGroups.Single(row => row.Name == "Close Combat");
+        Require(finalSkill.TotalBaseRating == 6 && finalSkill.KarmaPoints == 1
+            && finalGroup.GroupRating == 2 && finalGroup.KarmaPoints == 1
+            && finalSkill.AvailableKarma == 0 && finalGroup.AvailableKarma == 0,
+            "Saved free/paid skill/group ratings did not reopen exactly.");
+        RequireSameRewardDocument(saved, store.Get(runtime.Id).Value!);
+        Console.WriteLine("PASS saved Life Modules: Computer5→6 for12, Close Combat1→2 for10, balance0, grants retained, atomic receipt recovered, saved state reopened.");
+
+        var award = (await c.PrepareCareerManualKarmaEditAsync())!;
+        await c.ApplyCareerManualKarmaEditAsync(new CareerManualKarmaEditRequest(
+            award.WorkspaceId, award.ContentRevision, award.Karma, CharacterCareerManualKarmaAction.Gain,
+            7, "Synthetic specialization award", new DateTime(2026, 10, 14, 12, 4, 0), false, false, false));
+        Require(c.State.Error is null && !c.State.IsDirty, "Specialization award did not persist.");
+        var specs = (await c.PrepareCareerSkillSpecializationAsync())!;
+        var target = specs.Skills.Single(row => row.SkillName == "Computer");
+        var option = target.AvailableOptions.First(row => row.Kind == CharacterCareerSkillSpecializationOptionKind.SourceCatalog);
+        var selection = new CharacterCareerSkillSpecializationSelection(option.Name, option.Kind, option.OptionIdentity);
+        var quote = (await c.PrepareCareerSkillSpecializationQuoteAsync(new(specs.WorkspaceId,
+            specs.ContentRevision, target.Identity, selection)))!;
+        Require(quote.CanAdd && quote.TotalBaseRating == 6 && quote.KarmaCost == 7 && quote.AvailableKarma == 7,
+            "Saved module-granted Computer specialization must price the exact current rating and source option.");
+        var specRequest = new CareerSkillSpecializationRequest(specs.WorkspaceId, specs.ContentRevision,
+            quote, quote.CharacterRevision, quote.SourceRevision, quote.RuleDigest, quote.LogicalRevision,
+            true, Guid.NewGuid(), Guid.NewGuid(), new DateTime(2026, 10, 14, 12, 5, 0));
+        Require(await c.ApplyCareerSkillSpecializationAsync(specRequest) is not null,
+            "Actual native specialization handler did not persist the exact free-rating purchase.");
+        var specialized = store.Get(runtime.Id).Value!;
+        var specializedXml = XElement.Parse(specialized.Document.Content);
+        Require(specialized.ContentRevision == 7 && specialized.SavedRevision == 7
+            && specializedXml.Element("karma")!.Value == "0"
+            && XNode.DeepEquals(before.Element("improvements"), specializedXml.Element("improvements"))
+            && XNode.DeepEquals(savedXml.Element("newskills")!.Element("groups"),
+                specializedXml.Element("newskills")!.Element("groups")),
+            "Specialization must retain free grants, paid group allocation and exact budget.");
+        replayRejected = false;
+        try { await c.ApplyCareerSkillSpecializationAsync(specRequest); }
+        catch (InvalidOperationException) { replayRejected = true; }
+        Require(replayRejected, "A stale specialization request was applied twice.");
+        await runtime.Presenter.LoadAsync(runtime.Id, default);
+        var reopenedSpec = (await c.PrepareCareerSkillSpecializationAsync())!.Skills.Single(row => row.Identity == target.Identity);
+        var reopenedActive = (await c.PrepareCareerActiveSkillAdvanceAsync())!.Skills.Single(row => row.Name == "Computer");
+        Require(reopenedSpec.TotalBaseRating == 6 && reopenedSpec.ExistingSpecializationCount == target.ExistingSpecializationCount + 1
+            && reopenedActive.KarmaPoints == 1 && reopenedActive.AvailableKarma == 0,
+            "Specialization did not reopen with the identical skill allocation and one added specialization.");
+        RequireSameRewardDocument(specialized, store.Get(runtime.Id).Value!);
+        Console.WriteLine("PASS saved Life Modules Computer specialization: exact source option, cost7, balance0, unchanged grants/paid levels, stale replay rejected, cold store reopen.");
+        return specialized;
     }
 }
