@@ -36,6 +36,7 @@ public sealed class CreationQualitiesPage : NativePageBase
     private CharacterCreationFoundationResult<CharacterCreationQualitiesState>? _loaded;
     private CharacterCreationQualitiesEditorState? _editor;
     private IReadOnlyList<CharacterCreationQualitiesDesktopOption> _availableOptions = [];
+    private IReadOnlyDictionary<string, string> _inlineSummaries = new Dictionary<string, string>();
     private bool _canReview;
     private string? _reviewCheckpointDigest;
     private bool _loading = true;
@@ -160,6 +161,7 @@ public sealed class CreationQualitiesPage : NativePageBase
         _loadedDisplay = null;
         _editor = null;
         _availableOptions = [];
+        _inlineSummaries = new Dictionary<string, string>();
         _fitLifetime?.Cancel();
         _fitLifetime = null;
         _fitReady = false;
@@ -190,7 +192,9 @@ public sealed class CreationQualitiesPage : NativePageBase
                 // Bind performs the full exact-state check for this invocation.
                 // Avoid a second check before it and a third just to read its result.
                 if (loaded.Value is not { } state || !draft.Bind(state, original))
-                    return (Editor: (CharacterCreationQualitiesEditorState?)null, CanReview: false, CheckpointDigest: (string?)null, Options: (IReadOnlyList<CharacterCreationQualitiesDesktopOption>)[]);
+                    return (Editor: (CharacterCreationQualitiesEditorState?)null, CanReview: false, CheckpointDigest: (string?)null,
+                        Options: (IReadOnlyList<CharacterCreationQualitiesDesktopOption>)[],
+                        Summaries: (IReadOnlyDictionary<string, string>)new Dictionary<string, string>());
                 var editor = CreationQualitiesPhoneAuthority.ProjectEditor(state, original);
                 bool canReview = CreationQualitiesPhoneAuthority.CanConfirmPreview(
                     state, original, draft.Preview ?? state.Preview, draft.SelectedOptionIds);
@@ -198,13 +202,27 @@ public sealed class CreationQualitiesPage : NativePageBase
                     && checkpoint.OwnsExactReview(state, original) ? checkpoint.CheckpointDigest : null;
                 cancellationToken.ThrowIfCancellationRequested();
                 var available = draft.AvailableOptions(state, original, editor, cancellationToken);
-                return (Editor: editor, CanReview: canReview, CheckpointDigest: checkpointDigest, Options: available);
+                // The source-backed explanation parses and hashes XML. Prepare
+                // it once off the UI thread for this accepted appearance, not
+                // for every row on search/clear/paging or rating callbacks.
+                var availableIds = available.Select(option => option.OptionId).ToHashSet(StringComparer.Ordinal);
+                var summaries = new Dictionary<string, string>(StringComparer.Ordinal);
+                foreach (var source in state.Authority.Options)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (availableIds.Contains(source.OptionId))
+                        summaries.Add(source.OptionId,
+                            CreationQualityInfo.Effects(source.SourceNodeXml, source.Rating).FirstOrDefault() ?? string.Empty);
+                }
+                return (Editor: editor, CanReview: canReview, CheckpointDigest: checkpointDigest, Options: available,
+                    Summaries: (IReadOnlyDictionary<string, string>)summaries);
             }, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             _loadedDisplay = original;
             _loaded = loaded;
             _editor = prepared.Editor;
             _availableOptions = prepared.Options;
+            _inlineSummaries = prepared.Summaries;
             _canReview = prepared.CanReview;
             _reviewCheckpointDigest = prepared.CheckpointDigest;
             // A temporarily unavailable projection must not replace the previous
@@ -721,8 +739,7 @@ public sealed class CreationQualitiesPage : NativePageBase
                 explanation.AutomationId = $"creation-quality-summary-{Token(group[0].OptionId)}";
                 void Explain()
                 {
-                    var source = state.Authority.Options.Single(item => item.OptionId == option.OptionId);
-                    explanation.Text = CreationQualityInfo.Effects(source.SourceNodeXml, option.Rating).FirstOrDefault();
+                    explanation.Text = _inlineSummaries.GetValueOrDefault(option.OptionId, string.Empty);
                 }
                 Explain();
                 extras.Add(explanation);

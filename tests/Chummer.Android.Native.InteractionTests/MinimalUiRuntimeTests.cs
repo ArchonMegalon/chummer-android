@@ -3625,13 +3625,26 @@ internal static partial class AfterRunAuthorityHarness
             var loaded = await coordinator.LoadCreationQualitiesForDisplayAsync(original, default);
             var state = loaded.Value ?? throw new InvalidOperationException("SETUP: quality authority missing.");
             VerifyQualitiesSinglePassBinding(state, original);
-            var catalogPage = new CreationQualitiesPage(coordinator);
+            var countedCatalogSources = new CountedQualityCatalog(state.Authority.Options);
+            var catalogPage = new CreationQualitiesPage(coordinator, original,
+                loaded with { Value = state with { Authority = state.Authority with { Options = countedCatalogSources } } });
             var catalogNavigation = new NavigationPage(catalogPage);
             await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(catalogPage, "OnAppearing")));
+            countedCatalogSources.Reads = 0;
             SearchBar Search() => MinimalVisible(catalogPage).OfType<SearchBar>().Single();
             var retainedSearch = Search();
             var retainedReview = MinimalVisible(catalogPage).OfType<Button>().Single(item =>
                 item.AutomationId == "creation-qualities-open-review");
+            retainedSearch.Text = "Spike Resistance";
+            ((ISearchBarController)retainedSearch).OnSearchButtonPressed();
+            var inlineRating = MinimalVisible(catalogPage).OfType<Picker>().Single(item =>
+                item.AutomationId?.StartsWith("creation-quality-rating-", StringComparison.Ordinal) == true);
+            inlineRating.SelectedIndex = inlineRating.Items.Count - 1;
+            var summary = MinimalVisible(catalogPage).OfType<Label>().Single(item =>
+                item.AutomationId?.StartsWith("creation-quality-summary-", StringComparison.Ordinal) == true);
+            var summarySource = state.Authority.Options.Single(item => item.Name == "Spike Resistance" && item.Rating == 2);
+            Require(summary.Text == CreationQualityInfo.Effects(summarySource.SourceNodeXml, summarySource.Rating)[0],
+                "The inline rating summary must retain the exact appearance's source-backed explanation.");
             var detachedHelp = MinimalVisible(catalogPage).OfType<Button>().First(item =>
                 item.AutomationId?.StartsWith("creation-quality-info-", StringComparison.Ordinal) == true);
             retainedSearch.Text = "no-such-quality-focus-regression";
@@ -3656,6 +3669,8 @@ internal static partial class AfterRunAuthorityHarness
             ((IButtonController)nextPage).SendClicked();
             Require(ReferenceEquals(Search(), retainedSearch) && MinimalVisibleText(catalogPage) == secondPage,
                 "Paging detached the editor or a detached pager changed the new result list.");
+            Require(countedCatalogSources.Reads == 0,
+                "Search, clear, paging and inline rating changes must use prepared summaries, not read/hash source XML on the UI thread.");
             await VerifyQualityHelpScrollReturnAsync(ui, catalogPage, catalogNavigation);
             await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(catalogPage, "OnAppearing")));
             retainedSearch = Search();
