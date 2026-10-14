@@ -132,7 +132,29 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 233 is the latest [observed Internal availability](../play/evidence/preview233-internal-observation.json),
+Preview 234 is the latest [observed Internal availability](../play/evidence/preview234-internal-observation.json),
+released on 14 October at 14:47 Europe/Vienna. Its local ARM64 build, original-key
+isolated signing, independent keyless checks and one Play upload/final confirmation
+passed. Android #779 makes Reputation Done return directly to the
+recognized usable Career surface, retiring only an adjacent completed After Run
+page. Appearance, owner, revision, result and navigation-stack guards remain;
+navigation does not recover/replay rewards or discard unrelated pages. Core/UI
+are unchanged, and the separate Quality redesign is not included. Forty existing
+model/control cases, five runtime/file-store cases, the new actual-Done navigation
+suite and 22 focused Python checks passed; 324 native sources compiled with zero
+warnings/errors. The API 36 x64 Release/Internal route saved one manual Street
+Cred adjustment 1 to 2 (total 5 to 6), revision 24 to 25, then returned directly
+to Career with one Done click. A new process reopened the same result and again
+returned directly with one click. Karma 15/Nuyen 365, the reward journal and 37
+unrelated files stayed unchanged; all 39 saved/restarted files were byte-identical.
+The native route remains narrower than the managed navigation suite. Physical
+Preview 234, full Career/live Origin and startup/reload acceptance are unverified;
+boot ANR, slow restoration and recovered accessibility failures remain recorded.
+Play reported 8738 supported phones, zero newly unsupported phones and only the
+existing mapping/native-symbol warnings. Version 234 is consumed; retain its exact
+packet and prior rollback artifacts, and do not rebuild/re-upload it.
+
+Preview 233 was previously [observed on Internal](../play/evidence/preview233-internal-observation.json),
 released on 14 October at 13:43 Europe/Vienna. Android #777 hides the editing
 form in terminal saved and superseded-closed Reputation results, keeping the
 result and enabled Done action visible. Identity, owner/revision, journal and
@@ -146,8 +168,8 @@ process reopened that history record without another adjustment; all 39 saved
 files were byte-identical. Superseded-closed controls had managed coverage, not
 this native route. Local ARM64 build, isolated original-key signing, independent
 keyless verification and one Play upload/final confirmation passed.
-The known Done mismatch remains: Reputation's Career-labelled Done first
-returns to After Run, whose Done then returns to Career. Physical Preview 233,
+Preview 233 retained the Done mismatch: Reputation's Career-labelled Done first
+returned to After Run, whose Done then returned to Career. Physical Preview 233,
 full Career/live Origin and startup/reload acceptance remain unverified. Guest
 boot ANRs, resource pressure and a recovered null-root accessibility observation
 are retained, not performance fixes. Version 233 is consumed; retain its exact
