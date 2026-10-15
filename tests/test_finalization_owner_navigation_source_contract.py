@@ -10,6 +10,58 @@ NATIVE = Path(__file__).resolve().parents[1] / "src" / "Chummer.Android" / "Nati
 
 
 class FinalizationOwnerNavigationSourceContractTests(unittest.TestCase):
+    def test_completion_magic_identity_picker_is_visible_guarded_and_keeps_original_choices(self):
+        source = (NATIVE / "CreationCompletionPage.cs").read_text(encoding="utf-8")
+        choices = source.split("private void RenderChoices(", 1)[1].split("private void InvalidateProposal()", 1)[0]
+        for kind in ("tradition", "stream"):
+            self.assertIn(f'"creation-completion-{kind}"', choices)
+        picker = choices.split("private void RenderMagicIdentityChoice(", 1)[1]
+        original = picker.split("if (original is not null)", 1)[1].split("var choices =", 1)[0]
+        self.assertIn("MagicOptionLabel(original)", original)
+        self.assertIn('automationId + "-retained"', original)
+        self.assertIn("return;", original)
+        self.assertNotIn("new Picker", original)
+        self.assertIn("CompletionRecommendationBuilder.GetMagicIdentityChoices(_inputs!, kind)", picker)
+        self.assertIn("if (preferred is null)", picker)
+        self.assertIn("preferred = choices[0].Identity;", picker)
+        self.assertIn("SelectedIndex = Array.FindIndex(choices, option => option.Identity == preferred)", picker)
+        self.assertLess(picker.index("SelectedIndex ="), picker.index("picker.SelectedIndexChanged +="))
+        handler = picker.split("picker.SelectedIndexChanged +=", 1)[1].split("_body.Add(NativeTheme.FieldLabel", 1)[0]
+        self.assertIn("!Current(appearance, render) || _busy", handler)
+        self.assertIn("picker.SelectedIndex >= choices.Length", handler)
+        self.assertLess(handler.index("!Current(appearance, render)"), handler.index("select(choices["))
+        self.assertIn("InvalidateProposal();", handler)
+        invalidation = source.split("private void InvalidateProposal()", 1)[1].split("private async Task BuildAsync()", 1)[0]
+        for retired in ("_inputVersion++;", "_proposal = null;", "_review = null;", '_roll = string.Empty;'):
+            self.assertIn(retired, invalidation)
+        self.assertNotIn("_preferredTradition =", invalidation)
+        self.assertNotIn("_preferredStream =", invalidation)
+        build = source.split("private async Task BuildAsync()", 1)[1].split("private void RenderProposal()", 1)[0]
+        self.assertIn("PreferredTradition = inputs.Magic.Selections.Tradition is null ? _preferredTradition : null", build)
+        self.assertIn("PreferredStream = inputs.Magic.Selections.Stream is null ? _preferredStream : null", build)
+        self.assertNotIn("DesiredTotalMysticAdeptPowerPoints", source)
+
+    def test_completion_magic_summary_uses_evaluated_new_identities_and_exact_catalog_names(self):
+        source = (NATIVE / "CreationCompletionPage.cs").read_text(encoding="utf-8")
+        proposal = source.split("private void RenderProposal()", 1)[1].split("private void RenderMagicProposal()", 1)[0]
+        self.assertLess(proposal.index("RenderMagicProposal();"), proposal.index('Copy("Remaining"'))
+        magic = source.split("private void RenderMagicProposal()", 1)[1].split("private void RenderResourceProposal()", 1)[0]
+        self.assertIn("var original = inputs.Magic.Selections;", magic)
+        self.assertIn("var proposed = plan.Selections.MagicSelections;", magic)
+        self.assertIn("original.Tradition is null && proposed.Tradition", magic)
+        self.assertIn("original.Stream is null && proposed.Stream", magic)
+        self.assertIn("!original.Spells.Contains(identity)", magic)
+        self.assertIn("!original.ComplexForms.Contains(identity)", magic)
+        for kind in ("tradition", "stream", "spell", "complex-form"):
+            self.assertIn(f'"creation-completion-proposed-{kind}"', magic)
+        self.assertIn('AutomationId = "creation-completion-magic-changes"', magic)
+        self.assertIn("options.Where(option => option.Identity == identity).Take(2)", magic)
+        self.assertIn("MagicCatalogStrings.OptionName(identity.Kind, identity.SourceId, matches[0].Name)", magic)
+        self.assertIn('Copy("MagicUnknown", "Unavailable magic choice")', magic)
+        self.assertNotIn(": identity.SourceId", magic)
+        self.assertNotIn("SourceNodeXml", magic)
+        self.assertNotIn("ApplyCreationCompletionAsync", magic)
+
     def test_completion_starter_fills_only_missing_choices_and_keeps_current_core_review(self):
         source = (NATIVE / "CreationCompletionPage.cs").read_text(encoding="utf-8")
         self.assertIn("new CompletionAdditivePermissions([], [])", source)
@@ -102,7 +154,7 @@ class FinalizationOwnerNavigationSourceContractTests(unittest.TestCase):
         source = (NATIVE / "CreationCompletionPage.cs").read_text(encoding="utf-8")
         proposal = source.split("private void RenderProposal()", 1)[1].split("private void RenderResourceProposal()", 1)[0]
         self.assertLess(proposal.index("RenderResourceProposal();"), proposal.index('Copy("Remaining"'))
-        resources = source.split("private void RenderResourceProposal()", 1)[1].split("private void RenderCashAndReview", 1)[0]
+        resources = source.split("private void RenderResourceProposal()", 1)[1].split("private void RenderLoadoutProposal()", 1)[0]
         self.assertIn("_proposal?.Evaluation.Value is not { } plan", resources)
         for identity, displayed in (
                 ("native-language", "SkillCatalogStrings.SkillName(language.Kind, language.SourceSkillId, language.Name)"),
@@ -122,6 +174,44 @@ class FinalizationOwnerNavigationSourceContractTests(unittest.TestCase):
         self.assertIn("Number(item.TotalCost)", resources)
         self.assertEqual(4, resources.count("_body.Add(value);"))
         self.assertNotIn("ApplyCreationCompletionAsync", resources)
+
+    def test_completion_loadout_read_keeps_owner_revision_and_snapshot_guards(self):
+        source = (NATIVE / "RunnerSessionCoordinator.CreationCompletion.cs").read_text(encoding="utf-8")
+        read = source.split("LoadCreationCompletionInputsAsync(", 1)[1].split("BuildCreationCompletionProposalAsync(", 1)[0]
+        dispatch = read.index("reader.LoadCompletionInputsWithLoadout(owner, new(workspaceId), cancellationToken)")
+        before, after = read[:dispatch], read[dispatch:]
+        for guard in ("WithWorkspaceActivationGateAsync", "cancellationToken.ThrowIfCancellationRequested()",
+                      "!CompletionDisplayCurrent(original)", "original.DisplayOwnerContext is not { } owner",
+                      "ReadCreationAuthority(original"):
+            self.assertIn(guard, before)
+        for guard in ("!CompletionDisplayCurrent(original)", "inputs.Loadout is not { } loadout",
+                      "inputs.SnapshotDigest", "result.Outcome != CharacterCreationFoundationOutcomes.Success"):
+            self.assertIn(guard, after)
+        for binding in ("inputs.Skills.Binding", "loadout.Binding"):
+            for member, expected in (("WorkspaceId", "workspaceId"), ("ContentRevision", "original.ContentRevision"),
+                                     ("SavedRevision", "original.SavedRevision")):
+                self.assertIn(f"{binding}.{member} != {expected}", after)
+        self.assertNotIn("reader.LoadCompletionInputs(", read)
+
+    def test_completion_loadout_summary_and_review_use_the_typed_core_selection(self):
+        source = (NATIVE / "CreationCompletionPage.cs").read_text(encoding="utf-8")
+        proposal = source.split("private void RenderProposal()", 1)[1].split("private void RenderMagicProposal()", 1)[0]
+        self.assertLess(proposal.index("RenderLoadoutProposal();"), proposal.index('Copy("Remaining"'))
+        loadout = source.split("private void RenderLoadoutProposal()", 1)[1].split("private void RenderCashAndReview", 1)[0]
+        for displayed in ("_proposal?.Loadout", "foreach (var item in loadout.Lines)", "item.Name",
+                          "item.Quantity.ToString(CultureInfo.CurrentCulture)", "Number(item.TotalCost)",
+                          '"Completion.LoadoutLine"', '"creation-completion-proposed-loadout"'):
+            self.assertIn(displayed, loadout)
+        self.assertNotIn("OptionId", loadout)
+        self.assertNotIn("SourceNodeXml", loadout)
+        self.assertNotIn("ApplyCreationCompletionAsync", loadout)
+        for task, key in (("ammo-modifications-rated-gear", "LoadoutExtras"), ("weapon-choices", "WeaponNeeded"),
+                          ("armor-choices", "ArmorNeeded")):
+            self.assertIn(f'"completion.remaining.{task}" => Copy("{key}"', source)
+        coordinator = (NATIVE / "RunnerSessionCoordinator.CreationCompletion.cs").read_text(encoding="utf-8")
+        review = coordinator.split("ReviewCreationCompletionAsync(", 1)[1].split("ApplyCreationCompletionAsync(", 1)[0]
+        self.assertIn("new CharacterCreationCompletionReviewRequest(frozen.Intent.InputsSnapshotDigest, plan.Selections)", review)
+        self.assertIn("service.Review(owner, workspaceId, request, startingCash, cancellationToken)", review)
 
     def test_completion_retains_known_receipt_and_only_recovers_returned_unknown_outcomes(self):
         source = (NATIVE / "CreationCompletionPage.cs").read_text(encoding="utf-8")
@@ -144,7 +234,7 @@ class FinalizationOwnerNavigationSourceContractTests(unittest.TestCase):
         source = (NATIVE / "CreationCompletionPage.cs").read_text(encoding="utf-8")
         dashboard = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         keys = {"Completion." + key for key in re.findall(r'\bCopy\("([^"]+)"', source + dashboard)}
-        keys.update({"Completion.Rating", "Completion.ContactAddition"})
+        keys.update({"Completion.Rating", "Completion.ContactAddition", "Completion.LoadoutLine"})
         # BuildPage contains other copy helpers; only this page and its named entry use this prefix.
         keys = {key for key in keys if key != "Completion.Receipt"}
         resources = NATIVE.parent / "Resources" / "Localization"

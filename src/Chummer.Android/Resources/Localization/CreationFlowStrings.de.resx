@@ -15,7 +15,7 @@
   <data name="Completion.Title" xml:space="preserve"><value>Diesen Charakter fertigstellen</value></data>
   <data name="Completion.Entry" xml:space="preserve"><value>Prüfe Startvorschläge unter Beibehaltung deiner Auswahl. Übernimm sie erst nach der Abschlussprüfung.</value></data>
   <data name="Completion.Unsupported" xml:space="preserve"><value>Startvorschläge unterstützen derzeit SR5-Priorität und Sum-to-Ten. Nutze für diese Methode die normalen Erstellungsschritte.</value></data>
-  <data name="Completion.Scope" xml:space="preserve"><value>Verteile freie Punkte und erhalte Vorschläge für Kontakte, Lebensstil und Grundausstattung. Waffen, Rüstung und manche Magieoptionen bleiben manuell zu prüfen. Erst Übernehmen ändert deinen Charakter.</value></data>
+  <data name="Completion.Scope" xml:space="preserve"><value>Verteile freie Punkte und erhalte Vorschläge für Kontakte, Lebensstil, Grundausstattung, eine Waffe und Rüstung. Manche Ausrüstungs- und Magieoptionen bleiben zu prüfen. Erst Übernehmen ändert deinen Charakter.</value></data>
   <data name="Completion.ContactAddition" xml:space="preserve"><value>{0} · Einfluss {1}, Loyalität {2}</value></data>
   <data name="Completion.NoLoss" xml:space="preserve"><value>Es verfallen keine freien Punkte oder überschüssigen Mittel.</value></data>
   <data name="Completion.LoadBlocked" xml:space="preserve"><value>Schließe zuerst die Erstellungsmethode ab und öffne die Vorschläge erneut. Deine bisherige Auswahl bleibt unverändert.</value></data>
@@ -25,6 +25,13 @@
   <data name="Completion.Prefill" xml:space="preserve"><value>Aus deiner bisherigen Auswahl vorgeschlagen. Du kannst den Archetyp ändern.</value></data>
   <data name="Completion.NoPack" xml:space="preserve"><value>Für diesen Archetyp gibt es noch keine Startvorschläge. Behalte dein Talent und fahre manuell fort oder wähle einen anderen Vorschlagsstil.</value></data>
   <data name="Completion.KeepChoices" xml:space="preserve"><value>Deine bisherigen Entscheidungen bleiben unverändert. Vorschläge ergänzen nur noch offene Entscheidungen.</value></data>
+  <data name="Completion.MagicTradition" xml:space="preserve"><value>Tradition</value></data>
+  <data name="Completion.MagicStream" xml:space="preserve"><value>Strömung</value></data>
+  <data name="Completion.MagicChoiceHelp" xml:space="preserve"><value>Die angezeigte Auswahl ist ein Vorschlag. Du kannst sie vor der Vorschau ändern. Gespeicherte Magieentscheidungen bleiben unverändert.</value></data>
+  <data name="Completion.MagicSpell" xml:space="preserve"><value>Zauber</value></data>
+  <data name="Completion.MagicComplexForm" xml:space="preserve"><value>Komplexe Form</value></data>
+  <data name="Completion.MagicChanges" xml:space="preserve"><value>Vorgeschlagene Magieentscheidungen</value></data>
+  <data name="Completion.MagicUnknown" xml:space="preserve"><value>Nicht verfügbare Magieoption</value></data>
   <data name="Completion.AttributeChoiceIntent" xml:space="preserve"><value>Deine gespeicherte Attributverteilung bleibt unverändert. Der Assistent erkennt nicht, welche Werte du bewusst beibehalten hast. Verteile übrige Attributpunkte selbst in der Erstellung.</value></data>
   <data name="Completion.Preview" xml:space="preserve"><value>Vorschläge ansehen</value></data>
   <data name="Completion.Proposal" xml:space="preserve"><value>Vorgeschlagene Werte</value></data>
@@ -59,7 +66,12 @@
   <data name="Completion.Blocked" xml:space="preserve"><value>Einige Entscheidungen konnten nicht geprüft werden. Kehre zur Erstellung zurück, prüfe die Pflichtschritte und erstelle einen neuen Vorschlag.</value></data>
   <data name="Completion.UnknownSkill" xml:space="preserve"><value>Nicht verfügbare Fertigkeit</value></data>
   <data name="Completion.SkillGroup" xml:space="preserve"><value>Fertigkeitsgruppe</value></data>
-  <data name="Completion.Loadout" xml:space="preserve"><value>Die Grundausstattung ist noch nicht vollständig. Prüfe Waffen, Rüstung und Ausrüstung mit Stufen in der Erschaffung.</value></data>
+  <data name="Completion.Loadout" xml:space="preserve"><value>Grundausstattung, eine Waffe und Rüstung ergeben noch keine vollständige Ausrüstung.</value></data>
+  <data name="Completion.LoadoutItems" xml:space="preserve"><value>Vorgeschlagene Waffen und Rüstung (einschließlich beibehaltener Auswahl)</value></data>
+  <data name="Completion.LoadoutLine" xml:space="preserve"><value>{0} × {1}: {2} ¥</value></data>
+  <data name="Completion.LoadoutExtras" xml:space="preserve"><value>Prüfe Munition, Modifikationen und Ausrüstung mit Stufen in der Erschaffung; sie sind in den Waffen- und Rüstungsvorschlägen nicht enthalten.</value></data>
+  <data name="Completion.WeaponNeeded" xml:space="preserve"><value>Prüfe deine Waffenauswahl in der Erschaffung.</value></data>
+  <data name="Completion.ArmorNeeded" xml:space="preserve"><value>Prüfe deine Rüstungsauswahl in der Erschaffung.</value></data>
   <data name="Completion.Identity" xml:space="preserve"><value>Prüfe Namen, Identität und Geschichte selbst.</value></data>
   <data name="Completion.Targets" xml:space="preserve"><value>Einige Startziele sind gesperrt, nicht verfügbar oder unerreicht. Sie sind Empfehlungen, keine automatische Änderungserlaubnis.</value></data>
   <data name="Completion.Magic" xml:space="preserve"><value>Prüfe die für dein Talent erforderlichen Magieentscheidungen.</value></data>

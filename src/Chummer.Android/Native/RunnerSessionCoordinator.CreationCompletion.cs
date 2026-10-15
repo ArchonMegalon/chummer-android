@@ -58,14 +58,18 @@ public sealed partial class RunnerSessionCoordinator
                 || original.DisplayOwnerContext is not { } owner || _creationCompletionReader is not { } reader)
                 return CompletionUnavailable<CharacterCreationCompletionReviewInputs>();
             var result = ReadCreationAuthority(original,
-                () => reader.LoadCompletionInputs(owner, new(workspaceId), cancellationToken), cancellationToken);
+                () => reader.LoadCompletionInputsWithLoadout(owner, new(workspaceId), cancellationToken), cancellationToken);
             if (!CompletionDisplayCurrent(original)) return CompletionUnavailable<CharacterCreationCompletionReviewInputs>();
             if (result.Value is { } inputs)
             {
                 if (result.Outcome != CharacterCreationFoundationOutcomes.Success
                     || inputs.Skills.Binding.WorkspaceId != workspaceId
                     || inputs.Skills.Binding.ContentRevision != original.ContentRevision
-                    || inputs.Skills.Binding.SavedRevision != original.SavedRevision)
+                    || inputs.Skills.Binding.SavedRevision != original.SavedRevision
+                    || inputs.Loadout is not { } loadout
+                    || loadout.Binding.WorkspaceId != workspaceId
+                    || loadout.Binding.ContentRevision != original.ContentRevision
+                    || loadout.Binding.SavedRevision != original.SavedRevision)
                     return CompletionUnavailable<CharacterCreationCompletionReviewInputs>();
                 _completionInputs.GetValue(inputs, _ => new(original, inputs.SnapshotDigest));
             }

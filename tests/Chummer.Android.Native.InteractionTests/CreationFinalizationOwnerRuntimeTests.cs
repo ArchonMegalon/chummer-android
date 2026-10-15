@@ -4416,10 +4416,13 @@ internal static partial class AfterRunAuthorityHarness
         bool stopBeforeAttributes = false, string fixtureAlias = "Finalizer",
         string? attributeTalent = null, string attributeTalentRank = "C", bool stopBeforeGear = false,
         bool stopBeforeResources = false, bool stopBeforeSkills = false, string metatypeName = "Human",
-        bool omitSkillsBeforeGear = false)
+        bool omitSkillsBeforeGear = false, bool completionMagic = false)
     {
         Require(!omitSkillsBeforeGear || stopBeforeGear,
             "An out-of-order Gear fixture is not a finalization-ready character.");
+        Require(!completionMagic || stopBeforeAttributes && buildMethod == CharacterCreationBuildMethods.Priority
+            && attributeTalent == "Magician" && attributeTalentRank == "B" && metatypeName == "Human",
+            "The completion magic fixture must use actual Human Priority Magician B prerequisites.");
         // Test fixture adapted from Core f750 CharacterCreationFinalizationServiceTests.ReadyContext:
         // canonical Priority or Sum-to-Ten; repeated ranks for Human, distinct ranks for Elf/Ork;
         // actual services issue every draft and receipt.
@@ -4460,6 +4463,12 @@ internal static partial class AfterRunAuthorityHarness
             ranks[CharacterCreationPriorityCategoryIds.Attributes] = attributeTalentRank == "A" ? "C" : "A";
             ranks[CharacterCreationPriorityCategoryIds.Skills] = "D";
             ranks[CharacterCreationPriorityCategoryIds.Resources] = "E";
+        }
+        if (completionMagic)
+        {
+            ranks[CharacterCreationPriorityCategoryIds.Heritage] = "E";
+            ranks[CharacterCreationPriorityCategoryIds.Skills] = "C";
+            ranks[CharacterCreationPriorityCategoryIds.Resources] = "D";
         }
         var heritage = initial.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Heritage
                 && item.Rank == ranks[CharacterCreationPriorityCategoryIds.Heritage]).HeritageOptions.First(item => item.IsEnabled

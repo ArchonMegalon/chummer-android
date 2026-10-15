@@ -21,6 +21,7 @@ public sealed class CreationCompletionPage : NativePageBase
     private CancellationTokenSource? _reads;
     private string _archetypeId = string.Empty, _roll = string.Empty;
     private string? _cashDigest, _nativeLanguageId, _idempotencyKey;
+    private CharacterCreationMagicResonanceOptionIdentity? _preferredTradition, _preferredStream;
     private IReadOnlyList<string> _blockers = [];
     private bool _busy, _visible, _applyStarted, _outcomeLookupAllowed, _leaving;
     private long _render, _inputVersion;
@@ -116,6 +117,8 @@ public sealed class CreationCompletionPage : NativePageBase
             _cashDigest = _cashSources.FirstOrDefault()?.AuthorityDigest;
             _roll = string.Empty;
             _nativeLanguageId = null;
+            _preferredTradition = null;
+            _preferredStream = null;
             _inputVersion++;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
@@ -182,7 +185,7 @@ public sealed class CreationCompletionPage : NativePageBase
             _body.Add(NativeTheme.Body(Copy("Stale", "Your runner or account changed. Return to creation and open a fresh review."), NativeTheme.Danger));
             return;
         }
-        _body.Add(NativeTheme.Body(Copy("Scope", "Fill unused points and suggest contacts, a lifestyle and basic supplies. Weapons, armor and some magic choices still need manual review. Nothing changes until Apply."), NativeTheme.Muted));
+        _body.Add(NativeTheme.Body(Copy("Scope", "Fill unused points and suggest contacts, a lifestyle, basic supplies, a weapon and armor. Some equipment and magic choices still need review. Nothing changes until Apply."), NativeTheme.Muted));
         if (_review is not null)
         {
             RenderFinalReview(appearance, render);
@@ -268,6 +271,55 @@ public sealed class CreationCompletionPage : NativePageBase
             };
             _body.Add(language);
         }
+        RenderMagicIdentityChoice(CharacterCreationMagicResonanceKinds.Tradition,
+            Copy("MagicTradition", "Tradition"), "creation-completion-tradition", _inputs.Magic.Selections.Tradition,
+            _preferredTradition, value => _preferredTradition = value, appearance, render);
+        RenderMagicIdentityChoice(CharacterCreationMagicResonanceKinds.Stream,
+            Copy("MagicStream", "Stream"), "creation-completion-stream", _inputs.Magic.Selections.Stream,
+            _preferredStream, value => _preferredStream = value, appearance, render);
+    }
+
+    private void RenderMagicIdentityChoice(string kind, string title, string automationId,
+        CharacterCreationMagicResonanceOptionIdentity? original,
+        CharacterCreationMagicResonanceOptionIdentity? preferred,
+        Action<CharacterCreationMagicResonanceOptionIdentity> select, long appearance, long render)
+    {
+        if (original is not null)
+        {
+            Label retained = NativeTheme.Body(title + ": " + MagicOptionLabel(original)
+                + " · " + Copy("Locked", "kept unchanged"), NativeTheme.Muted);
+            retained.AutomationId = automationId + "-retained";
+            _body.Add(retained);
+            return;
+        }
+        var choices = CompletionRecommendationBuilder.GetMagicIdentityChoices(_inputs!, kind).ToArray();
+        if (choices.Length == 0) return;
+        // Initialize visibly before subscribing. Refreshes retain the player's
+        // exact choice; a missing prior choice is never silently replaced.
+        if (preferred is null)
+        {
+            preferred = choices[0].Identity;
+            select(preferred);
+        }
+        Picker picker = new()
+        {
+            Title = title, AutomationId = automationId,
+            ItemsSource = choices.Select(option => MagicCatalogStrings.OptionName(
+                option.Identity.Kind, option.Identity.SourceId, option.Name)).ToArray(),
+            SelectedIndex = Array.FindIndex(choices, option => option.Identity == preferred),
+            TextColor = NativeTheme.Text, TitleColor = NativeTheme.Muted, BackgroundColor = NativeTheme.Surface
+        };
+        picker.SelectedIndexChanged += (_, _) =>
+        {
+            if (!Current(appearance, render) || _busy || picker.SelectedIndex < 0
+                || picker.SelectedIndex >= choices.Length) return;
+            select(choices[picker.SelectedIndex].Identity);
+            InvalidateProposal();
+        };
+        _body.Add(NativeTheme.FieldLabel(title));
+        _body.Add(picker);
+        _body.Add(NativeTheme.Body(Copy("MagicChoiceHelp",
+            "This visible selection is a suggestion. You can change it before previewing. Saved magic choices stay unchanged."), NativeTheme.Muted));
     }
 
     private void InvalidateProposal()
@@ -290,6 +342,8 @@ public sealed class CreationCompletionPage : NativePageBase
         var intent = new CompletionAssistantIntent(owner, inputs.SnapshotDigest, _archetypeId, permissions, new())
         {
             NativeLanguageSourceId = _nativeLanguageId,
+            PreferredTradition = inputs.Magic.Selections.Tradition is null ? _preferredTradition : null,
+            PreferredStream = inputs.Magic.Selections.Stream is null ? _preferredStream : null,
             StartingLifestyleId = SelectedLifestyleId(inputs),
             // Finish may propose spending the remaining creation budget; Core
             // independently enforces actual affordability and all reserves.
@@ -372,7 +426,9 @@ public sealed class CreationCompletionPage : NativePageBase
             _body.Add(NativeTheme.Body(CreationFlowStrings.Format("Completion.Rating", "{0}: proposed {1}, target {2} · {3}",
                 label, actual, suggestion.TargetRating, state)));
         }
+        RenderMagicProposal();
         RenderResourceProposal();
+        RenderLoadoutProposal();
         _body.Add(NativeTheme.Eyebrow(Copy("Remaining", "Still needs attention")));
         foreach (var task in _proposal.RemainingTasks.Where(key => key != "completion.remaining.finalization-review").Distinct())
             _body.Add(NativeTheme.Body(RemainingTask(task), NativeTheme.Muted));
@@ -381,6 +437,49 @@ public sealed class CreationCompletionPage : NativePageBase
             _body.Add(NativeTheme.Metric(Copy("KarmaBefore", "Creation Karma remaining"), Number(balance.RemainingCreationKarma)));
             _body.Add(NativeTheme.Metric(Copy("NuyenBefore", "Creation nuyen remaining"), Number(balance.RemainingNuyen)));
         }
+    }
+
+    private void RenderMagicProposal()
+    {
+        if (_inputs is not { } inputs || _proposal?.Evaluation.Value is not { } plan) return;
+        var original = inputs.Magic.Selections;
+        var proposed = plan.Selections.MagicSelections;
+        VerticalStackLayout changes = new() { AutomationId = "creation-completion-magic-changes", Spacing = 6 };
+        if (original.Tradition is null && proposed.Tradition is { } tradition)
+            Add(tradition, Copy("MagicTradition", "Tradition"), "creation-completion-proposed-tradition");
+        if (original.Stream is null && proposed.Stream is { } stream)
+            Add(stream, Copy("MagicStream", "Stream"), "creation-completion-proposed-stream");
+        foreach (var spell in proposed.Spells.Where(identity => !original.Spells.Contains(identity)))
+            Add(spell, Copy("MagicSpell", "Spell"), "creation-completion-proposed-spell");
+        foreach (var form in proposed.ComplexForms.Where(identity => !original.ComplexForms.Contains(identity)))
+            Add(form, Copy("MagicComplexForm", "Complex form"), "creation-completion-proposed-complex-form");
+        if (changes.Children.Count == 0) return;
+        _body.Add(NativeTheme.Eyebrow(Copy("MagicChanges", "Proposed magic choices")));
+        _body.Add(changes);
+
+        void Add(CharacterCreationMagicResonanceOptionIdentity identity, string title, string automationId)
+        {
+            Label value = NativeTheme.Body(title + ": " + MagicOptionLabel(identity));
+            value.AutomationId = automationId;
+            changes.Add(value);
+        }
+    }
+
+    private string MagicOptionLabel(CharacterCreationMagicResonanceOptionIdentity identity)
+    {
+        var authority = _inputs!.Magic.Authority;
+        IReadOnlyList<CharacterCreationMagicResonanceCatalogOption> options = identity.Kind switch
+        {
+            CharacterCreationMagicResonanceKinds.Tradition => authority.Traditions,
+            CharacterCreationMagicResonanceKinds.Stream => authority.Streams,
+            CharacterCreationMagicResonanceKinds.Spell => authority.Spells,
+            CharacterCreationMagicResonanceKinds.ComplexForm => authority.ComplexForms,
+            _ => []
+        };
+        var matches = options.Where(option => option.Identity == identity).Take(2).ToArray();
+        return matches.Length == 1 && !string.IsNullOrWhiteSpace(matches[0].Name)
+            ? MagicCatalogStrings.OptionName(identity.Kind, identity.SourceId, matches[0].Name)
+            : Copy("MagicUnknown", "Unavailable magic choice");
     }
 
     private void RenderResourceProposal()
@@ -417,6 +516,19 @@ public sealed class CreationCompletionPage : NativePageBase
             Label value = NativeTheme.Body(item.Name + " × " + item.Quantity.ToString(CultureInfo.CurrentCulture)
                 + ": " + Number(item.TotalCost) + " ¥");
             value.AutomationId = "creation-completion-proposed-equipment";
+            _body.Add(value);
+        }
+    }
+
+    private void RenderLoadoutProposal()
+    {
+        if (_proposal?.Loadout is not { Lines.Count: > 0 } loadout) return;
+        _body.Add(NativeTheme.Eyebrow(Copy("LoadoutItems", "Proposed weapons and armor (including retained choices)")));
+        foreach (var item in loadout.Lines)
+        {
+            Label value = NativeTheme.Body(CreationFlowStrings.Format("Completion.LoadoutLine", "{0} × {1}: {2} ¥",
+                item.Name, item.Quantity.ToString(CultureInfo.CurrentCulture), Number(item.TotalCost)));
+            value.AutomationId = "creation-completion-proposed-loadout";
             _body.Add(value);
         }
     }
@@ -712,7 +824,10 @@ public sealed class CreationCompletionPage : NativePageBase
 
     private static string RemainingTask(string key) => key switch
     {
-        "completion.remaining.practical-loadout" => Copy("Loadout", "Basic supplies are not a complete loadout. Review weapons, armor and rated equipment in creation."),
+        "completion.remaining.practical-loadout" => Copy("Loadout", "Basic supplies, a weapon and armor do not make a complete loadout."),
+        "completion.remaining.ammo-modifications-rated-gear" => Copy("LoadoutExtras", "Review ammunition, modifications and rated gear in creation; these are not included in the weapon and armor suggestions."),
+        "completion.remaining.weapon-choices" => Copy("WeaponNeeded", "Review your weapon choices in creation."),
+        "completion.remaining.armor-choices" => Copy("ArmorNeeded", "Review your armor choices in creation."),
         "completion.remaining.identity-review" => Copy("Identity", "Review your name, identity and story yourself."),
         "completion.remaining.starter-targets" => Copy("Targets", "Some starter targets are locked, unavailable or unmet. They are advice, not automatic permission to change your choices."),
         "completion.remaining.magic-choices" or "completion.remaining.magic-evaluation" => Copy("Magic", "Review the magic choices required by your talent."),

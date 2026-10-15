@@ -442,12 +442,22 @@ internal static partial class AfterRunAuthorityHarness
             Calls++;
             return actual.LoadCompletionInputs(owner, request, cancellationToken);
         }
+
+        public CharacterCreationFoundationResult<CharacterCreationCompletionReviewInputs> LoadCompletionInputsWithLoadout(
+            OwnerContextStamp owner, CharacterCreationSkillsLoadRequest request, CancellationToken cancellationToken = default)
+        {
+            Require(!ReferenceEquals(SynchronizationContext.Current, ui),
+                "Completion loadout inputs were read on the caller's UI context.");
+            Calls++;
+            return actual.LoadCompletionInputsWithLoadout(owner, request, cancellationToken);
+        }
     }
 
     private sealed class CompletionServiceProbe(IOwnerBoundCharacterCreationCompletionService actual,
         SynchronizationContext ui) : IOwnerBoundCharacterCreationCompletionService
     {
         public int ReviewCalls { get; private set; }
+        public CharacterCreationCompletionReviewRequest? LastReviewProposal { get; private set; }
         public int ApplyCalls { get; private set; }
         public bool ThrowBeforeApply { get; init; }
         public bool ThrowAfterApply { get; init; }
@@ -469,6 +479,7 @@ internal static partial class AfterRunAuthorityHarness
             Require(!ReferenceEquals(SynchronizationContext.Current, ui),
                 "Completion Core review ran on the caller's UI context.");
             ReviewCalls++;
+            LastReviewProposal = proposal;
             return actual.Review(owner, workspaceId, proposal, startingCash, cancellationToken);
         }
 

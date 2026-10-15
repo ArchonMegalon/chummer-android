@@ -15,7 +15,7 @@
   <data name="Completion.Title" xml:space="preserve"><value>Terminar este personaje</value></data>
   <data name="Completion.Entry" xml:space="preserve"><value>Revisa sugerencias iniciales conservando tus elecciones. Aplica solo tras la revisión final.</value></data>
   <data name="Completion.Unsupported" xml:space="preserve"><value>Las sugerencias iniciales admiten Prioridad y Suma de diez de SR5. Continúa con los pasos normales de este método.</value></data>
-  <data name="Completion.Scope" xml:space="preserve"><value>Reparte los puntos libres y recibe sugerencias de contactos, estilo de vida y equipo básico. Revisa manualmente armas, armadura y algunas opciones de magia. Nada cambia hasta aplicar.</value></data>
+  <data name="Completion.Scope" xml:space="preserve"><value>Reparte los puntos libres y recibe sugerencias de contactos, estilo de vida, equipo básico, un arma y armadura. Algunas opciones de equipo y magia aún requieren revisión. Nada cambia hasta aplicar.</value></data>
   <data name="Completion.ContactAddition" xml:space="preserve"><value>{0} · Conexión {1}, Lealtad {2}</value></data>
   <data name="Completion.NoLoss" xml:space="preserve"><value>No se perderán puntos libres ni fondos sobrantes.</value></data>
   <data name="Completion.LoadBlocked" xml:space="preserve"><value>Completa primero el método de creación y vuelve a abrir las sugerencias. Tus elecciones no cambian.</value></data>
@@ -25,6 +25,13 @@
   <data name="Completion.Prefill" xml:space="preserve"><value>Sugerido según tus elecciones actuales. Puedes cambiar el arquetipo.</value></data>
   <data name="Completion.NoPack" xml:space="preserve"><value>Este arquetipo aún no tiene sugerencias iniciales. Conserva tu talento y continúa manualmente o elige otro estilo de sugerencias.</value></data>
   <data name="Completion.KeepChoices" xml:space="preserve"><value>Tus elecciones actuales no cambian. Las sugerencias solo completan las decisiones que aún no has tomado.</value></data>
+  <data name="Completion.MagicTradition" xml:space="preserve"><value>Tradición</value></data>
+  <data name="Completion.MagicStream" xml:space="preserve"><value>Corriente</value></data>
+  <data name="Completion.MagicChoiceHelp" xml:space="preserve"><value>La selección visible es una sugerencia. Puedes cambiarla antes de la vista previa. Las elecciones mágicas guardadas no cambian.</value></data>
+  <data name="Completion.MagicSpell" xml:space="preserve"><value>Hechizo</value></data>
+  <data name="Completion.MagicComplexForm" xml:space="preserve"><value>Forma compleja</value></data>
+  <data name="Completion.MagicChanges" xml:space="preserve"><value>Elecciones mágicas propuestas</value></data>
+  <data name="Completion.MagicUnknown" xml:space="preserve"><value>Opción mágica no disponible</value></data>
   <data name="Completion.AttributeChoiceIntent" xml:space="preserve"><value>Tu asignación de atributos guardada no cambia. El asistente no sabe qué valores decidiste conservar; distribuye manualmente los puntos restantes en creación.</value></data>
   <data name="Completion.Preview" xml:space="preserve"><value>Ver sugerencias</value></data>
   <data name="Completion.Proposal" xml:space="preserve"><value>Valores propuestos</value></data>
@@ -59,7 +66,12 @@
   <data name="Completion.Blocked" xml:space="preserve"><value>No se pudieron verificar algunas elecciones. Vuelve a creación, revisa los pasos obligatorios y genera una nueva propuesta.</value></data>
   <data name="Completion.UnknownSkill" xml:space="preserve"><value>Habilidad no disponible</value></data>
   <data name="Completion.SkillGroup" xml:space="preserve"><value>Grupo de habilidades</value></data>
-  <data name="Completion.Loadout" xml:space="preserve"><value>El equipo básico no es un equipo completo. Revisa armas, armadura y equipo con niveles en creación.</value></data>
+  <data name="Completion.Loadout" xml:space="preserve"><value>El equipo básico, un arma y una armadura no forman un equipo completo.</value></data>
+  <data name="Completion.LoadoutItems" xml:space="preserve"><value>Armas y armadura propuestas (incluidas las elecciones conservadas)</value></data>
+  <data name="Completion.LoadoutLine" xml:space="preserve"><value>{0} × {1}: {2} ¥</value></data>
+  <data name="Completion.LoadoutExtras" xml:space="preserve"><value>Revisa munición, modificaciones y equipo con niveles en creación; no están incluidos en las sugerencias de armas y armadura.</value></data>
+  <data name="Completion.WeaponNeeded" xml:space="preserve"><value>Revisa tus armas en creación.</value></data>
+  <data name="Completion.ArmorNeeded" xml:space="preserve"><value>Revisa tu armadura en creación.</value></data>
   <data name="Completion.Identity" xml:space="preserve"><value>Revisa tú mismo tu nombre, identidad e historia.</value></data>
   <data name="Completion.Targets" xml:space="preserve"><value>Algunos objetivos iniciales están bloqueados, no disponibles o sin alcanzar. Son consejos, no permiso automático para cambiar tus elecciones.</value></data>
   <data name="Completion.Magic" xml:space="preserve"><value>Revisa las elecciones mágicas que requiere tu talento.</value></data>

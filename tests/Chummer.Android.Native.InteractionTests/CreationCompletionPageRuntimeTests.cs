@@ -23,9 +23,14 @@ internal static partial class AfterRunAuthorityHarness
             var window = (Window)((Microsoft.Maui.IApplication)app).CreateWindow(null!);
             try
             {
-                foreach (string scenario in new[] { "prerequisite", "cash-read-throws", "busy-cancel", "cancel", "loss-decline", "loss-owner-aba", "loss-departure", "apply", "lost-reply", "unknown" })
+                foreach (string scenario in new[] { "prerequisite", "cash-read-throws", "busy-cancel", "cancel", "magic-choice-cancel", "loss-decline", "loss-owner-aba", "loss-departure", "apply", "lost-reply", "unknown" })
                 {
-                    CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(scenario == "apply" ? "de-AT" : "en-GB");
+                    CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(scenario switch
+                    {
+                        "apply" => "de-AT",
+                        "cancel" => "es-ES",
+                        _ => "en-GB"
+                    });
                     var owners = new ControlledLinkedOwner();
                     using var reviewPause = scenario == "busy-cancel" ? new CompletionReviewPause() : null;
                     CompletionServiceProbe? service = null;
@@ -47,6 +52,9 @@ internal static partial class AfterRunAuthorityHarness
                     await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
                     var before = scenario == "prerequisite"
                         ? PreparePrerequisiteOwnerFixture(runtime, CharacterCreationBuildMethods.Priority)
+                        : scenario == "magic-choice-cancel"
+                            ? PrepareActualFinalizationReadyContext(runtime, stopBeforeAttributes: true,
+                                attributeTalent: "Magician", attributeTalentRank: "B", completionMagic: true)
                         : PrepareActualFinalizationReadyContext(runtime, stopBeforeAttributes: scenario != "cancel");
                     await HydrateFinalizationOwnerAsync(runtime, owners, before);
                     if (scenario == "prerequisite")
@@ -142,6 +150,22 @@ internal static partial class AfterRunAuthorityHarness
                         .GetField("_inputs", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)
                         ?? throw new InvalidOperationException("SETUP: the actual completion input read is missing.");
                     string inputsDigest = CharacterCreationCompletionReviewRules.ComputeInputsDigest(inputs);
+                    if (scenario == "magic-choice-cancel")
+                    {
+                        var choices = CompletionRecommendationBuilder.GetMagicIdentityChoices(
+                            inputs, CharacterCreationMagicResonanceKinds.Tradition).ToArray();
+                        Picker tradition = CompletionPageControl<Picker>(page, "creation-completion-tradition");
+                        Require(inputs.Magic.SelectedTalent.Kind == CharacterCreationMagicResonanceKinds.Magician
+                            && inputs.Magic.Selections.Tradition is null && inputs.Magic.Selections.Spells.Count == 0
+                            && choices.Length > 1 && tradition.SelectedIndex == 0
+                            && (string)tradition.ItemsSource[0]! == MagicCatalogStrings.OptionName(
+                                choices[0].Identity.Kind, choices[0].Identity.SourceId, choices[0].Name),
+                            "SETUP: a genuine unfinished Magician must show its initial admitted tradition before Preview.");
+                        int shamanic = Array.FindIndex(choices,
+                            row => row.Identity.SourceId == "8d185e0e-5f49-4992-babd-d1ac9c848f68");
+                        Require(shamanic > 0, "SETUP: the actual Shamanic identity must be an editable non-default choice.");
+                        tradition.SelectedIndex = shamanic;
+                    }
                     Picker archetype = CompletionPageControl<Picker>(page, "creation-completion-archetype");
                     string general = CreationCompletionPage.Copy("Archetype.General", "General survivor");
                     archetype.SelectedIndex = archetype.ItemsSource.Cast<string>().ToList().IndexOf(general);
@@ -208,6 +232,79 @@ internal static partial class AfterRunAuthorityHarness
                         IssuedPageLifecycle(page, "OnDisappearing");
                         ui.AssertHealthy();
                         Console.WriteLine("PASS actual Core/MAUI completion page: cash-read-throws");
+                        continue;
+                    }
+                    if (scenario == "magic-choice-cancel")
+                    {
+                        var plan = proposal.Evaluation.Value
+                            ?? throw new InvalidOperationException("The Magician preview has no actual Core plan.");
+                        var magic = plan.Selections.MagicSelections;
+                        var choices = CompletionRecommendationBuilder.GetMagicIdentityChoices(
+                            inputs, CharacterCreationMagicResonanceKinds.Tradition).ToArray();
+                        var shamanic = choices.Single(row => row.Identity.SourceId == "8d185e0e-5f49-4992-babd-d1ac9c848f68");
+                        var expectedSpells = magic.Spells.Where(identity => !inputs.Magic.Selections.Spells.Contains(identity))
+                            .Select(identity => inputs.Magic.Authority.Spells.Single(row => row.Identity == identity))
+                            .Select(row => CreationCompletionPage.Copy("MagicSpell", "missing-spell") + ": "
+                                + MagicCatalogStrings.OptionName(row.Identity.Kind, row.Identity.SourceId, row.Name))
+                            .OrderBy(value => value, StringComparer.Ordinal).ToArray();
+                        Require(proposal.Intent.PreferredTradition == shamanic.Identity
+                            && magic.Tradition == shamanic.Identity && plan.Magic is { IsMagicComplete: true }
+                            && expectedSpells.Length > 0
+                            && MinimalVisible(page).OfType<Label>()
+                                .Where(row => row.AutomationId == "creation-completion-proposed-spell")
+                                .Select(row => row.Text).OrderBy(value => value, StringComparer.Ordinal).SequenceEqual(expectedSpells)
+                            && CompletionPageControl<Label>(page, "creation-completion-proposed-tradition").Text
+                                == CreationCompletionPage.Copy("MagicTradition", "missing-tradition") + ": "
+                                    + MagicCatalogStrings.OptionName(shamanic.Identity.Kind, shamanic.Identity.SourceId, shamanic.Name),
+                            "The actual page must preserve the edited tradition across refreshes and show exactly Core's new named spells.");
+                        MinimalRequireNoMachineValues(page);
+                        AssertCompletionFilesUnchanged(runtime, files);
+
+                        var cashSources = (CharacterCreationStartingNuyenSource[])typeof(CreationCompletionPage)
+                            .GetField("_cashSources", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+                        var cashDigest = (string?)typeof(CreationCompletionPage)
+                            .GetField("_cashDigest", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page);
+                        var magicCashSource = cashSources.Single(row => row.AuthorityDigest == cashDigest);
+                        CompletionPageControl<Entry>(page, "creation-completion-cash-roll").Text =
+                            (magicCashSource.Dice * 3).ToString(CultureInfo.InvariantCulture);
+                        Button retiredReview = CompletionPageControl<Button>(page, "creation-completion-review");
+                        Require(retiredReview.IsEnabled, "SETUP: explicit legal cash must make the old proposal reviewable.");
+                        Picker change = CompletionPageControl<Picker>(page, "creation-completion-tradition");
+                        int hermetic = Array.FindIndex(choices,
+                            row => row.Identity.SourceId == "19320625-bc1a-492f-8904-da6a847e5700");
+                        Require(hermetic >= 0 && change.SelectedIndex != hermetic,
+                            "SETUP: the actual Hermetic identity must differ from the reviewed Shamanic suggestion.");
+                        change.SelectedIndex = hermetic;
+                        Require(typeof(CreationCompletionPage).GetField("_proposal", BindingFlags.Instance | BindingFlags.NonPublic)!
+                                .GetValue(page) is null
+                            && typeof(CreationCompletionPage).GetField("_review", BindingFlags.Instance | BindingFlags.NonPublic)!
+                                .GetValue(page) is null
+                            && (string?)typeof(CreationCompletionPage).GetField("_roll", BindingFlags.Instance | BindingFlags.NonPublic)!
+                                .GetValue(page) == string.Empty
+                            && !MinimalVisible(page).Any(row => row.AutomationId is
+                                "creation-completion-review" or "creation-completion-apply" or "creation-completion-cash-roll"),
+                            "Changing the visible tradition must retire the old proposal, review controls and cash input.");
+                        ((IButtonController)retiredReview).SendClicked();
+                        await ui.DrainDispatchedAsyncVoidAsync();
+                        Require(service!.ReviewCalls == 0 && service.ApplyCalls == 0,
+                            "A stale review button dispatched after the tradition changed.");
+                        await ClickCompletionControlAsync(ui, CompletionPageControl<Button>(page, "creation-completion-preview"));
+                        var rebuilt = (CompletionAssistantProposal?)typeof(CreationCompletionPage)
+                            .GetField("_proposal", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page);
+                        Require(rebuilt is { } rebuiltProposal && rebuiltProposal.Intent.PreferredTradition == choices[hermetic].Identity
+                            && rebuiltProposal.Evaluation.Value?.Selections.MagicSelections.Tradition == choices[hermetic].Identity
+                            && rebuiltProposal.ProposalDigest != proposal.ProposalDigest
+                            && CompletionPageControl<Picker>(page, "creation-completion-tradition").SelectedIndex == hermetic,
+                            "Rebuilding must use and visibly retain the newly selected exact tradition.");
+                        await ClickCompletionControlAsync(ui, CompletionPageControl<Button>(page, "creation-completion-cancel"));
+                        Require(navigation.NavigationStack.Count == 1 && ReferenceEquals(Shell.Current?.CurrentPage, root)
+                            && coordinator.State.Profile?.Created == false && service.ReviewCalls == 0 && service.ApplyCalls == 0
+                            && owners.ActiveLeases == 0 && alerts.Titles.Count == 0,
+                            "Cancel after editing magic must return to unchanged creation without review, Apply or leaked authority.");
+                        AssertCompletionFilesUnchanged(runtime, files);
+                        IssuedPageLifecycle(page, "OnDisappearing");
+                        ui.AssertHealthy();
+                        Console.WriteLine("PASS actual Core/MAUI completion page: magic-choice-cancel");
                         continue;
                     }
                     if (scenario == "cancel")
@@ -306,6 +403,11 @@ internal static partial class AfterRunAuthorityHarness
                     Button apply = CompletionPageControl<Button>(page, "creation-completion-apply");
                     Require(apply.IsEnabled && service!.ReviewCalls == 1 && service.ApplyCalls == 0,
                         "The explicit final review was not produced read-only by Core.");
+                    Require(service!.LastReviewProposal is { Selections.Loadout: { } reviewedLoadout } request
+                        && request.InputsSnapshotDigest == inputs.SnapshotDigest
+                        && CharacterCreationFinalizationDigest.Compute(reviewedLoadout)
+                            == CharacterCreationFinalizationDigest.Compute(proposal.Loadout!.Selections),
+                        "The actual Review handler did not send the exact typed loadout shown in the summary to Core.");
                     AssertCompletionHasNoAllocationSettings(page);
                     MinimalRequireNoMachineValues(page);
                     AssertCompletionFilesUnchanged(runtime, files);
@@ -462,6 +564,29 @@ internal static partial class AfterRunAuthorityHarness
                     + row.TotalCost.ToString("0.##", CultureInfo.CurrentCulture) + " ¥")
                 .OrderBy(value => value, StringComparer.Ordinal)),
             "Visible proposed contacts, home and equipment must show the actual selections, quantities and Core-evaluated costs.");
+
+        var loadoutInputs = inputs.Loadout
+            ?? throw new InvalidOperationException("The actual page did not opt into Core's owner-bound loadout reader.");
+        var loadout = proposal.Loadout
+            ?? throw new InvalidOperationException("The actual proposal has no Core-priced typed loadout summary.");
+        Require(loadout.Blockers.Count == 0
+            && loadout.Lines.Any(row => row.Kind == CharacterCreationLoadoutKinds.Weapon)
+            && loadout.Lines.Any(row => row.Kind == CharacterCreationLoadoutKinds.Armor)
+            && loadout.Lines.All(row => !string.IsNullOrWhiteSpace(row.Name) && row.Quantity > 0 && row.TotalCost > 0)
+            && CharacterCreationFinalizationDigest.Compute(plan.Selections.Loadout!)
+                == CharacterCreationFinalizationDigest.Compute(loadout.Selections)
+            && loadoutInputs.OriginalSelections.Weapons.All(loadout.Selections.Weapons.Contains)
+            && loadoutInputs.OriginalSelections.Armor.All(loadout.Selections.Armor.Contains),
+            "The actual proposal must retain manual choices and summarize the same typed weapon/armor selections Core evaluated.");
+        Require(VisibleRows("creation-completion-proposed-loadout").SequenceEqual(loadout.Lines.Select(row =>
+                    CreationFlowStrings.Format("Completion.LoadoutLine", "{0} × {1}: {2} ¥",
+                        row.Name, row.Quantity.ToString(CultureInfo.CurrentCulture),
+                        row.TotalCost.ToString("0.##", CultureInfo.CurrentCulture)))
+                .OrderBy(value => value, StringComparer.Ordinal))
+            && proposal.RemainingTasks.Contains("completion.remaining.ammo-modifications-rated-gear")
+            && MinimalVisible(page).OfType<Label>().Any(label => label.Text == CreationCompletionPage.Copy("Loadout", "missing-loadout"))
+            && MinimalVisible(page).OfType<Label>().Any(label => label.Text == CreationCompletionPage.Copy("LoadoutExtras", "missing-loadout-extras")),
+            "The summary must show Core's names, quantities and costs while keeping the incomplete ammunition/modification/rated-gear limitation visible.");
 
         IEnumerable<string?> VisibleRows(string id) => MinimalVisible(page).OfType<Label>()
             .Where(row => row.AutomationId == id).Select(row => row.Text)
