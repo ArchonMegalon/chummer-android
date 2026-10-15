@@ -1,7 +1,9 @@
 using System.Globalization;
+using System.Reflection;
 using Chummer.Android.Native;
 using Chummer.Contracts.Characters;
 using Chummer.Infrastructure.Workspaces;
+using Chummer.Presentation.Creation;
 using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
@@ -18,13 +20,14 @@ internal static partial class AfterRunAuthorityHarness
             var window = (Window)((Microsoft.Maui.IApplication)app).CreateWindow(null!);
             try
             {
-                foreach (string scenario in new[] { "cancel", "apply", "lost-reply", "unknown" })
+                foreach (string scenario in new[] { "prerequisite", "cancel", "apply", "lost-reply", "unknown" })
                 {
                     CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(scenario == "apply" ? "de-AT" : "en-GB");
                     var owners = new ControlledLinkedOwner();
                     CompletionServiceProbe? service = null;
                     await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
-                        creationCompletion: true, creationFinalization: true, productionCreationOverview: true,
+                        creationCompletion: true, creationFinalization: true, creationPrerequisite: true,
+                        productionCreationOverview: true,
                         completionServiceDecorator: actual => service = new(actual, ui)
                         {
                             ThrowAfterApply = scenario == "lost-reply",
@@ -32,8 +35,18 @@ internal static partial class AfterRunAuthorityHarness
                         });
                     await runtime.Coordinator.InitializeAsync();
                     await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
-                    var before = PrepareActualFinalizationReadyContext(runtime, stopBeforeAttributes: true);
+                    var before = scenario == "prerequisite"
+                        ? PreparePrerequisiteOwnerFixture(runtime, CharacterCreationBuildMethods.Priority)
+                        : PrepareActualFinalizationReadyContext(runtime, stopBeforeAttributes: scenario != "cancel");
                     await HydrateFinalizationOwnerAsync(runtime, owners, before);
+                    if (scenario == "prerequisite")
+                    {
+                        var prerequisite = await runtime.Coordinator.LoadCreationPrerequisiteAsync();
+                        Require(prerequisite is { Outcome: CharacterCreationFoundationOutcomes.Success,
+                                Value: { CanEnterAttributes: false, PendingDraft: null } }
+                            && runtime.Coordinator.IsCreationPrerequisiteStateCurrent(prerequisite.Value),
+                            "SETUP: fresh Priority must have genuine unconfirmed prerequisite authority.");
+                    }
                     var files = CompletionFiles(runtime);
                     var coordinator = runtime.Coordinator;
                     var root = new BuildPage(coordinator);
@@ -59,18 +72,47 @@ internal static partial class AfterRunAuthorityHarness
                     using var alerts = new IssuedPageAlerts(page, window);
                     await alerts.PreflightAsync();
                     await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+                    AssertCompletionHasNoAllocationSettings(page);
 
-                    Require(!CompletionPageControl<CheckBox>(page, "creation-completion-allow-attributes").IsChecked
-                        && !CompletionPageControl<CheckBox>(page, "creation-completion-allow-skills").IsChecked,
-                        "The interim assistant silently opted into increasing player allocations.");
+                    if (scenario == "prerequisite")
+                    {
+                        string guidance = CreationCompletionPage.Copy("LoadBlocked",
+                            "Complete Build method first, then reopen these suggestions. Your existing choices are unchanged.");
+                        string downstream = CreationFlowStrings.FinalizationBlocker("creation-finalization-skills-draft-required");
+                        Require(MinimalVisible(page).OfType<Label>().Count(label => label.Text == guidance) == 1
+                            && !MinimalVisibleText(page).Contains(downstream, StringComparison.Ordinal),
+                            "Fresh Priority must show one prerequisite instruction, not an unreachable Skills instruction.");
+                        Require(!MinimalVisible(page).Any(element => element.AutomationId is
+                                "creation-completion-archetype" or "creation-completion-preview"
+                                or "creation-completion-review" or "creation-completion-apply"),
+                            "Unconfirmed prerequisites exposed suggestion or mutation controls.");
+                        MinimalRequireNoMachineValues(page);
+                        AssertCompletionFilesUnchanged(runtime, files);
+                        await ClickCompletionControlAsync(ui, CompletionPageControl<Button>(page, "creation-completion-cancel"));
+                        Require(navigation.NavigationStack.Count == 1
+                            && ReferenceEquals(Shell.Current?.CurrentPage, root)
+                            && coordinator.State.Profile?.Created == false
+                            && service!.ReviewCalls == 0 && service.ApplyCalls == 0,
+                            "Cancel from prerequisite guidance must return to creation without review or Apply.");
+                        AssertCompletionFilesUnchanged(runtime, files);
+                        Require(owners.ActiveLeases == 0 && alerts.Titles.Count == 0,
+                            "Prerequisite guidance leaked an owner lease or hid a callback error.");
+                        IssuedPageLifecycle(page, "OnDisappearing");
+                        ui.AssertHealthy();
+                        Console.WriteLine("PASS actual Core/MAUI completion page: prerequisite");
+                        continue;
+                    }
+
                     Require(!MinimalVisible(page).Any(x => x.AutomationId == "creation-completion-apply"),
                         "An unreviewed proposal offered Apply.");
+                    var inputs = (CharacterCreationCompletionReviewInputs?)typeof(CreationCompletionPage)
+                        .GetField("_inputs", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)
+                        ?? throw new InvalidOperationException("SETUP: the actual completion input read is missing.");
+                    string inputsDigest = CharacterCreationCompletionReviewRules.ComputeInputsDigest(inputs);
                     Picker archetype = CompletionPageControl<Picker>(page, "creation-completion-archetype");
                     string general = CreationCompletionPage.Copy("Archetype.General", "General survivor");
                     archetype.SelectedIndex = archetype.ItemsSource.Cast<string>().ToList().IndexOf(general);
                     Require(archetype.SelectedIndex >= 0, "SETUP: editable general-survivor archetype is missing.");
-                    CompletionPageControl<CheckBox>(page, "creation-completion-allow-attributes").IsChecked = true;
-                    CompletionPageControl<CheckBox>(page, "creation-completion-allow-skills").IsChecked = true;
                     var language = MinimalVisible(page).OfType<Picker>()
                         .SingleOrDefault(x => x.AutomationId == "creation-completion-native-language");
                     if (language is not null)
@@ -79,6 +121,44 @@ internal static partial class AfterRunAuthorityHarness
                         language.SelectedIndex = 0;
                     }
                     await ClickCompletionControlAsync(ui, CompletionPageControl<Button>(page, "creation-completion-preview"));
+                    AssertCompletionHasNoAllocationSettings(page);
+                    var proposal = (CompletionAssistantProposal?)typeof(CreationCompletionPage)
+                        .GetField("_proposal", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)
+                        ?? throw new InvalidOperationException("The real Preview handler did not produce a proposal.");
+                    Require(proposal.AllocationPolicy == CompletionAllocationPolicy.MissingOnly
+                        && proposal.Intent.Permissions.AttributeIds.Count == 0
+                        && proposal.Intent.Permissions.SkillTargets.Count == 0
+                        && proposal.Intent.InputsSnapshotDigest == inputs.SnapshotDigest
+                        && CharacterCreationCompletionReviewRules.ComputeInputsDigest(inputs) == inputsDigest,
+                        "The default UI must request missing-only suggestions without additive permissions or changed original inputs.");
+                    if (scenario == "cancel")
+                    {
+                        var savedAttributes = inputs.Skills.Attributes.PendingDraft
+                            ?? throw new InvalidOperationException("SETUP: Cancel must use actual saved Attributes.");
+                        Require(savedAttributes.Allocations.Count > 0
+                            && savedAttributes.Allocations.All(row => row.PriorityPoints == 0 && row.KarmaLevels == 0)
+                            && inputs.Skills.Allocations.Any(row => row.IsNativeLanguage),
+                            "SETUP: saved baseline must retain actual zero attribute rows and a selected native language.");
+                        var selections = proposal.Evaluation.Value?.Selections
+                            ?? throw new InvalidOperationException("Saved-baseline suggestions have no Core-evaluated selections.");
+                        Require(proposal.Request.Attributes.PermittedAttributeOrder.Count == 0
+                            && selections.AttributeAllocations.OrderBy(row => row.AttributeId, StringComparer.Ordinal)
+                                .SequenceEqual(savedAttributes.Allocations.OrderBy(row => row.AttributeId, StringComparer.Ordinal))
+                            && inputs.Skills.Allocations.All(original => selections.SkillAllocations.Count(row =>
+                                row.Kind == original.Kind && row.SourceSkillId == original.SourceSkillId) == 1
+                                && selections.SkillAllocations.Any(row => row == original))
+                            && inputs.Skills.GroupAllocations.All(original => selections.GroupAllocations.Count(row =>
+                                row.GroupId == original.GroupId) == 1
+                                && selections.GroupAllocations.Any(row => row == original))
+                            && selections.SkillAllocations.Count(row => row.IsNativeLanguage)
+                                == inputs.Skills.Allocations.Count(row => row.IsNativeLanguage),
+                            "Missing-only suggestions changed saved attribute/skill choices or replaced the native language.");
+                        string guidance = CreationCompletionPage.Copy("AttributeChoiceIntent", "missing-attribute-choice-intent");
+                        Require(proposal.RemainingTasks.Contains(CompletionAssistantRules.AttributeChoiceIntentRequired)
+                            && guidance != "missing-attribute-choice-intent"
+                            && MinimalVisible(page).OfType<Label>().Any(label => label.Text == guidance),
+                            "Saved under-target attributes must remain unchanged with visible localized choice-intent guidance.");
+                    }
                     MinimalRequireNoMachineValues(page);
                     Entry cash = CompletionPageControl<Entry>(page, "creation-completion-cash-roll");
                     Button check = CompletionPageControl<Button>(page, "creation-completion-review");
@@ -98,6 +178,7 @@ internal static partial class AfterRunAuthorityHarness
                     Button apply = CompletionPageControl<Button>(page, "creation-completion-apply");
                     Require(apply.IsEnabled && service!.ReviewCalls == 1 && service.ApplyCalls == 0,
                         "The explicit final review was not produced read-only by Core.");
+                    AssertCompletionHasNoAllocationSettings(page);
                     MinimalRequireNoMachineValues(page);
                     AssertCompletionFilesUnchanged(runtime, files);
 
@@ -179,4 +260,13 @@ internal static partial class AfterRunAuthorityHarness
 
     private static Task ClickCompletionControlAsync(IssuedPageUiContext ui, Button button)
         => JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked()));
+
+    private static void AssertCompletionHasNoAllocationSettings(NativePageBase page)
+    {
+        var visible = MinimalVisible(page).ToArray();
+        Require(!visible.OfType<CheckBox>().Any()
+            && !visible.Any(element => element.AutomationId?.StartsWith(
+                "creation-completion-allow-", StringComparison.Ordinal) == true),
+            "Missing-only completion must not expose allocation opt-ins or a configurable replacement policy.");
+    }
 }

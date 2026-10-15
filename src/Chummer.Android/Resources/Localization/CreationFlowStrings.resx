@@ -10,9 +10,8 @@
   <data name="Completion.Neutral" xml:space="preserve"><value>No clear role yet: a general starter is selected. You can change it.</value></data>
   <data name="Completion.Prefill" xml:space="preserve"><value>Suggested from your current choices. You can change the archetype.</value></data>
   <data name="Completion.NoPack" xml:space="preserve"><value>This archetype has no starter suggestions yet. Keep your talent and continue manually, or choose another suggestion style.</value></data>
-  <data name="Completion.Permissions" xml:space="preserve"><value>Existing allocations stay locked unless you opt in below. Allowed ratings may increase, but are never lowered or replaced.</value></data>
-  <data name="Completion.Attributes" xml:space="preserve"><value>Allow attribute ratings to increase</value></data>
-  <data name="Completion.Skills" xml:space="preserve"><value>Allow skill ratings to increase or be added</value></data>
+  <data name="Completion.KeepChoices" xml:space="preserve"><value>Your existing choices stay unchanged. Suggestions only fill choices you have not made yet.</value></data>
+  <data name="Completion.AttributeChoiceIntent" xml:space="preserve"><value>Your saved attribute allocation stays unchanged. The assistant cannot tell which values you deliberately kept, so finish any remaining attribute points in creation.</value></data>
   <data name="Completion.Preview" xml:space="preserve"><value>Preview suggestions</value></data>
   <data name="Completion.Proposal" xml:space="preserve"><value>Proposed ratings</value></data>
   <data name="Completion.Rating" xml:space="preserve"><value>{0}: proposed {1}, target {2} · {3}</value></data>

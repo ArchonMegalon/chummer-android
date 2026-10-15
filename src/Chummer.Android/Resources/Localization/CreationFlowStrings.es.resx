@@ -10,9 +10,8 @@
   <data name="Completion.Neutral" xml:space="preserve"><value>Aún no hay un rol claro: se ha elegido un inicio general. Puedes cambiarlo.</value></data>
   <data name="Completion.Prefill" xml:space="preserve"><value>Sugerido según tus elecciones actuales. Puedes cambiar el arquetipo.</value></data>
   <data name="Completion.NoPack" xml:space="preserve"><value>Este arquetipo aún no tiene sugerencias iniciales. Conserva tu talento y continúa manualmente o elige otro estilo de sugerencias.</value></data>
-  <data name="Completion.Permissions" xml:space="preserve"><value>Las asignaciones actuales quedan bloqueadas hasta que lo permitas abajo. Los valores permitidos pueden aumentar, pero nunca disminuir ni sustituirse.</value></data>
-  <data name="Completion.Attributes" xml:space="preserve"><value>Permitir aumentar atributos</value></data>
-  <data name="Completion.Skills" xml:space="preserve"><value>Permitir aumentar o añadir habilidades</value></data>
+  <data name="Completion.KeepChoices" xml:space="preserve"><value>Tus elecciones actuales no cambian. Las sugerencias solo completan las decisiones que aún no has tomado.</value></data>
+  <data name="Completion.AttributeChoiceIntent" xml:space="preserve"><value>Tu asignación de atributos guardada no cambia. El asistente no sabe qué valores decidiste conservar; distribuye manualmente los puntos restantes en creación.</value></data>
   <data name="Completion.Preview" xml:space="preserve"><value>Ver sugerencias</value></data>
   <data name="Completion.Proposal" xml:space="preserve"><value>Valores propuestos</value></data>
   <data name="Completion.Rating" xml:space="preserve"><value>{0}: propuesto {1}, objetivo {2} · {3}</value></data>

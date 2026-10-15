@@ -56,11 +56,16 @@ internal static partial class AfterRunAuthorityHarness
             () => runtime.Coordinator.BuildCreationCompletionProposalAsync(inputs, intent));
         Require(built.Value is { CanReview: true } proposal
             && runtime.Coordinator.IsCreationCompletionProposalCurrent(proposal)
+            && proposal.AllocationPolicy == CompletionAllocationPolicy.MissingOnly
             && proposal.Intent.OwnerContext == owners.Capture()
             && proposal.Intent.InputsSnapshotDigest == inputs.SnapshotDigest,
             "The starter proposal lost its exact original input or owner: " + string.Join(",", built.Blockers));
         Require(JsonSerializer.Serialize(inputs) == inputBytes && JsonSerializer.Serialize(intent) == intentBytes,
             "Preparing a proposal mutated the caller's original inputs or intent.");
+        var wrongSnapshot = await runtime.Coordinator.BuildCreationCompletionProposalAsync(
+            inputs, intent with { InputsSnapshotDigest = new string('0', 64) });
+        Require(wrongSnapshot.Value is null && wrongSnapshot.Outcome != CharacterCreationFoundationOutcomes.Success,
+            "Missing-only suggestions accepted intent for a different source-bound input snapshot.");
         Require(reader!.Calls > 0 && service!.ApplyCalls == 0,
             "Preparing a proposal must use the real reader without dispatching an Apply.");
         using var canceled = new CancellationTokenSource();
@@ -305,11 +310,8 @@ internal static partial class AfterRunAuthorityHarness
     private static CompletionAssistantIntent CompletionIntent(OwnerContextStamp owner,
         CharacterCreationCompletionReviewInputs inputs)
     {
-        var pack = CompletionRecommendationBuilder.GeneralSurvivorPack;
         return new(owner, inputs.SnapshotDigest, CompletionAssistantRules.GeneralSurvivor,
-            new(pack.Attributes.Select(row => row.Target.AttributeId).ToArray(),
-                pack.Skills.Select(row => new CharacterCreationSkillCompletionTarget(
-                    row.Target.Kind, row.Target.SourceId)).ToArray()), new())
+            new([], []), new())
         {
             NativeLanguageSourceId = inputs.Skills.Authority.KnowledgeSkills
                 .First(row => row.CanBeNativeLanguage).SourceSkillId

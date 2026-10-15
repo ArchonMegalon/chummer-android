@@ -10,12 +10,21 @@ NATIVE = Path(__file__).resolve().parents[1] / "src" / "Chummer.Android" / "Nati
 
 
 class FinalizationOwnerNavigationSourceContractTests(unittest.TestCase):
-    def test_completion_starter_uses_explicit_permissions_and_current_core_review(self):
+    def test_completion_starter_fills_only_missing_choices_and_keeps_current_core_review(self):
         source = (NATIVE / "CreationCompletionPage.cs").read_text(encoding="utf-8")
-        self.assertIn("_allowAttributes = false;", source)
-        self.assertIn("_allowSkills = false;", source)
-        self.assertIn("_allowAttributes ? pack.Attributes", source)
-        self.assertIn("_allowSkills ? pack.Skills", source)
+        self.assertIn("new CompletionAdditivePermissions([], [])", source)
+        self.assertNotIn("_allowAttributes", source)
+        self.assertNotIn("_allowSkills", source)
+        self.assertNotIn("creation-completion-allow-", source)
+        self.assertNotIn("CheckBox", source)
+        self.assertIn('"completion.remaining.attribute-choice-intent" => Copy("AttributeChoiceIntent"', source)
+        coordinator = (NATIVE / "RunnerSessionCoordinator.CreationCompletion.cs").read_text(encoding="utf-8")
+        proposal = coordinator.split("BuildCreationCompletionProposalAsync(", 1)[1].split("ReviewCreationCompletionAsync(", 1)[0]
+        self.assertIn("CompletionRecommendationBuilder.BuildMissingOnly(inputs, intent, cancellationToken)", proposal)
+        self.assertIn("CompletionDisplayCurrent(issued.Display)", proposal)
+        self.assertIn("intent.OwnerContext != issued.Display.DisplayOwnerContext", proposal)
+        self.assertIn("intent.InputsSnapshotDigest != issued.SnapshotDigest", proposal)
+        self.assertIn("inputs.SnapshotDigest != issued.SnapshotDigest", proposal)
         self.assertIn("LoadCreationFinalizationInBackground(", source)
         self.assertNotIn("IsCreationFinalizationStateCurrent", source)
         self.assertIn('_roll = string.Empty;', source)

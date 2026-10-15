@@ -12,6 +12,7 @@ public sealed class CreationCompletionPage : NativePageBase
     private readonly VerticalStackLayout _footer = new() { Padding = new Thickness(20, 10, 20, 16), Spacing = 8 };
     private CharacterOverviewState? _display;
     private CharacterCreationCompletionReviewInputs? _inputs;
+    private CharacterCreationPrerequisiteState? _missingPrerequisite;
     private CharacterCreationStartingNuyenSource[] _cashSources = [];
     private CompletionArchetypeSuggestion? _archetype;
     private CompletionAssistantProposal? _proposal;
@@ -21,7 +22,7 @@ public sealed class CreationCompletionPage : NativePageBase
     private string _archetypeId = string.Empty, _roll = string.Empty;
     private string? _cashDigest, _nativeLanguageId, _idempotencyKey;
     private IReadOnlyList<string> _blockers = [];
-    private bool _allowAttributes, _allowSkills, _busy, _visible, _applyStarted, _outcomeLookupAllowed, _leaving;
+    private bool _busy, _visible, _applyStarted, _outcomeLookupAllowed, _leaving;
     private long _render, _inputVersion;
 
     public CreationCompletionPage(RunnerSessionCoordinator coordinator) : base(coordinator)
@@ -71,12 +72,11 @@ public sealed class CreationCompletionPage : NativePageBase
         var original = Coordinator.State;
         _display = original;
         _inputs = null;
+        _missingPrerequisite = null;
         _proposal = null;
         _review = null;
         _cashSources = [];
         _blockers = [];
-        _allowAttributes = false;
-        _allowSkills = false;
         _busy = true;
         if (!Supports(original)) { _busy = false; return; }
         try
@@ -84,8 +84,19 @@ public sealed class CreationCompletionPage : NativePageBase
             var loaded = await Coordinator.LoadCreationCompletionInputsAsync(cancellationToken);
             if (!CurrentLoad()) return;
             _blockers = loaded.Blockers;
-            if (loaded is not { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } inputs }
-                || !Coordinator.IsCreationCompletionInputsCurrent(inputs)) return;
+            if (loaded is not { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } inputs })
+            {
+                // A downstream input (for example Skills) can be absent because
+                // the real priority prerequisite has not been confirmed yet.
+                // Only a current, owner-bound Core read may choose that guidance.
+                var prerequisite = await Coordinator.LoadCreationPrerequisiteAsync(cancellationToken);
+                if (!CurrentLoad()) return;
+                if (prerequisite is { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { CanEnterAttributes: false } required }
+                    && Coordinator.IsCreationPrerequisiteStateCurrent(required))
+                    _missingPrerequisite = required;
+                return;
+            }
+            if (!Coordinator.IsCreationCompletionInputsCurrent(inputs)) return;
             var suggestion = await Task.Run(() => CompletionRecommendationBuilder.SuggestArchetype(
                 inputs, cancellationToken: cancellationToken), cancellationToken);
             if (!CurrentLoad() || !Coordinator.IsCreationCompletionInputsCurrent(inputs)) return;
@@ -156,9 +167,12 @@ public sealed class CreationCompletionPage : NativePageBase
         }
         if (_inputs is null)
         {
-            _body.Add(NativeTheme.Body(_busy ? CreationKarmaCopy.Loading
-                : Copy("LoadBlocked", "Complete Build method first, then reopen these suggestions. Your existing choices are unchanged."), NativeTheme.Muted));
-            AddBlockers(_blockers);
+            if (_busy) _body.Add(NativeTheme.Body(CreationKarmaCopy.Loading, NativeTheme.Muted));
+            else if (_missingPrerequisite is { } prerequisite)
+                _body.Add(NativeTheme.Body(Coordinator.IsCreationPrerequisiteStateCurrent(prerequisite)
+                    ? Copy("LoadBlocked", "Complete Build method first, then reopen these suggestions. Your existing choices are unchanged.")
+                    : Copy("Stale", "Your runner or account changed. Return to creation and open a fresh review."), NativeTheme.Muted));
+            else AddBlockers(_blockers.Count == 0 ? ["completion-ui-load-failed"] : _blockers);
             return;
         }
         if (!InputsCurrent())
@@ -210,11 +224,7 @@ public sealed class CreationCompletionPage : NativePageBase
             : Copy("Prefill", "Suggested from your current choices. You can change the archetype."), NativeTheme.Muted));
         if (CompletionRecommendationBuilder.GetRecommendationPack(_archetypeId) is null)
             _body.Add(NativeTheme.Body(Copy("NoPack", "This archetype has no starter suggestions yet. Keep your talent and continue manually, or choose another suggestion style."), NativeTheme.Danger));
-        _body.Add(NativeTheme.Body(Copy("Permissions", "Existing allocations stay locked unless you opt in below. Allowed ratings may increase, but are never lowered or replaced."), NativeTheme.Muted));
-        AddPermission(Copy("Attributes", "Allow attribute ratings to increase"), "creation-completion-allow-attributes",
-            _allowAttributes, value => _allowAttributes = value, appearance, render);
-        AddPermission(Copy("Skills", "Allow skill ratings to increase or be added"), "creation-completion-allow-skills",
-            _allowSkills, value => _allowSkills = value, appearance, render);
+        _body.Add(NativeTheme.Body(Copy("KeepChoices", "Your existing choices stay unchanged. Suggestions only fill choices you have not made yet."), NativeTheme.Muted));
         if (!_inputs!.Skills.Allocations.Any(row => row.IsNativeLanguage))
         {
             var languages = _inputs.Skills.Authority.KnowledgeSkills.Where(row => row.CanBeNativeLanguage).ToArray();
@@ -236,28 +246,6 @@ public sealed class CreationCompletionPage : NativePageBase
         }
     }
 
-    private void AddPermission(string text, string id, bool selected, Action<bool> set, long appearance, long render)
-    {
-        CheckBox choice = new() { IsChecked = selected, AutomationId = id, Color = NativeTheme.Success };
-        SemanticProperties.SetDescription(choice, text);
-        choice.CheckedChanged += (_, args) =>
-        {
-            if (!Current(appearance, render) || _busy) return;
-            set(args.Value);
-            InvalidateProposal();
-        };
-        Grid row = new()
-        {
-            ColumnDefinitions = { new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Star) },
-            ColumnSpacing = 8
-        };
-        row.Add(choice);
-        Label label = NativeTheme.Body(text);
-        label.VerticalOptions = LayoutOptions.Center;
-        row.Add(label, 1);
-        _body.Add(row);
-    }
-
     private void InvalidateProposal()
     {
         _inputVersion++;
@@ -271,11 +259,9 @@ public sealed class CreationCompletionPage : NativePageBase
     {
         if (_busy || !InputsCurrent() || _inputs is not { } inputs
             || _display?.DisplayOwnerContext is not { } owner
-            || CompletionRecommendationBuilder.GetRecommendationPack(_archetypeId) is not { } pack) return;
+            || CompletionRecommendationBuilder.GetRecommendationPack(_archetypeId) is null) return;
         long appearance = CaptureAppearanceGeneration(), version = _inputVersion;
-        var permissions = new CompletionAdditivePermissions(
-            _allowAttributes ? pack.Attributes.Select(row => row.Target.AttributeId).ToArray() : [],
-            _allowSkills ? pack.Skills.Select(row => new CharacterCreationSkillCompletionTarget(row.Target.Kind, row.Target.SourceId)).ToArray() : []);
+        var permissions = new CompletionAdditivePermissions([], []);
         var intent = new CompletionAssistantIntent(owner, inputs.SnapshotDigest, _archetypeId, permissions, new())
         {
             NativeLanguageSourceId = _nativeLanguageId,
@@ -575,6 +561,7 @@ public sealed class CreationCompletionPage : NativePageBase
         "completion.remaining.magic-choices" or "completion.remaining.magic-evaluation" => Copy("Magic", "Review the magic choices required by your talent."),
         "completion.remaining.skills-choices" or "completion.remaining.skills-evaluation" => Copy("SkillsNeeded", "Review skills, native language and any unallocated skill points."),
         "completion.remaining.attributes-choices" or "completion.remaining.attributes-evaluation" => Copy("AttributesNeeded", "Review your attribute allocations."),
+        "completion.remaining.attribute-choice-intent" => Copy("AttributeChoiceIntent", "Your saved attribute allocation stays unchanged. The assistant cannot tell which values you deliberately kept, so finish any remaining attribute points in creation."),
         "completion.remaining.lifestyle-choices" or "completion.remaining.lifestyle-evaluation" => Copy("LifestyleNeeded", "Review your lifestyle and starting-cash selection."),
         "completion.remaining.contacts-choices" or "completion.remaining.contacts-evaluation" => Copy("ContactsNeeded", "Review your contacts."),
         "completion.remaining.resources-choices" or "completion.remaining.resources-evaluation" => Copy("ResourcesNeeded", "Review your creation funding."),

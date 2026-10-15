@@ -88,7 +88,7 @@ public sealed partial class RunnerSessionCoordinator
                 return CompletionUnavailable<CompletionAssistantProposal>();
             // The shared builder detaches inputs and independently verifies their
             // digest. Android neither allocates points nor changes draft stages.
-            var result = CompletionRecommendationBuilder.Build(inputs, intent, cancellationToken);
+            var result = CompletionRecommendationBuilder.BuildMissingOnly(inputs, intent, cancellationToken);
             if (!CompletionDisplayCurrent(issued.Display)) return CompletionUnavailable<CompletionAssistantProposal>();
             if (result.Value is { } proposal)
                 _completionProposals.GetValue(proposal, _ => new(issued.Display, proposal.ProposalDigest));

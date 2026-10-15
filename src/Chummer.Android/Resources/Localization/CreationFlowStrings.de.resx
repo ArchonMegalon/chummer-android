@@ -10,9 +10,8 @@
   <data name="Completion.Neutral" xml:space="preserve"><value>Noch keine eindeutige Rolle: Ein allgemeiner Startvorschlag ist gewählt. Du kannst ihn ändern.</value></data>
   <data name="Completion.Prefill" xml:space="preserve"><value>Aus deiner bisherigen Auswahl vorgeschlagen. Du kannst den Archetyp ändern.</value></data>
   <data name="Completion.NoPack" xml:space="preserve"><value>Für diesen Archetyp gibt es noch keine Startvorschläge. Behalte dein Talent und fahre manuell fort oder wähle einen anderen Vorschlagsstil.</value></data>
-  <data name="Completion.Permissions" xml:space="preserve"><value>Bestehende Verteilungen bleiben gesperrt, bis du unten zustimmst. Freigegebene Werte können steigen, werden aber nie gesenkt oder ersetzt.</value></data>
-  <data name="Completion.Attributes" xml:space="preserve"><value>Attributsteigerungen erlauben</value></data>
-  <data name="Completion.Skills" xml:space="preserve"><value>Fertigkeitssteigerungen und neue Fertigkeiten erlauben</value></data>
+  <data name="Completion.KeepChoices" xml:space="preserve"><value>Deine bisherigen Entscheidungen bleiben unverändert. Vorschläge ergänzen nur noch offene Entscheidungen.</value></data>
+  <data name="Completion.AttributeChoiceIntent" xml:space="preserve"><value>Deine gespeicherte Attributverteilung bleibt unverändert. Der Assistent erkennt nicht, welche Werte du bewusst beibehalten hast. Verteile übrige Attributpunkte selbst in der Erstellung.</value></data>
   <data name="Completion.Preview" xml:space="preserve"><value>Vorschläge ansehen</value></data>
   <data name="Completion.Proposal" xml:space="preserve"><value>Vorgeschlagene Werte</value></data>
   <data name="Completion.Rating" xml:space="preserve"><value>{0}: vorgeschlagen {1}, Ziel {2} · {3}</value></data>
