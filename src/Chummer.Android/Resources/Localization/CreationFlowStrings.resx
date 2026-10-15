@@ -13,6 +13,7 @@
   <data name="Completion.KeepChoices" xml:space="preserve"><value>Your existing choices stay unchanged. Suggestions only fill choices you have not made yet.</value></data>
   <data name="Completion.AttributeChoiceIntent" xml:space="preserve"><value>Your saved attribute allocation stays unchanged. The assistant cannot tell which values you deliberately kept, so finish any remaining attribute points in creation.</value></data>
   <data name="Completion.Preview" xml:space="preserve"><value>Preview suggestions</value></data>
+  <data name="Completion.Working" xml:space="preserve"><value>Checking your choices…</value></data>
   <data name="Completion.Proposal" xml:space="preserve"><value>Proposed ratings</value></data>
   <data name="Completion.Rating" xml:space="preserve"><value>{0}: proposed {1}, target {2} · {3}</value></data>
   <data name="Completion.Met" xml:space="preserve"><value>target met</value></data>

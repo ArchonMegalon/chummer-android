@@ -79,6 +79,7 @@ public sealed class CreationCompletionPage : NativePageBase
         _blockers = [];
         _busy = true;
         if (!Supports(original)) { _busy = false; return; }
+        Refresh();
         try
         {
             var loaded = await Coordinator.LoadCreationCompletionInputsAsync(cancellationToken);
@@ -159,6 +160,7 @@ public sealed class CreationCompletionPage : NativePageBase
                     () => ApplyAsync(recoveryOnly: true), appearance, render);
             return;
         }
+        if (_busy) AddReadProgress();
         AddCancel(appearance, render);
         if (_display is null || !Supports(_display))
         {
@@ -198,6 +200,27 @@ public sealed class CreationCompletionPage : NativePageBase
             RenderCashAndReview(appearance, render);
         }
         AddBlockers(_blockers);
+    }
+
+    private void AddReadProgress()
+    {
+        Grid progress = new()
+        {
+            AutomationId = "creation-completion-read-busy",
+            ColumnDefinitions = { new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Star) },
+            ColumnSpacing = 10
+        };
+        progress.Add(new ActivityIndicator
+        {
+            AutomationId = "creation-completion-read-progress", IsRunning = true,
+            Color = NativeTheme.Text, WidthRequest = 24, HeightRequest = 24,
+            VerticalOptions = LayoutOptions.Center
+        });
+        Label status = NativeTheme.Body(Copy("Working", "Checking your choices…"));
+        status.AutomationId = "creation-completion-read-status";
+        status.VerticalOptions = LayoutOptions.Center;
+        progress.Add(status, 1);
+        _footer.Add(progress);
     }
 
     private void RenderChoices(long appearance, long render)

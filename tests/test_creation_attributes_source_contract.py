@@ -38,7 +38,7 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
         self.assertIn("karmaOptions.IsVisible = !karmaOptions.IsVisible", entry)
         self.assertIn("karma: true", entry)
         self.assertIn("karma ? 0 : delta, karma ? delta : 0", entry)
-        self.assertIn("Coordinator.PreviewCreationAttributes(state.Binding, allocations)", entry)
+        self.assertIn("Coordinator.PreviewCreationAttributes(state.Binding, allocations, chosenIds)", entry)
         self.assertIn("_draft.HasPreparedState(state)", entry)
         self.assertIn("(karma && _expandedAttributeId != attribute.AttributeId)", entry)
         refresh = entry.split("protected override void Refresh()", 1)[1].split("protected override", 1)[0]
@@ -87,7 +87,7 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
         for marker in (
             'AutomationId = "creation-attributes-page"',
             "Coordinator.LoadCreationAttributes()",
-            "Coordinator.PreviewCreationAttributes(state.Binding, allocations)",
+            "Coordinator.PreviewCreationAttributes(state.Binding, allocations, chosenIds)",
             "CharacterCreationAttributeAllocation",
             "CharacterCreationAttributeProjection",
             "_draft.NormalBudget(state)",
@@ -139,7 +139,8 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
             "LoadCreationAttributes()",
             "PreviewCreationAttributes(",
             "ConfirmCreationAttributesAsync(",
-            "service.Confirm(owner, new(canonical.Binding, allocations, canonical.PreviewDigest, true))",
+            "service.Confirm(owner, new(canonical.Binding, allocations, canonical.PreviewDigest, true)",
+            "PlayerChosenAttributeIds = issued.PlayerChosenAttributeIds?.ToArray()",
             "issued.Load.Display.DisplayOwnerContext is not { } owner",
             "IOwnerBoundWorkspaceRefreshPresenter bound",
             "bound.LoadAsync(owner, receipt.WorkspaceId",
@@ -164,16 +165,16 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
 
         self.assertIn("var draft = _draft.Copy()", allocation)
         self.assertIn("draft.ChangedAllocations(", allocation)
-        self.assertIn("Coordinator.PreviewCreationAttributes(prepared.State.Binding, choice.Allocations)", allocation)
+        self.assertIn("Coordinator.PreviewCreationAttributes(prepared.State.Binding, choice.Allocations, chosenIds)", allocation)
         self.assertIn("if (generation != _preparationGeneration || !IsCurrent(prepared)) return;", allocation)
-        self.assertIn("_draft.TryAdopt(prepared.State, Coordinator.State, result, choice.Allocations)", allocation)
+        self.assertIn("_draft.TryAdopt(prepared.State, Coordinator.State, result, choice.Allocations, chosenIds)", allocation)
         self.assertNotIn("KarmaAttribute", allocation)
         self.assertNotIn("PriorityPointCost +", allocation)
 
     def test_inline_steppers_and_sliders_use_core_draft_without_store_reads(self) -> None:
         page = (NATIVE / "CreationAttributesPage.cs").read_text(encoding="utf-8")
         inline = page.split("private void AddAttributeSlider(", 1)[1].split("private bool TryUpdateProjection(", 1)[0]
-        for marker in ("_draft.PreviewPrepared(state, allocations)",
+        for marker in ("_draft.PreviewPrepared(state, allocations, chosenIds)",
                        "Coordinator.IsCreationAttributesDraftDisplayCurrent(state)",
                        "_draft.HasPreparedState(state)", "_draft.TryAdopt(",
                        "new CreationIntegerSlider(", "ShowAllocationFeedback(accepted ? null"):
@@ -182,6 +183,40 @@ class CreationAttributesSourceContractTests(unittest.TestCase):
         self.assertNotIn("Coordinator.PreviewCreationAttributes", inline)
         self.assertNotIn("ConfirmCreationAttributes", inline)
         self.assertIn("_draft.RetireSession();", page)
+
+    def test_player_choice_intent_is_detached_and_adopted_only_with_current_core_values(self) -> None:
+        page = (NATIVE / "CreationAttributesPage.cs").read_text(encoding="utf-8")
+        draft = (NATIVE / "CreationAttributesPhoneDraft.cs").read_text(encoding="utf-8")
+        coordinator = (NATIVE / "RunnerSessionCoordinator.CreationAttributes.cs").read_text(encoding="utf-8")
+        authority = (NATIVE / "CreationAttributesPhoneAuthority.cs").read_text(encoding="utf-8")
+        self.assertIn("PlayerChosenAttributeIds => _playerChosenAttributeIds?.ToArray()", draft)
+        self.assertIn("? pending.PlayerChosenAttributeIds?.ToArray() : []", draft)
+        self.assertIn("_playerChosenAttributeIds is null ? null", draft)
+        self.assertIn("_playerChosenAttributeIds.Append(attributeId)", draft)
+        self.assertIn("_playerChosenAttributeIds = _playerChosenAttributeIds?.ToArray()", draft)
+        candidate = draft.split("public IReadOnlyList<string>? PlayerChosenIdsForChoice", 1)[1].split(
+            "public bool HasPreparedState", 1)[0]
+        self.assertNotIn("_playerChosenAttributeIds =", candidate)
+        adoption = draft.split("IReadOnlyList<string>? playerChosenAttributeIds)\n    {", 1)[1]
+        self.assertLess(adoption.index("CreationAttributesPhoneAuthority.CanAdoptPreview("),
+                        adoption.index("_playerChosenAttributeIds = playerChosenAttributeIds?.ToArray()"))
+        inline = page.split("private void AddAttributeSlider(", 1)[1].split("private bool TryUpdateProjection(", 1)[0]
+        self.assertIn("_draft.PlayerChosenIdsForChoice(attribute.AttributeId)", inline)
+        self.assertIn("_draft.TryAdopt(state, Coordinator.State, result, allocations, chosenIds)", inline)
+        self.assertIn("if (accepted) DraftChanged();", inline)
+        self.assertIn("slider.DragStarted += (_, _) => BeginAllocationGesture();", inline)
+        self.assertIn("slider.DragCompleted += (_, _) => EndAllocationGesture();", inline)
+        save = page.split("protected override async Task<SaveResult> SaveDraftAsync()", 1)[1].split(
+            "protected override async Task OpenNextStepAsync", 1)[0]
+        self.assertIn("var chosenIds = _draft.PlayerChosenAttributeIds;", save)
+        self.assertIn("Coordinator.PreviewCreationAttributes(state.Binding, allocations, chosenIds)", save)
+        self.assertIn("var copiedIds = playerChosenAttributeIds?.ToArray();", coordinator)
+        self.assertIn("new(issued, copied, copiedIds?.ToArray(), result)", coordinator)
+        self.assertIn("PlayerChosenIdsEqual(preview.PlayerChosenAttributeIds, issued.PlayerChosenAttributeIds)", coordinator)
+        self.assertIn("PlayerChosenIdsEqual(left.PlayerChosenAttributeIds, right.PlayerChosenAttributeIds)", authority)
+        self.assertIn("PlayerChosenIdsEqual(pending.PlayerChosenAttributeIds, preview.PlayerChosenAttributeIds)", authority)
+        self.assertIn("PlayerChosenIdsEqual(preview.PlayerChosenAttributeIds, pending.PlayerChosenAttributeIds)", authority)
+        self.assertIn("PlayerChosenIdsAreValid(pending.PlayerChosenAttributeIds, pending.Attributes)", authority)
 
     def test_attribute_render_does_not_synchronously_read_core(self) -> None:
         page = (NATIVE / "CreationAttributesPage.cs").read_text(encoding="utf-8")

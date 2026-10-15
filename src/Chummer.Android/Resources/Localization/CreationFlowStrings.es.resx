@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="Completion.Working" xml:space="preserve"><value>Comprobando tus elecciones…</value></data>
   <data name="Completion.Title" xml:space="preserve"><value>Terminar este personaje</value></data>
   <data name="Completion.Entry" xml:space="preserve"><value>Revisa sugerencias iniciales conservando tus elecciones. Aplica solo tras la revisión final.</value></data>
   <data name="Completion.Unsupported" xml:space="preserve"><value>Las sugerencias iniciales admiten Prioridad y Suma de diez de SR5. Continúa con los pasos normales de este método.</value></data>

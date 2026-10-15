@@ -91,7 +91,8 @@ internal static class CreationAttributesPhoneAuthority
         CharacterCreationAttributesState state,
         CharacterOverviewState overview,
         CharacterCreationFoundationResult<CharacterCreationAttributesPreview> result,
-        IReadOnlyList<CharacterCreationAttributeAllocation> allocations)
+        IReadOnlyList<CharacterCreationAttributeAllocation> allocations,
+        IReadOnlyList<string>? playerChosenAttributeIds = null)
     {
         if (!IsReady(state, overview)
             || result.Value is not { } preview
@@ -99,6 +100,8 @@ internal static class CreationAttributesPhoneAuthority
             || !AllocationIdentitiesMatch(state, allocations)
             || !ProjectionIdentitiesMatch(state, preview.Attributes)
             || !PreviewMatchesAllocations(preview, allocations)
+            || !PlayerChosenIdsAreValid(preview.PlayerChosenAttributeIds, preview.Attributes)
+            || !PlayerChosenIdsEqual(preview.PlayerChosenAttributeIds, playerChosenAttributeIds)
             || !preview.RequiresExplicitConfirmation
             || !BudgetIsExact(preview.NormalPointBudget)
             || !BudgetIsExact(preview.SpecialPointBudget)
@@ -124,6 +127,7 @@ internal static class CreationAttributesPhoneAuthority
             && preview.Blockers.Count == 1 && preview.Blockers[0] == duplicate
             && state.PendingDraft is { } pending
             && AllocationsEqual(allocations, pending.Allocations)
+            && PlayerChosenIdsEqual(preview.PlayerChosenAttributeIds, pending.PlayerChosenAttributeIds)
             && ProjectionsEqual(preview.Attributes, state.Attributes)
             && BudgetsEqual(preview.NormalPointBudget, state.NormalPointBudget)
             && BudgetsEqual(preview.SpecialPointBudget, state.SpecialPointBudget)
@@ -134,12 +138,15 @@ internal static class CreationAttributesPhoneAuthority
         CharacterCreationAttributesState state,
         CharacterOverviewState overview,
         CharacterCreationAttributesPreview preview,
-        IReadOnlyList<CharacterCreationAttributeAllocation> allocations)
+        IReadOnlyList<CharacterCreationAttributeAllocation> allocations,
+        IReadOnlyList<string>? playerChosenAttributeIds = null)
         => IsReady(state, overview)
            && BindingEquals(state.Binding, preview.Binding)
            && AllocationIdentitiesMatch(state, allocations)
            && ProjectionIdentitiesMatch(state, preview.Attributes)
            && PreviewMatchesAllocations(preview, allocations)
+           && PlayerChosenIdsAreValid(preview.PlayerChosenAttributeIds, preview.Attributes)
+           && PlayerChosenIdsEqual(preview.PlayerChosenAttributeIds, playerChosenAttributeIds)
            && preview.RequiresExplicitConfirmation
            && preview.CanConfirm
            && preview.Blockers.Count == 0
@@ -160,6 +167,7 @@ internal static class CreationAttributesPhoneAuthority
         => string.Equals(left.Schema, right.Schema, StringComparison.Ordinal)
            && BindingEquals(left.Binding, right.Binding)
            && ProjectionsEqual(left.Attributes, right.Attributes)
+           && PlayerChosenIdsEqual(left.PlayerChosenAttributeIds, right.PlayerChosenAttributeIds)
            && BudgetsEqual(left.NormalPointBudget, right.NormalPointBudget)
            && BudgetsEqual(left.SpecialPointBudget, right.SpecialPointBudget)
            && BudgetsEqual(left.CreationKarmaBudget, right.CreationKarmaBudget)
@@ -230,6 +238,8 @@ internal static class CreationAttributesPhoneAuthority
            && IsCanonicalDigest(receipt.DraftDigest)
            && pending.BaseContentRevision == receipt.PreviousContentRevision
            && AllocationsEqual(pending.Allocations, allocations)
+           && PlayerChosenIdsEqual(pending.PlayerChosenAttributeIds, preview.PlayerChosenAttributeIds)
+           && PlayerChosenIdsAreValid(preview.PlayerChosenAttributeIds, preview.Attributes)
            && ProjectionsEqual(pending.Attributes, preview.Attributes)
            && ProjectionsEqual(refreshed.Attributes, preview.Attributes)
            && BudgetsEqual(refreshed.NormalPointBudget, preview.NormalPointBudget)
@@ -330,6 +340,7 @@ internal static class CreationAttributesPhoneAuthority
            && pending.Allocations.Count == state.Attributes.Count
            && ProjectionIdentitiesMatch(state, pending.Attributes)
            && AllocationIdentitiesMatch(state, pending.Allocations)
+           && PlayerChosenIdsAreValid(pending.PlayerChosenAttributeIds, pending.Attributes)
            && ProjectionsEqual(pending.Attributes, state.Attributes)
            && PreviewProjectionsMatchAllocations(pending.Attributes, pending.Allocations)
            && pending.NormalPointTotal == state.NormalPointBudget.Total
@@ -398,6 +409,17 @@ internal static class CreationAttributesPhoneAuthority
                string.Equals(pair.First.AttributeId, pair.Second.AttributeId, StringComparison.Ordinal)
                && pair.First.PriorityPoints == pair.Second.PriorityPoints
                && pair.First.KarmaLevels == pair.Second.KarmaLevels);
+
+    internal static bool PlayerChosenIdsEqual(IReadOnlyList<string>? left, IReadOnlyList<string>? right)
+        => left is null ? right is null : right is not null && left.SequenceEqual(right, StringComparer.Ordinal);
+
+    private static bool PlayerChosenIdsAreValid(IReadOnlyList<string>? ids,
+        IReadOnlyList<CharacterCreationAttributeProjection> attributes)
+        => ids is null || ids.SequenceEqual(ids.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal), StringComparer.Ordinal)
+           && ids.All(id => !string.IsNullOrWhiteSpace(id)
+               && attributes.Any(attribute => string.Equals(attribute.AttributeId, id, StringComparison.Ordinal)))
+           && attributes.Where(attribute => attribute.PriorityPointsSpent != 0 || attribute.KarmaLevels != 0)
+               .All(attribute => ids.Contains(attribute.AttributeId, StringComparer.Ordinal));
 
     private static bool ProjectionsEqual(
         IReadOnlyList<CharacterCreationAttributeProjection> left,

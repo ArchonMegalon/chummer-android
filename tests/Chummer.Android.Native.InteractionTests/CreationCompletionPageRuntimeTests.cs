@@ -1,7 +1,10 @@
 using System.Globalization;
 using System.Reflection;
 using Chummer.Android.Native;
+using Chummer.Application.Characters;
+using Chummer.Application.Owners;
 using Chummer.Contracts.Characters;
+using Chummer.Contracts.Workspaces;
 using Chummer.Infrastructure.Workspaces;
 using Chummer.Presentation.Creation;
 using Microsoft.Maui.Controls;
@@ -20,18 +23,23 @@ internal static partial class AfterRunAuthorityHarness
             var window = (Window)((Microsoft.Maui.IApplication)app).CreateWindow(null!);
             try
             {
-                foreach (string scenario in new[] { "prerequisite", "cancel", "apply", "lost-reply", "unknown" })
+                foreach (string scenario in new[] { "prerequisite", "busy-cancel", "cancel", "apply", "lost-reply", "unknown" })
                 {
                     CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(scenario == "apply" ? "de-AT" : "en-GB");
                     var owners = new ControlledLinkedOwner();
+                    using var reviewPause = scenario == "busy-cancel" ? new CompletionReviewPause() : null;
                     CompletionServiceProbe? service = null;
                     await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
                         creationCompletion: true, creationFinalization: true, creationPrerequisite: true,
                         productionCreationOverview: true,
-                        completionServiceDecorator: actual => service = new(actual, ui)
+                        completionServiceDecorator: actual =>
                         {
-                            ThrowAfterApply = scenario == "lost-reply",
-                            ThrowBeforeApply = scenario == "unknown"
+                            service = new(actual, ui)
+                            {
+                                ThrowAfterApply = scenario == "lost-reply",
+                                ThrowBeforeApply = scenario == "unknown"
+                            };
+                            return reviewPause is null ? service : new PausedCompletionReviewService(service, reviewPause);
                         });
                     await runtime.Coordinator.InitializeAsync();
                     await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
@@ -174,6 +182,40 @@ internal static partial class AfterRunAuthorityHarness
                     Require(cashSource is not null, "SETUP: actual starting-cash authority is missing.");
                     cash.Text = (cashSource!.Dice * 3).ToString(CultureInfo.InvariantCulture);
                     Require(check.IsEnabled, "A valid explicit cash total did not enable the Core review.");
+                    if (reviewPause is not null)
+                    {
+                        Task pending = ui.BeginAsyncVoid(() => ((IButtonController)check).SendClicked());
+                        try
+                        {
+                            await reviewPause.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                            AssertCompletionReadProgress(page);
+                            AssertCompletionFilesUnchanged(runtime, files);
+                            // Join both actual callbacks through the in-flight
+                            // UI operation; do not start a second harness gate.
+                            ((IButtonController)CompletionPageControl<Button>(page, "creation-completion-cancel")).SendClicked();
+                            await JoinIssuedPageAsync(pending);
+                        }
+                        finally
+                        {
+                            reviewPause.Release.Set();
+                            await JoinIssuedPageAsync(pending);
+                        }
+                        ((IButtonController)check).SendClicked();
+                        await ui.DrainDispatchedAsyncVoidAsync();
+                        Require(navigation.NavigationStack.Count == 1
+                            && ReferenceEquals(Shell.Current?.CurrentPage, root)
+                            && coordinator.State.Profile?.Created == false
+                            && service!.ReviewCalls == 0 && service.ApplyCalls == 0
+                            && !MinimalVisible(page).Any(element => element.AutomationId == "creation-completion-apply"),
+                            "Cancel during a held read-only review must return without publishing or replaying completion.");
+                        AssertCompletionFilesUnchanged(runtime, files);
+                        Require(owners.ActiveLeases == 0 && alerts.Titles.Count == 0,
+                            "Cancel during read-only progress leaked a lease or hid a callback error.");
+                        IssuedPageLifecycle(page, "OnDisappearing");
+                        ui.AssertHealthy();
+                        Console.WriteLine("PASS actual Core/MAUI completion page: busy-cancel");
+                        continue;
+                    }
                     await ClickCompletionControlAsync(ui, check);
                     Button apply = CompletionPageControl<Button>(page, "creation-completion-apply");
                     Require(apply.IsEnabled && service!.ReviewCalls == 1 && service.ApplyCalls == 0,
@@ -181,6 +223,8 @@ internal static partial class AfterRunAuthorityHarness
                     AssertCompletionHasNoAllocationSettings(page);
                     MinimalRequireNoMachineValues(page);
                     AssertCompletionFilesUnchanged(runtime, files);
+                    Require(!MinimalVisible(page).Any(element => element.AutomationId == "creation-completion-read-busy"),
+                        "Read-only progress remained visible after review completed.");
 
                     if (scenario == "cancel")
                     {
@@ -268,5 +312,48 @@ internal static partial class AfterRunAuthorityHarness
             && !visible.Any(element => element.AutomationId?.StartsWith(
                 "creation-completion-allow-", StringComparison.Ordinal) == true),
             "Missing-only completion must not expose allocation opt-ins or a configurable replacement policy.");
+    }
+
+    private static void AssertCompletionReadProgress(CreationCompletionPage page)
+    {
+        var progress = CompletionPageControl<Grid>(page, "creation-completion-read-busy");
+        var spinner = CompletionPageControl<ActivityIndicator>(page, "creation-completion-read-progress");
+        var status = CompletionPageControl<Label>(page, "creation-completion-read-status");
+        var cancel = CompletionPageControl<Button>(page, "creation-completion-cancel");
+        Require(progress.Parent is VerticalStackLayout footer
+            && ReferenceEquals(footer.Parent, page.Content) && Grid.GetRow(footer) == 1
+            && spinner.IsRunning && spinner.IsVisible
+            && status.Text == CreationCompletionPage.Copy("Working", "missing-busy-status")
+            && status.Text != "missing-busy-status"
+            && cancel.IsEnabled && ReferenceEquals(cancel.Parent, progress.Parent)
+            && !MinimalVisible(page).OfType<Button>().Any(button => button.IsEnabled && button.AutomationId is
+                ("creation-completion-preview" or "creation-completion-review" or "creation-completion-apply")),
+            "Read-only work must show a running, localized pinned indicator while Cancel remains usable and mutation actions stay disabled.");
+    }
+
+    private sealed class CompletionReviewPause : IDisposable
+    {
+        public TaskCompletionSource<bool> Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public ManualResetEventSlim Release { get; } = new(false);
+        public void Dispose() => Release.Dispose();
+    }
+
+    private sealed class PausedCompletionReviewService(IOwnerBoundCharacterCreationCompletionService actual,
+        CompletionReviewPause pause) : IOwnerBoundCharacterCreationCompletionService
+    {
+        public CharacterCreationFoundationResult<CharacterCreationCompletionApplyReview> Review(
+            OwnerContextStamp owner, CharacterWorkspaceId workspaceId, CharacterCreationCompletionReviewRequest proposal,
+            CharacterCreationStartingCashChoice startingCash, CancellationToken cancellationToken = default)
+        {
+            pause.Entered.TrySetResult(true);
+            pause.Release.Wait(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            return actual.Review(owner, workspaceId, proposal, startingCash, cancellationToken);
+        }
+
+        public CharacterCreationFoundationResult<CharacterCreationFinalizationReceipt> Apply(
+            OwnerContextStamp owner, CharacterCreationCompletionApplyRequest request,
+            CancellationToken cancellationToken = default)
+            => actual.Apply(owner, request, cancellationToken);
     }
 }

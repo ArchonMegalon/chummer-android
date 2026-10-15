@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="Completion.Working" xml:space="preserve"><value>Deine Auswahl wird geprüft…</value></data>
   <data name="Completion.Title" xml:space="preserve"><value>Diesen Charakter fertigstellen</value></data>
   <data name="Completion.Entry" xml:space="preserve"><value>Prüfe Startvorschläge unter Beibehaltung deiner Auswahl. Übernimm sie erst nach der Abschlussprüfung.</value></data>
   <data name="Completion.Unsupported" xml:space="preserve"><value>Startvorschläge unterstützen derzeit SR5-Priorität und Sum-to-Ten. Nutze für diese Methode die normalen Erstellungsschritte.</value></data>
