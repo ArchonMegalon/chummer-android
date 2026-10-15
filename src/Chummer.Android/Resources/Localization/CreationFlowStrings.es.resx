@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="Completion.OptionalKarmaFunding" xml:space="preserve"><value>More attribute recommendations could not be funded within the requested limits. Existing choices and reserves are preserved. Review this proposal before choosing Apply.</value></data>
+  <data name="Completion.OptionalKarmaGoals" xml:space="preserve"><value>Some optional attribute goals remain unmet. Existing choices and reserves are preserved. Review this proposal before choosing Apply.</value></data>
+  <data name="Completion.OptionalKarmaRating" xml:space="preserve"><value>{0}: proposed {1}, optional goal {2}</value></data>
   <data name="Completion.Working" xml:space="preserve"><value>Comprobando tus elecciones…</value></data>
   <data name="Completion.Loss.Title" xml:space="preserve"><value>Recursos sin usar que se perderán</value></data>
   <data name="Completion.Loss.Help" xml:space="preserve"><value>Estos recursos no pasarán a la carrera. Sigue editando para usarlos o confirma que quieres continuar.</value></data>

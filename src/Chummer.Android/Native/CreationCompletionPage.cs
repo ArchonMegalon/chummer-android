@@ -357,7 +357,7 @@ public sealed class CreationCompletionPage : NativePageBase
             var result = await Coordinator.BuildCreationCompletionProposalAsync(inputs, intent, ReadToken);
             if (!CurrentInput(appearance, version)) return;
             _proposal = result.Value;
-            _blockers = result.Blockers;
+            _blockers = RequiredProposalBlockers(_proposal, result.Blockers);
             _roll = string.Empty;
             // Retire the previous proposal's terms before the next authority
             // read. An exception/cancellation must not make stale cash reviewable.
@@ -429,6 +429,7 @@ public sealed class CreationCompletionPage : NativePageBase
         RenderMagicProposal();
         RenderResourceProposal();
         RenderLoadoutProposal();
+        RenderOptionalAttributeKarmaGoals();
         _body.Add(NativeTheme.Eyebrow(Copy("Remaining", "Still needs attention")));
         foreach (var task in _proposal.RemainingTasks.Where(key => key != "completion.remaining.finalization-review").Distinct())
             _body.Add(NativeTheme.Body(RemainingTask(task), NativeTheme.Muted));
@@ -620,6 +621,7 @@ public sealed class CreationCompletionPage : NativePageBase
     {
         var projection = _review!.Projection;
         _body.Add(NativeTheme.Eyebrow(Copy("FinalReview", "Review before Apply")));
+        RenderOptionalAttributeKarmaGoals();
         foreach (var delta in projection.OrderedDeltas.OrderBy(row => row.Order))
         {
             string label = !string.IsNullOrWhiteSpace(delta.TargetName) ? delta.TargetName
@@ -798,6 +800,83 @@ public sealed class CreationCompletionPage : NativePageBase
         };
         parent.Add(button);
         return button;
+    }
+
+    // Display classification only. A rejected candidate can leave a legal partial
+    // plan; only its accepted complete review tells us what is actually affordable.
+    // Neither this disclosure nor the plan outcome authorizes Review or Apply.
+    internal static IReadOnlyList<(string AttributeId, int Actual, int Desired)> OptionalAttributeKarmaShortfalls(
+        CompletionAssistantProposal? proposal)
+    {
+        if (proposal is not { Request.AllocateRemainingAttributeKarma: true,
+                Evaluation.Outcome: CharacterCreationFoundationOutcomes.Success or CharacterCreationFoundationOutcomes.Blocked,
+                Evaluation.Value.Attributes: not null,
+                Evaluation.Value.Review: { Blockers.Count: 0, Skills: { Blockers.Count: 0,
+                    Attributes: { CanConfirm: true, Blockers.Count: 0 } } } review }
+            || proposal.Request.Attributes.KarmaTargets is not { Count: > 0 } goals
+            || proposal.Evaluation.Value.Blockers.Contains(CharacterCreationAttributeCompletionBlockers.AutomaticPermissionUnavailable)
+            || review.Balances.RemainingCreationKarma is not int karma
+            || review.Balances.RemainingNuyen is not decimal nuyen
+            || review.Balances.KarmaOverspend != 0 || review.Balances.NuyenOverspend != 0)
+            return [];
+
+        var request = proposal.Request;
+        var skills = review.Skills!;
+        var attributes = skills.Attributes;
+        if (karma < Math.Max(0, request.KarmaToReserve) || nuyen < Math.Max(0m, request.NuyenToReserve)
+            || attributes.NormalPointBudget.Remaining < request.Attributes.NormalPointsToReserve
+            || attributes.SpecialPointBudget.Remaining < request.Attributes.SpecialPointsToReserve
+            || skills.ActiveSkillPointBudget.Remaining < request.Skills.ActivePointsToReserve
+            || skills.SkillGroupPointBudget.Remaining < request.Skills.GroupPointsToReserve
+            || skills.KnowledgeSkillPointBudget.Remaining < request.Skills.KnowledgePointsToReserve)
+            return [];
+
+        List<(string AttributeId, int Actual, int Desired)> shortfalls = [];
+        foreach (var goal in goals)
+        {
+            var actual = attributes.Attributes.FirstOrDefault(row => row.AttributeId == goal.AttributeId);
+            if (actual is null || !request.Attributes.PermittedAttributeOrder.Contains(goal.AttributeId)
+                || CreationAllocationStrings.AttributeName(goal.AttributeId) == goal.AttributeId)
+                return []; // Unknown identities must never become user-facing labels.
+            if (actual.UnaugmentedCurrent < goal.TargetUnaugmentedRating)
+                shortfalls.Add((goal.AttributeId, actual.UnaugmentedCurrent, goal.TargetUnaugmentedRating));
+        }
+        return shortfalls;
+    }
+
+    private static bool IsAttributeKarmaFundingFinding(string code) => code is
+        CharacterCreationAttributeCompletionBlockers.KarmaSpendLimit
+        or CharacterCreationCompletionPlanBlockers.KarmaReserveRequired
+        or CharacterCreationCompletionPlanBlockers.NuyenReserveRequired
+        or CharacterCreationAttributesBlockers.GlobalKarmaExceeded
+        or CharacterCreationFinalizationBlockers.GlobalKarmaExceeded
+        or CharacterCreationResourcesBlockers.InsufficientCreationKarma;
+
+    internal static IReadOnlyList<string> RequiredProposalBlockers(
+        CompletionAssistantProposal? proposal, IReadOnlyList<string> blockers)
+        => OptionalAttributeKarmaShortfalls(proposal).Count == 0 ? blockers
+            : blockers.Where(code => !proposal!.Evaluation.Value!.Attributes!.Blockers.Contains(code)
+                || code != CharacterCreationAttributeCompletionBlockers.KarmaTargetsUnfulfilled
+                    && !IsAttributeKarmaFundingFinding(code)).ToArray();
+
+    private void RenderOptionalAttributeKarmaGoals()
+    {
+        var shortfalls = OptionalAttributeKarmaShortfalls(_proposal);
+        if (shortfalls.Count == 0) return;
+        string message = _proposal!.Evaluation.Value!.Attributes!.Blockers.Any(IsAttributeKarmaFundingFinding)
+            ? Copy("OptionalKarmaFunding", "More attribute recommendations could not be funded within the requested limits. Existing choices and reserves are preserved. Review this proposal before choosing Apply.")
+            : Copy("OptionalKarmaGoals", "Some optional attribute goals remain unmet. Existing choices and reserves are preserved. Review this proposal before choosing Apply.");
+        Label explanation = NativeTheme.Body(message, NativeTheme.Muted);
+        explanation.AutomationId = "creation-completion-optional-karma";
+        _body.Add(explanation);
+        foreach (var goal in shortfalls)
+        {
+            Label rating = NativeTheme.Body(CreationFlowStrings.Format("Completion.OptionalKarmaRating",
+                "{0}: proposed {1}, optional goal {2}", CreationAllocationStrings.AttributeName(goal.AttributeId),
+                goal.Actual, goal.Desired), NativeTheme.Muted);
+            rating.AutomationId = "creation-completion-optional-karma-" + goal.AttributeId;
+            _body.Add(rating);
+        }
     }
 
     private void AddBlockers(IEnumerable<string> blockers)

@@ -7,11 +7,12 @@ using Chummer.Contracts.Characters;
 using Chummer.Contracts.Workspaces;
 using Chummer.Infrastructure.Workspaces;
 using Chummer.Presentation.Creation;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
-    internal static async Task RunCreationCompletionPageAsync(string contentRoot)
+    internal static async Task RunCreationCompletionPageAsync(string contentRoot, string? scenarioFilter = null)
     {
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
@@ -23,7 +24,9 @@ internal static partial class AfterRunAuthorityHarness
             var window = (Window)((Microsoft.Maui.IApplication)app).CreateWindow(null!);
             try
             {
-                foreach (string scenario in new[] { "prerequisite", "cash-read-throws", "busy-cancel", "cancel", "magic-choice-cancel", "loss-decline", "loss-owner-aba", "loss-departure", "apply", "lost-reply", "unknown" })
+                foreach (string scenario in scenarioFilter is null
+                    ? new[] { "prerequisite", "cash-read-throws", "busy-cancel", "cancel", "magic-choice-cancel", "loss-decline", "loss-owner-aba", "loss-departure", "apply", "lost-reply", "unknown", "optional-karma" }
+                    : new[] { scenarioFilter })
                 {
                     CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(scenario switch
                     {
@@ -362,6 +365,11 @@ internal static partial class AfterRunAuthorityHarness
                             CreationKarmaCopy.StartingCash(cashSource.Name, cashSource.Dice, cashSource.Multiplier)),
                         "The page's selected and displayed cash terms must match the exact admitted proposal source.");
                     if (scenario == "apply") AssertCompletionRichProposal(page, inputs, proposal, cashSource);
+                    if (scenario == "optional-karma")
+                    {
+                        AssertOptionalAttributeKarmaDisclosure(page, proposal);
+                        await AssertOptionalAttributeKarmaRejectionsAsync(page, runtime, owners, ui, inputs, proposal, cashSource);
+                    }
                     AssertCompletionFilesUnchanged(runtime, files);
                     cash.Text = (cashSource.Dice * 3).ToString(CultureInfo.InvariantCulture);
                     Require(check.IsEnabled, "A valid explicit cash total did not enable the Core review.");
@@ -399,6 +407,7 @@ internal static partial class AfterRunAuthorityHarness
                         Console.WriteLine("PASS actual Core/MAUI completion page: busy-cancel");
                         continue;
                     }
+                    if (scenario == "optional-karma") CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("de-AT");
                     await ClickCompletionControlAsync(ui, check);
                     Button apply = CompletionPageControl<Button>(page, "creation-completion-apply");
                     Require(apply.IsEnabled && service!.ReviewCalls == 1 && service.ApplyCalls == 0,
@@ -416,6 +425,7 @@ internal static partial class AfterRunAuthorityHarness
                     var reviewed = (CharacterCreationCompletionApplyReview)typeof(CreationCompletionPage)
                         .GetField("_review", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
                     AssertCompletionLossDisclosure(page, reviewed.Projection);
+                    if (scenario == "optional-karma") AssertOptionalAttributeKarmaDisclosure(page, proposal);
                     int expectedLossConfirmations = CreationCompletionPage.LossItems(reviewed.Projection).Count > 0 ? 1 : 0;
 
                     if (scenario == "cancel")
@@ -508,6 +518,112 @@ internal static partial class AfterRunAuthorityHarness
                 CultureInfo.CurrentUICulture = previousCulture;
             }
         });
+    }
+
+    private static void AssertOptionalAttributeKarmaDisclosure(CreationCompletionPage page, CompletionAssistantProposal proposal)
+    {
+        var plan = proposal.Evaluation.Value!;
+        Require(proposal.Request.AllocateRemainingAttributeKarma
+            && proposal.Evaluation.Outcome == CharacterCreationFoundationOutcomes.Blocked
+            && plan.Review.Blockers.Count == 0
+            && plan.Blockers.Contains(CharacterCreationAttributeCompletionBlockers.KarmaTargetsUnfulfilled),
+            "SETUP: this scenario needs an actual blocked plan with a legal complete review and unmet Karma goals.");
+        var expected = proposal.Request.Attributes.KarmaTargets!
+            .Select(goal => (Goal: goal, Actual: plan.Review.Skills!.Attributes.Attributes
+                .Single(row => row.AttributeId == goal.AttributeId).UnaugmentedCurrent))
+            .Where(row => row.Actual < row.Goal.TargetUnaugmentedRating).ToArray();
+        Require(expected.Length > 0 && plan.Selections.AttributeAllocations.Any(row => row.KarmaLevels > 0),
+            "SETUP: the real proposal must retain an affordable Karma increase and leave optional goals unmet.");
+        Require(!CreationCompletionPage.RequiredProposalBlockers(proposal, plan.Blockers)
+                .Contains(CharacterCreationAttributeCompletionBlockers.KarmaTargetsUnfulfilled),
+            "A legal optional-goal shortfall still produces generic failure copy.");
+        var rows = MinimalVisible(page).OfType<Label>().Where(label => label.AutomationId?.StartsWith(
+            "creation-completion-optional-karma-", StringComparison.Ordinal) == true).ToArray();
+        Require(rows.Length == expected.Length, "Disclosure included met goals or omitted an actual optional shortfall.");
+        foreach (var row in expected)
+        {
+            string text = CreationFlowStrings.Format("Completion.OptionalKarmaRating", "missing",
+                CreationAllocationStrings.AttributeName(row.Goal.AttributeId), row.Actual, row.Goal.TargetUnaugmentedRating);
+            Require(CompletionPageControl<Label>(page, "creation-completion-optional-karma-" + row.Goal.AttributeId).Text == text,
+                "The page must show the accepted complete review's proposed rating and the actual requested goal.");
+        }
+        Require(CompletionPageControl<Label>(page, "creation-completion-optional-karma").Text
+                == CreationCompletionPage.Copy("OptionalKarmaFunding", "missing"),
+            "The funded baseline must explain preserved choices/reserves without claiming the missing goals were applied.");
+        foreach (string key in new[] { "Completion.OptionalKarmaFunding", "Completion.OptionalKarmaGoals", "Completion.OptionalKarmaRating" })
+        {
+            string english = CreationFlowStrings.Get(key, "missing", CultureInfo.GetCultureInfo("en-GB"));
+            Require(english != "missing"
+                && CreationFlowStrings.Get(key, "missing", CultureInfo.GetCultureInfo("de-AT")) is var german
+                && german != "missing" && german != english
+                && CreationFlowStrings.Get(key, "missing", CultureInfo.GetCultureInfo("es-MX")) == english,
+                "Optional-goal copy must use English/German resources and the existing English fallback for Spanish.");
+        }
+        MinimalRequireNoMachineValues(page);
+    }
+
+    private static async Task AssertOptionalAttributeKarmaRejectionsAsync(CreationCompletionPage page,
+        NativeRewardRuntime runtime, ControlledLinkedOwner owners, IssuedPageUiContext ui,
+        CharacterCreationCompletionReviewInputs inputs, CompletionAssistantProposal proposal,
+        CharacterCreationStartingNuyenSource cashSource)
+    {
+        var plan = proposal.Evaluation.Value!;
+        string[] optionalFindings = [CharacterCreationAttributeCompletionBlockers.KarmaTargetsUnfulfilled,
+            CharacterCreationFinalizationBlockers.GlobalKarmaExceeded];
+        var selections = plan.Selections;
+        CharacterCreationCompletionSelections[] invalidChoices =
+        [
+            selections with { AttributeAllocations = selections.AttributeAllocations.Select(row =>
+                row.AttributeId == "BOD" ? row with { KarmaLevels = 100 } : row).ToArray() },
+            selections with { MagicSelections = selections.MagicSelections with { MysticAdeptPowerPoints = int.MaxValue } }
+        ];
+        var cash = new CharacterCreationStartingCashChoice(cashSource.AuthorityDigest, cashSource.Dice * 3);
+        var actual = runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationCompletionService>();
+        for (int index = 0; index < invalidChoices.Length; index++)
+        {
+            var request = new CharacterCreationCompletionReviewRequest(inputs.SnapshotDigest, invalidChoices[index]);
+            var rejected = await Task.Run(() => CharacterCreationCompletionReviewService.Review(inputs, request));
+            Require(rejected.Outcome != CharacterCreationFoundationOutcomes.Success && rejected.Blockers.Count > 0,
+                "Actual Core accepted an illegal or unpriceable selection.");
+            if (index == 1)
+                Require(rejected.Value?.Balances.RemainingCreationKarma is null,
+                    "Unpriceable selections must not turn into a known zero-cost budget.");
+            var invalid = proposal with { Evaluation = proposal.Evaluation with { Value = rejected.Value is null ? null : plan with
+            {
+                Selections = invalidChoices[index],
+                Review = rejected.Value
+            } } };
+            Require(CreationCompletionPage.OptionalAttributeKarmaShortfalls(invalid).Count == 0
+                && CreationCompletionPage.RequiredProposalBlockers(invalid, optionalFindings).SequenceEqual(optionalFindings),
+                "A rejected complete review was relabeled as optional because of a blocker name.");
+            var refused = await Task.Run(() => actual.Review(owners.Capture(), runtime.Id, request, cash));
+            Require(refused.Outcome != CharacterCreationFoundationOutcomes.Success && refused.Value is null,
+                "Real owner-bound Core review admitted invalid choices for Apply.");
+            var nativeRefusal = await runtime.Coordinator.ReviewCreationCompletionAsync(invalid, cash);
+            Require(nativeRefusal.Value is null && nativeRefusal.Outcome != CharacterCreationFoundationOutcomes.Success,
+                "The native gate admitted a substituted invalid proposal.");
+        }
+
+        // Same accepted Core review, different actual reserve request: a reserve
+        // name alone cannot tell whether a failed candidate or retained plan broke it.
+        foreach (var request in new[]
+        {
+            proposal.Request with { KarmaToReserve = plan.Review.Balances.RemainingCreationKarma!.Value + 1 },
+            proposal.Request with { NuyenToReserve = plan.Review.Balances.RemainingNuyen!.Value + 1m },
+            proposal.Request with { Attributes = proposal.Request.Attributes with
+                { NormalPointsToReserve = (int)plan.Review.Skills!.Attributes.NormalPointBudget.Remaining + 1 } },
+            proposal.Request with { AllocateRemainingAttributeKarma = false },
+            proposal.Request with { Attributes = proposal.Request.Attributes with { KarmaTargets = [] } }
+        })
+        {
+            var differentRequest = proposal with { Request = request };
+            Require(CreationCompletionPage.OptionalAttributeKarmaShortfalls(differentRequest).Count == 0
+                && CreationCompletionPage.RequiredProposalBlockers(differentRequest, optionalFindings).SequenceEqual(optionalFindings),
+                "Violated requested reserves or absent optional goals were described as preserved optional advice.");
+        }
+        await ui.DrainDispatchedAsyncVoidAsync();
+        Require(!MinimalVisible(page).Any(element => element.AutomationId == "creation-completion-apply"),
+            "Negative review probes exposed Apply before the user's actual Core review.");
     }
 
     private static T CompletionPageControl<T>(NativePageBase page, string id) where T : VisualElement

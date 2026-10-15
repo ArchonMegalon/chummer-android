@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="Completion.OptionalKarmaFunding" xml:space="preserve"><value>Weitere Attributvorschläge waren innerhalb der gewählten Grenzen nicht finanzierbar. Bisherige Entscheidungen und Reserven bleiben erhalten. Prüfe diesen Vorschlag vor dem Übernehmen.</value></data>
+  <data name="Completion.OptionalKarmaGoals" xml:space="preserve"><value>Einige optionale Attributziele bleiben unerreicht. Bisherige Entscheidungen und Reserven bleiben erhalten. Prüfe diesen Vorschlag vor dem Übernehmen.</value></data>
+  <data name="Completion.OptionalKarmaRating" xml:space="preserve"><value>{0}: vorgeschlagen {1}, optionales Ziel {2}</value></data>
   <data name="Completion.Working" xml:space="preserve"><value>Deine Auswahl wird geprüft…</value></data>
   <data name="Completion.Loss.Title" xml:space="preserve"><value>Ungenutzte Ressourcen, die verfallen</value></data>
   <data name="Completion.Loss.Help" xml:space="preserve"><value>Diese Ressourcen werden nicht in die Karriere übernommen. Verteile sie noch oder fahre ausdrücklich fort.</value></data>

@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="Completion.OptionalKarmaFunding" xml:space="preserve"><value>More attribute recommendations could not be funded within the requested limits. Existing choices and reserves are preserved. Review this proposal before choosing Apply.</value></data>
+  <data name="Completion.OptionalKarmaGoals" xml:space="preserve"><value>Some optional attribute goals remain unmet. Existing choices and reserves are preserved. Review this proposal before choosing Apply.</value></data>
+  <data name="Completion.OptionalKarmaRating" xml:space="preserve"><value>{0}: proposed {1}, optional goal {2}</value></data>
   <data name="Completion.Title" xml:space="preserve"><value>Finish this character</value></data>
   <data name="Completion.Entry" xml:space="preserve"><value>Review starter suggestions while keeping your choices. Apply only after the final check.</value></data>
   <data name="Completion.Unsupported" xml:space="preserve"><value>Starter suggestions currently support SR5 Priority and Sum-to-Ten. Continue with this build method’s normal creation steps.</value></data>
