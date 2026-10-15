@@ -512,7 +512,8 @@ public sealed class CreationPrerequisitePage : NativePageBase
                     _draft,
                     state,
                     category)) : Task.CompletedTask,
-                automationId: $"creation-prerequisite-category-{Token(category)}"));
+                automationId: $"creation-prerequisite-category-{Token(category)}",
+                missingRequired: selected is null));
 
             if (string.Equals(
                     category,
@@ -536,7 +537,8 @@ public sealed class CreationPrerequisitePage : NativePageBase
                         state,
                         category)) : Task.CompletedTask,
                     enabled: selected is not null,
-                    automationId: "creation-prerequisite-heritage-selection"));
+                    automationId: "creation-prerequisite-heritage-selection",
+                    missingRequired: selectedHeritage is null));
                 if (selectedHeritage is not null)
                 {
                     Label selectionId = NativeTheme.Body(
@@ -554,6 +556,11 @@ public sealed class CreationPrerequisitePage : NativePageBase
             {
                 CharacterCreationPriorityTalentOptionProjection? selectedTalent =
                     _draft.SelectedTalent(state, Coordinator.State);
+                bool missingTalentChoice = selectedTalent is null
+                    || !CreationPrerequisitePhoneAuthority.TalentGrantSelectionsComplete(
+                        selectedTalent,
+                        _draft.TalentActiveSkillSelectionIds(state, Coordinator.State),
+                        _draft.TalentSkillGroupSelectionIds(state, Coordinator.State));
                 _body.Add(NativeTheme.NavigationRow(
                     WizardStrings.Get("Priority.Talent.Choice", "Talent choice"),
                     selectedTalent is null
@@ -570,7 +577,8 @@ public sealed class CreationPrerequisitePage : NativePageBase
                         state,
                         category)) : Task.CompletedTask,
                     enabled: selected is not null,
-                    automationId: "creation-prerequisite-talent-selection"));
+                    automationId: "creation-prerequisite-talent-selection",
+                    missingRequired: missingTalentChoice));
                 if (selectedTalent is not null)
                 {
                     Label selectionId = NativeTheme.Body(

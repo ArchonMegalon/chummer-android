@@ -1,5 +1,71 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="Completion.Title" xml:space="preserve"><value>Finish this character</value></data>
+  <data name="Completion.Entry" xml:space="preserve"><value>Review starter suggestions while keeping your choices. Apply only after the final check.</value></data>
+  <data name="Completion.Unsupported" xml:space="preserve"><value>Starter suggestions currently support SR5 Priority and Sum-to-Ten. Continue with this build method’s normal creation steps.</value></data>
+  <data name="Completion.Scope" xml:space="preserve"><value>Starter attribute and skill suggestions—not a complete loadout. Magic, equipment, contacts and story may still need your choices. Nothing changes until Apply.</value></data>
+  <data name="Completion.LoadBlocked" xml:space="preserve"><value>Complete Build method first, then reopen these suggestions. Your existing choices are unchanged.</value></data>
+  <data name="Completion.Stale" xml:space="preserve"><value>Your runner or account changed. Return to creation and open a fresh review.</value></data>
+  <data name="Completion.Archetype" xml:space="preserve"><value>Archetype</value></data>
+  <data name="Completion.Neutral" xml:space="preserve"><value>No clear role yet: a general starter is selected. You can change it.</value></data>
+  <data name="Completion.Prefill" xml:space="preserve"><value>Suggested from your current choices. You can change the archetype.</value></data>
+  <data name="Completion.NoPack" xml:space="preserve"><value>This archetype has no starter suggestions yet. Keep your talent and continue manually, or choose another suggestion style.</value></data>
+  <data name="Completion.Permissions" xml:space="preserve"><value>Existing allocations stay locked unless you opt in below. Allowed ratings may increase, but are never lowered or replaced.</value></data>
+  <data name="Completion.Attributes" xml:space="preserve"><value>Allow attribute ratings to increase</value></data>
+  <data name="Completion.Skills" xml:space="preserve"><value>Allow skill ratings to increase or be added</value></data>
+  <data name="Completion.Preview" xml:space="preserve"><value>Preview suggestions</value></data>
+  <data name="Completion.Proposal" xml:space="preserve"><value>Proposed ratings</value></data>
+  <data name="Completion.Rating" xml:space="preserve"><value>{0}: proposed {1}, target {2} · {3}</value></data>
+  <data name="Completion.Met" xml:space="preserve"><value>target met</value></data>
+  <data name="Completion.Locked" xml:space="preserve"><value>kept unchanged</value></data>
+  <data name="Completion.Unavailable" xml:space="preserve"><value>source unavailable</value></data>
+  <data name="Completion.Unmet" xml:space="preserve"><value>target not reached</value></data>
+  <data name="Completion.NotEvaluated" xml:space="preserve"><value>not evaluated</value></data>
+  <data name="Completion.Remaining" xml:space="preserve"><value>Still needs attention</value></data>
+  <data name="Completion.KarmaBefore" xml:space="preserve"><value>Creation Karma remaining</value></data>
+  <data name="Completion.NuyenBefore" xml:space="preserve"><value>Creation nuyen remaining</value></data>
+  <data name="Completion.CashUnavailable" xml:space="preserve"><value>Starting-cash terms are unavailable. Review your lifestyle in creation, then reopen these suggestions.</value></data>
+  <data name="Completion.Review" xml:space="preserve"><value>Review and check completion</value></data>
+  <data name="Completion.FinalReview" xml:space="preserve"><value>Review before Apply</value></data>
+  <data name="Completion.Change" xml:space="preserve"><value>Character change</value></data>
+  <data name="Completion.CareerTransition" xml:space="preserve"><value>Creation → Career</value></data>
+  <data name="Completion.KarmaAfter" xml:space="preserve"><value>Career Karma</value></data>
+  <data name="Completion.NuyenAfter" xml:space="preserve"><value>Career nuyen</value></data>
+  <data name="Completion.Carryover" xml:space="preserve"><value>Excess creation funds are lost at the Career boundary. Starting cash is added afterward.</value></data>
+  <data name="Completion.ConfirmHelp" xml:space="preserve"><value>Apply saves these reviewed changes together and enters Career. Cancel returns to creation without changing your runner.</value></data>
+  <data name="Completion.Apply" xml:space="preserve"><value>Apply and enter Career</value></data>
+  <data name="Completion.Saving" xml:space="preserve"><value>Saving and opening Career…</value></data>
+  <data name="Completion.Unknown" xml:space="preserve"><value>The save result needs checking. Do not submit another completion.</value></data>
+  <data name="Completion.CheckResult" xml:space="preserve"><value>Check saved result</value></data>
+  <data name="Completion.Rejected" xml:space="preserve"><value>These changes were not applied. Return to creation and review your choices.</value></data>
+  <data name="Completion.Saved" xml:space="preserve"><value>Your changes are saved. Continue to your saved Career runner.</value></data>
+  <data name="Completion.Continue" xml:space="preserve"><value>Continue to saved runner</value></data>
+  <data name="Completion.ReceiptAccount" xml:space="preserve"><value>Return to the original account to view this confirmation.</value></data>
+  <data name="Completion.Cancel" xml:space="preserve"><value>Cancel / fine-tune in creation</value></data>
+  <data name="Completion.BackFailed" xml:space="preserve"><value>Could not return to creation. Please try Back again.</value></data>
+  <data name="Completion.Blocked" xml:space="preserve"><value>Some choices could not be verified. Return to creation, review the required steps, then try a fresh proposal.</value></data>
+  <data name="Completion.UnknownSkill" xml:space="preserve"><value>Unavailable skill</value></data>
+  <data name="Completion.SkillGroup" xml:space="preserve"><value>Skill group</value></data>
+  <data name="Completion.Loadout" xml:space="preserve"><value>Equipment is not automatically selected. Review your practical loadout in creation.</value></data>
+  <data name="Completion.Identity" xml:space="preserve"><value>Review your name, identity and story yourself.</value></data>
+  <data name="Completion.Targets" xml:space="preserve"><value>Some starter targets are locked, unavailable or unmet. They are advice, not automatic permission to change your choices.</value></data>
+  <data name="Completion.Magic" xml:space="preserve"><value>Review the magic choices required by your talent.</value></data>
+  <data name="Completion.SkillsNeeded" xml:space="preserve"><value>Review skills, native language and any unallocated skill points.</value></data>
+  <data name="Completion.AttributesNeeded" xml:space="preserve"><value>Review your attribute allocations.</value></data>
+  <data name="Completion.LifestyleNeeded" xml:space="preserve"><value>Review your lifestyle and starting-cash selection.</value></data>
+  <data name="Completion.ContactsNeeded" xml:space="preserve"><value>Review your contacts.</value></data>
+  <data name="Completion.ResourcesNeeded" xml:space="preserve"><value>Review your creation funding.</value></data>
+  <data name="Completion.GearNeeded" xml:space="preserve"><value>Review your equipment choices.</value></data>
+  <data name="Completion.QualitiesNeeded" xml:space="preserve"><value>Review your qualities.</value></data>
+  <data name="Completion.ManualNeeded" xml:space="preserve"><value>This part still needs manual review in creation.</value></data>
+  <data name="Completion.Selected" xml:space="preserve"><value>selected choice</value></data>
+  <data name="Completion.Archetype.General" xml:space="preserve"><value>General survivor</value></data>
+  <data name="Completion.Archetype.Samurai" xml:space="preserve"><value>Street samurai</value></data>
+  <data name="Completion.Archetype.Face" xml:space="preserve"><value>Face</value></data>
+  <data name="Completion.Archetype.Mage" xml:space="preserve"><value>Mage</value></data>
+  <data name="Completion.Archetype.Decker" xml:space="preserve"><value>Decker</value></data>
+  <data name="Completion.Archetype.Rigger" xml:space="preserve"><value>Rigger</value></data>
+  <data name="Common.RequiredChoiceMissing" xml:space="preserve"><value>Required choice missing</value></data>
   <data name="Qualities.Filter.Type" xml:space="preserve"><value>Type</value></data>
   <data name="Qualities.Filter.All" xml:space="preserve"><value>All (+ / −)</value></data>
   <data name="Qualities.Filter.Positive" xml:space="preserve"><value>+ Advantages</value></data>

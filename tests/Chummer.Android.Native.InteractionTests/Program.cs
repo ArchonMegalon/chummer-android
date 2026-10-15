@@ -55,6 +55,21 @@ internal static class Program
             await AfterRunAuthorityHarness.RunCareerEconomyFeedbackAsync(args[1], args[2]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--creation-completion-recovery-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationCompletionRecoveryAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--creation-completion-ui-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationCompletionPageAsync(args[1]);
+            return;
+        }
+        if (args.Length == 2 && args[0] == "--creation-completion-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationCompletionCoordinatorAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--creation-catalog-filters-content-root")
         {
             await AfterRunAuthorityHarness.RunCatalogFiltersAsync(args[1]);

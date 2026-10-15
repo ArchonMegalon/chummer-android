@@ -881,7 +881,12 @@ internal static partial class AfterRunAuthorityHarness
             bool creationLifestyles = false,
             Func<IOwnerBoundCharacterCreationLifestylesService,
                 IOwnerBoundCharacterCreationLifestylesService>? lifestylesDecorator = null,
-            bool careerSkillGroups = false)
+            bool careerSkillGroups = false,
+            bool creationCompletion = false,
+            Func<IOwnerBoundCharacterCreationCompletionReader,
+                IOwnerBoundCharacterCreationCompletionReader>? completionReaderDecorator = null,
+            Func<IOwnerBoundCharacterCreationCompletionService,
+                IOwnerBoundCharacterCreationCompletionService>? completionServiceDecorator = null)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -1074,7 +1079,13 @@ internal static partial class AfterRunAuthorityHarness
                     localRunnerAdoptionService: LocalAdoption,
                     careerQualityWorkspace: careerQualityWorkspaceFactory?.Invoke(Client),
                     careerSkillGroupService: careerSkillGroups
-                        ? _provider.GetRequiredService<ICharacterCareerSkillGroupAdvanceService>() : null);
+                        ? _provider.GetRequiredService<ICharacterCareerSkillGroupAdvanceService>() : null,
+                    creationCompletionReader: creationCompletion
+                        ? completionReaderDecorator?.Invoke(_provider.GetRequiredService<IOwnerBoundCharacterCreationCompletionReader>())
+                            ?? _provider.GetRequiredService<IOwnerBoundCharacterCreationCompletionReader>() : null,
+                    creationCompletionService: creationCompletion
+                        ? completionServiceDecorator?.Invoke(_provider.GetRequiredService<IOwnerBoundCharacterCreationCompletionService>())
+                            ?? _provider.GetRequiredService<IOwnerBoundCharacterCreationCompletionService>() : null);
             }
             catch
             {

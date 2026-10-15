@@ -471,7 +471,9 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         IOwnerBoundCharacterCreationMagicResonanceService? ownerBoundCreationMagicResonanceService = null,
         AndroidLocalRunnerAdoptionService? localRunnerAdoptionService = null,
         ICharacterCreationResourcesInteractionPresenter? creationResourcesPresenter = null,
-        ICharacterCreationGearInteractionPresenter? creationGearPresenter = null)
+        ICharacterCreationGearInteractionPresenter? creationGearPresenter = null,
+        IOwnerBoundCharacterCreationCompletionReader? creationCompletionReader = null,
+        IOwnerBoundCharacterCreationCompletionService? creationCompletionService = null)
     {
         _localRunnerAdoption = localRunnerAdoptionService;
         _presenter = presenter;
@@ -502,6 +504,8 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         _ownerBoundMagicResonanceService = ownerBoundCreationMagicResonanceService;
         _creationFinalizationService = creationFinalizationService;
         _ownerBoundFinalizationService = ownerBoundCreationFinalizationService;
+        _creationCompletionReader = creationCompletionReader;
+        _creationCompletionService = creationCompletionService;
         _careerCyberwarePurchaseService = careerCyberwarePurchaseService;
         _careerCustomDrugRecipeService = careerCustomDrugRecipeService;
         _careerVehicleWorkshopService = careerVehicleWorkshopService;

@@ -1,5 +1,6 @@
 """Static wiring guards, not Android navigation or runtime-authority evidence."""
 
+import re
 import unittest
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -9,6 +10,56 @@ NATIVE = Path(__file__).resolve().parents[1] / "src" / "Chummer.Android" / "Nati
 
 
 class FinalizationOwnerNavigationSourceContractTests(unittest.TestCase):
+    def test_completion_starter_uses_explicit_permissions_and_current_core_review(self):
+        source = (NATIVE / "CreationCompletionPage.cs").read_text(encoding="utf-8")
+        self.assertIn("_allowAttributes = false;", source)
+        self.assertIn("_allowSkills = false;", source)
+        self.assertIn("_allowAttributes ? pack.Attributes", source)
+        self.assertIn("_allowSkills ? pack.Skills", source)
+        self.assertIn("LoadCreationFinalizationInBackground(", source)
+        self.assertNotIn("IsCreationFinalizationStateCurrent", source)
+        self.assertIn('_roll = string.Empty;', source)
+        self.assertIn("new(source.AuthorityDigest, dice)", source)
+        self.assertIn("Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } review, Blockers.Count: 0", source)
+        self.assertIn("Coordinator.IsCreationCompletionReviewCurrent(review)", source)
+        cash = source.split("lifestyle.SelectedIndexChanged +=", 1)[1].split("_body.Add(lifestyle)", 1)[0]
+        self.assertIn("InvalidateProposal();", cash)
+        self.assertNotIn("Random", source)
+
+    def test_completion_retains_known_receipt_and_only_recovers_returned_unknown_outcomes(self):
+        source = (NATIVE / "CreationCompletionPage.cs").read_text(encoding="utf-8")
+        apply = source.split("private async Task ApplyAsync(", 1)[1].split("private void RenderSaved", 1)[0]
+        self.assertIn("recoveryOnly != _applyStarted", apply)
+        self.assertIn("recoveryOnly && !_outcomeLookupAllowed", apply)
+        self.assertIn('_outcomeLookupAllowed = _completion.Outcome == "outcome-unknown"', apply)
+        self.assertLess(apply.index("_completion = await Coordinator.ApplyCreationCompletionAsync"),
+                        apply.index("if (!IsCurrentPage(appearance)"))
+        failure = apply.split("catch (Exception error)", 1)[1]
+        self.assertIn("if (_completion?.Value is null)", failure)
+        self.assertIn("_outcomeLookupAllowed = false;", failure)
+        self.assertIn("AddCancel(appearance, render, afterRejection: true)", source)
+        cancel = source.split("private void AddCancel(", 1)[1].split("private Button AddAction", 1)[0]
+        self.assertIn("|| _leaving", cancel)
+        self.assertIn("try { await Navigation.PopAsync(); }", cancel)
+        self.assertIn("catch (Exception error)", cancel)
+
+    def test_completion_copy_is_localized_without_identifier_fallbacks(self):
+        source = (NATIVE / "CreationCompletionPage.cs").read_text(encoding="utf-8")
+        dashboard = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        keys = {"Completion." + key for key in re.findall(r'\bCopy\("([^"]+)"', source + dashboard)}
+        keys.add("Completion.Rating")
+        # BuildPage contains other copy helpers; only this page and its named entry use this prefix.
+        keys = {key for key in keys if key != "Completion.Receipt"}
+        resources = NATIVE.parent / "Resources" / "Localization"
+        for suffix in ("", ".de", ".es"):
+            root = ET.parse(resources / f"CreationFlowStrings{suffix}.resx").getroot()
+            values = {entry.attrib["name"]: entry.findtext("value") for entry in root.findall("data")}
+            for key in keys:
+                self.assertTrue(values.get(key), (suffix, key))
+        labels = source.split("private string SuggestionLabel", 1)[1].split("private static string RemainingTask", 1)[0]
+        self.assertNotIn(": choice.SourceId", labels)
+        self.assertIn("SkillCatalogStrings.SkillName", labels)
+
     def test_starting_cash_title_and_help_exist_in_each_phone_language(self):
         resources = NATIVE.parent / "Resources" / "Localization"
         for suffix, title in (("", "Starting cash"), (".de", "Startgeld"), (".es", "Dinero inicial")):

@@ -507,6 +507,14 @@ public sealed class CreationMagicResonancePage : NativePageBase
                 _draft.Selections.ComplexForms.Count,
             _ => 0
         };
+        bool missingRequired = kind switch
+        {
+            CharacterCreationMagicResonanceKinds.Tradition =>
+                editor.Talent.RequiresTradition && _draft.Selections.Tradition is null,
+            CharacterCreationMagicResonanceKinds.Stream =>
+                editor.Talent.RequiresStream && _draft.Selections.Stream is null,
+            _ => false
+        };
         string detail = allowed
             ? CreationFlowStrings.Format(
                 "Magic.CatalogRouteDetail",
@@ -528,7 +536,8 @@ public sealed class CreationMagicResonancePage : NativePageBase
                 options,
                 _draft)),
             enabled: allowed && !laneLocked,
-            automationId: $"creation-magic-resonance-catalog-{Token(kind)}");
+            automationId: $"creation-magic-resonance-catalog-{Token(kind)}",
+            missingRequired: missingRequired);
         row.AutomationId = $"creation-magic-resonance-section-{Token(kind)}";
         _body.Add(row);
         // One actionable entry owns its budget and any explanation. Keep the

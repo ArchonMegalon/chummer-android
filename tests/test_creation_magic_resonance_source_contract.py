@@ -9,6 +9,18 @@ NATIVE = REPO / "src" / "Chummer.Android" / "Native"
 
 
 class CreationMagicResonanceSourceContractTests(unittest.TestCase):
+    def test_missing_choice_cue_requires_the_actual_tradition_or_stream(self) -> None:
+        page = (NATIVE / "CreationMagicResonancePage.cs").read_text(encoding="utf-8")
+        route = page.split("private void AddCatalogRoute(", 1)[1].split(
+            "private CharacterCreationMagicResonanceBudgetState CurrentBudget(", 1)[0]
+        missing = route.split("bool missingRequired = kind switch", 1)[1].split("};", 1)[0]
+        self.assertIn("editor.Talent.RequiresTradition && _draft.Selections.Tradition is null", missing)
+        self.assertIn("editor.Talent.RequiresStream && _draft.Selections.Stream is null", missing)
+        self.assertIn("_ => false", missing)
+        for optional in ("AdeptPower", "Spell", "ComplexForm", "budget.Remaining"):
+            self.assertNotIn(optional, missing)
+        self.assertIn("missingRequired: missingRequired", route)
+
     def test_available_budgets_live_in_the_actionable_choices_not_a_second_ribbon(self) -> None:
         page = (NATIVE / "CreationMagicResonancePage.cs").read_text(encoding="utf-8")
         editor_page = page[:page.index("public sealed class CreationMagicResonanceCatalogPage")]

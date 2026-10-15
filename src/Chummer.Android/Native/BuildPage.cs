@@ -1372,6 +1372,8 @@ public sealed class BuildPage : NativePageBase
                      .Concat(snapshot.CompletionBlockers).Distinct(StringComparer.Ordinal))
             diagnosticValues.Add(NativeTheme.Body(code, NativeTheme.Muted));
 
+        AddCreationCompletionEntry();
+
         if (snapshot.RulesetId == "sr5" && snapshot.BuildMethod == CharacterCreationBuildMethods.Karma)
         {
             CancelCreationProjectionQueues();
@@ -1768,8 +1770,24 @@ public sealed class BuildPage : NativePageBase
             detail,
             selected,
             enabled: canOpen,
-            automationId: "creation-stage-method"));
+            automationId: "creation-stage-method",
+            missingRequired: IsMissingRequiredCreationChoice(CharacterCreationWizardStepIds.Method)));
         return new(PhoneStrings.Format("CreationMethodTitle", "Build method · {0}", method), detail, canOpen, selected, canOpen ? [] : [blocker]);
+    }
+
+    private void AddCreationCompletionEntry()
+    {
+        var displayed = Coordinator.State;
+        long generation = _dossierRenderGeneration;
+        bool supported = CreationCompletionPage.Supports(displayed);
+        _body.Add(CreationNavigationRow(
+            CreationCompletionPage.Copy("Title", "Finish this character"),
+            supported ? CreationCompletionPage.Copy("Entry", "Review starter suggestions while keeping your choices. Apply only after the final check.")
+                : CreationCompletionPage.Copy("Unsupported", "Starter suggestions currently support SR5 Priority and Sum-to-Ten. Continue with this build method’s normal creation steps."),
+            () => supported && generation == _dossierRenderGeneration && IsCurrentCreationDashboardPage()
+                && Coordinator.IsCreationFinalizationDisplayCurrent(displayed)
+                    ? Navigation.PushAsync(new CreationCompletionPage(Coordinator)) : Task.CompletedTask,
+            enabled: supported, automationId: "creation-completion-open"));
     }
 
     private Border CreationNavigationRow(
@@ -1777,7 +1795,8 @@ public sealed class BuildPage : NativePageBase
         string? detail,
         Func<Task> selected,
         bool enabled,
-        string automationId)
+        string automationId,
+        bool missingRequired = false)
     {
         long pressGeneration = 0;
         return NativeTheme.NavigationRow(
@@ -1787,7 +1806,24 @@ public sealed class BuildPage : NativePageBase
             enabled,
             automationId,
             pressed: () => pressGeneration = BeginCreationNavigationPress(),
-            released: () => ScheduleCreationNavigationPressCancellation(pressGeneration));
+            released: () => ScheduleCreationNavigationPressCancellation(pressGeneration),
+            missingRequired: missingRequired);
+    }
+
+    private bool IsMissingRequiredCreationChoice(string stepId)
+    {
+        // Use the current Core readiness result, not unavailable wizard
+        // placeholders, remaining budgets, or the review action itself.
+        if (stepId == CharacterCreationWizardStepIds.Review
+            || _creationFinalizationAuthority is not
+                { Outcome: CharacterCreationFinalizationOutcomes.Available, Value: not null }
+            || Coordinator.State.CreationWizard is not { } snapshot
+            || _creationFinalizationBinding?.Matches(Coordinator.State, snapshot) != true
+            || !Coordinator.IsCreationFinalizationDisplayCurrent(Coordinator.State))
+            return false;
+
+        return CreationPriorityLegalPathProjection.From(_creationFinalizationAuthority).Steps.Any(step =>
+            step.StepId == stepId && step.IsRequired && !step.IsComplete);
     }
 
     private long BeginCreationNavigationPress()
@@ -2879,7 +2915,8 @@ public sealed class BuildPage : NativePageBase
                 detail,
                 selected,
                 enabled: canOpen,
-                automationId: $"creation-stage-{Token(stage.StepId)}");
+                automationId: $"creation-stage-{Token(stage.StepId)}",
+                missingRequired: IsMissingRequiredCreationChoice(stage.StepId));
             _body.Add(row);
             if (resourcesStage)
             {

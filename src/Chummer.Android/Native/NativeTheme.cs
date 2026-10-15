@@ -42,6 +42,16 @@ internal static class NativeTheme
         LineBreakMode = LineBreakMode.WordWrap
     };
 
+    public static Label RequiredChoiceNotice(string automationId)
+    {
+        Label notice = Body(
+            CreationFlowStrings.Get("Common.RequiredChoiceMissing", "Required choice missing"), Danger);
+        notice.FontSize = 13;
+        notice.FontAttributes = FontAttributes.Bold;
+        notice.AutomationId = automationId;
+        return notice;
+    }
+
     public static Label BookProse(string text)
     {
         var label = Body(text);
@@ -177,7 +187,8 @@ internal static class NativeTheme
         string? automationId = null,
         Action? pressed = null,
         Action? released = null,
-        string? value = null)
+        string? value = null,
+        bool missingRequired = false)
     {
         Grid row = new()
         {
@@ -190,7 +201,7 @@ internal static class NativeTheme
             MinimumHeightRequest = 58
         };
         VerticalStackLayout copy = new() { Spacing = 3, VerticalOptions = LayoutOptions.Center };
-        Label titleLabel = Body(title);
+        Label titleLabel = Body(title, missingRequired ? Danger : Text);
         titleLabel.FontAttributes = FontAttributes.Bold;
         copy.Add(titleLabel);
         if (!string.IsNullOrWhiteSpace(detail))
@@ -199,6 +210,8 @@ internal static class NativeTheme
             detailLabel.FontSize = 13;
             copy.Add(detailLabel);
         }
+        if (missingRequired)
+            copy.Add(RequiredChoiceNotice((automationId ?? "required-choice") + "-missing"));
 
         row.Add(copy);
         Label chevron = value is null ? Body("›", enabled ? Muted : Line) : Title(value, 28);
@@ -209,8 +222,15 @@ internal static class NativeTheme
         row.Add(chevron, 1);
 
         Border card = Card(row, new Thickness(16, 12));
-        card.Opacity = enabled ? 1 : 0.55;
-        SemanticProperties.SetDescription(card, string.IsNullOrWhiteSpace(detail) ? title : $"{title}. {detail}");
+        if (missingRequired)
+            card.Stroke = Danger;
+        // Missing choices must remain legible even while their route is locked.
+        // This does not change admission or enable the interaction.
+        card.Opacity = enabled || missingRequired ? 1 : 0.55;
+        string description = string.IsNullOrWhiteSpace(detail) ? title : $"{title}. {detail}";
+        if (missingRequired)
+            description += ". " + CreationFlowStrings.Get("Common.RequiredChoiceMissing", "Required choice missing");
+        SemanticProperties.SetDescription(card, description);
 
         Button interaction = new()
         {
@@ -224,9 +244,7 @@ internal static class NativeTheme
             VerticalOptions = LayoutOptions.Fill,
             ZIndex = 1
         };
-        SemanticProperties.SetDescription(
-            interaction,
-            string.IsNullOrWhiteSpace(detail) ? title : $"{title}. {detail}");
+        SemanticProperties.SetDescription(interaction, description);
         if (pressed is not null)
             interaction.Pressed += (_, _) => pressed();
         if (released is not null)
