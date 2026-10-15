@@ -3,7 +3,9 @@
   <data name="Completion.Title" xml:space="preserve"><value>Finish this character</value></data>
   <data name="Completion.Entry" xml:space="preserve"><value>Review starter suggestions while keeping your choices. Apply only after the final check.</value></data>
   <data name="Completion.Unsupported" xml:space="preserve"><value>Starter suggestions currently support SR5 Priority and Sum-to-Ten. Continue with this build method’s normal creation steps.</value></data>
-  <data name="Completion.Scope" xml:space="preserve"><value>Starter attribute and skill suggestions—not a complete loadout. Magic, equipment, contacts and story may still need your choices. Nothing changes until Apply.</value></data>
+  <data name="Completion.Scope" xml:space="preserve"><value>Fill unused points and suggest contacts, a lifestyle and basic supplies. Weapons, armor and some magic choices still need manual review. Nothing changes until Apply.</value></data>
+  <data name="Completion.ContactAddition" xml:space="preserve"><value>{0} · Connection {1}, Loyalty {2}</value></data>
+  <data name="Completion.NoLoss" xml:space="preserve"><value>No unused points or excess funds will be lost.</value></data>
   <data name="Completion.LoadBlocked" xml:space="preserve"><value>Complete Build method first, then reopen these suggestions. Your existing choices are unchanged.</value></data>
   <data name="Completion.Stale" xml:space="preserve"><value>Your runner or account changed. Return to creation and open a fresh review.</value></data>
   <data name="Completion.Archetype" xml:space="preserve"><value>Archetype</value></data>
@@ -14,6 +16,17 @@
   <data name="Completion.AttributeChoiceIntent" xml:space="preserve"><value>Your saved attribute allocation stays unchanged. The assistant cannot tell which values you deliberately kept, so finish any remaining attribute points in creation.</value></data>
   <data name="Completion.Preview" xml:space="preserve"><value>Preview suggestions</value></data>
   <data name="Completion.Working" xml:space="preserve"><value>Checking your choices…</value></data>
+  <data name="Completion.Loss.Title" xml:space="preserve"><value>Unused resources that will be lost</value></data>
+  <data name="Completion.Loss.Help" xml:space="preserve"><value>These resources will not carry into Career. Keep editing to use them, or explicitly continue.</value></data>
+  <data name="Completion.Loss.Continue" xml:space="preserve"><value>Continue with these losses</value></data>
+  <data name="Completion.Loss.Back" xml:space="preserve"><value>Keep editing</value></data>
+  <data name="Completion.Loss.NormalAttributes" xml:space="preserve"><value>Normal attribute points</value></data>
+  <data name="Completion.Loss.SpecialAttributes" xml:space="preserve"><value>Special attribute points</value></data>
+  <data name="Completion.Loss.ActiveSkills" xml:space="preserve"><value>Active skill points</value></data>
+  <data name="Completion.Loss.SkillGroups" xml:space="preserve"><value>Skill group points</value></data>
+  <data name="Completion.Loss.KnowledgeSkills" xml:space="preserve"><value>Knowledge skill points</value></data>
+  <data name="Completion.Loss.Karma" xml:space="preserve"><value>Creation Karma</value></data>
+  <data name="Completion.Loss.Nuyen" xml:space="preserve"><value>Creation nuyen</value></data>
   <data name="Completion.Proposal" xml:space="preserve"><value>Proposed ratings</value></data>
   <data name="Completion.Rating" xml:space="preserve"><value>{0}: proposed {1}, target {2} · {3}</value></data>
   <data name="Completion.Met" xml:space="preserve"><value>target met</value></data>
@@ -46,7 +59,7 @@
   <data name="Completion.Blocked" xml:space="preserve"><value>Some choices could not be verified. Return to creation, review the required steps, then try a fresh proposal.</value></data>
   <data name="Completion.UnknownSkill" xml:space="preserve"><value>Unavailable skill</value></data>
   <data name="Completion.SkillGroup" xml:space="preserve"><value>Skill group</value></data>
-  <data name="Completion.Loadout" xml:space="preserve"><value>Equipment is not automatically selected. Review your practical loadout in creation.</value></data>
+  <data name="Completion.Loadout" xml:space="preserve"><value>Basic supplies are not a complete loadout. Review weapons, armor and rated equipment in creation.</value></data>
   <data name="Completion.Identity" xml:space="preserve"><value>Review your name, identity and story yourself.</value></data>
   <data name="Completion.Targets" xml:space="preserve"><value>Some starter targets are locked, unavailable or unmet. They are advice, not automatic permission to change your choices.</value></data>
   <data name="Completion.Magic" xml:space="preserve"><value>Review the magic choices required by your talent.</value></data>

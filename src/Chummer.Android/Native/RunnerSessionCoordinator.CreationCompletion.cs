@@ -96,6 +96,38 @@ public sealed partial class RunnerSessionCoordinator
         }, cancellationToken), cancellationToken);
     }
 
+    public Task<CharacterCreationFoundationResult<CharacterCreationStartingNuyenSource>> LoadCreationCompletionStartingCashAsync(
+        CompletionAssistantProposal proposal, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(proposal);
+        return WithWorkspaceActivationGateAsync(() => Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!_completionProposals.TryGetValue(proposal, out var issued) || !CompletionDisplayCurrent(issued.Display)
+                || issued.Display.DisplayOwnerContext is not { } owner || issued.Display.WorkspaceId is not { } workspaceId
+                || _creationCompletionService is not { } service)
+                return CompletionUnavailable<CharacterCreationStartingNuyenSource>();
+            var frozen = FreezeCompletionValue(proposal);
+            // Preserve the issued in-process trusted-local stamp, never rebuild
+            // authority from the owner name in a serialized proposal.
+            frozen = frozen with { Intent = frozen.Intent with { OwnerContext = proposal.Intent.OwnerContext } };
+            if (frozen.ProposalDigest != issued.ProposalDigest
+                || CompletionAssistantRules.ComputeProposalDigest(frozen) != issued.ProposalDigest
+                || frozen.Intent.OwnerContext != owner || frozen.Evaluation.Value is not { } plan)
+                return CompletionUnavailable<CharacterCreationStartingNuyenSource>();
+            var request = new CharacterCreationCompletionReviewRequest(frozen.Intent.InputsSnapshotDigest, plan.Selections);
+            var result = ReadCreationAuthority(issued.Display,
+                () => service.LoadStartingCash(owner, workspaceId, request, cancellationToken), cancellationToken);
+            if (!CompletionDisplayCurrent(issued.Display)
+                || CompletionAssistantRules.ComputeProposalDigest(proposal) != issued.ProposalDigest)
+                return CompletionUnavailable<CharacterCreationStartingNuyenSource>();
+            if (result.Value is { } source && (result.Outcome != CharacterCreationFoundationOutcomes.Success
+                || !CharacterCreationKarmaFinalizationBudgetRules.IsValidStartingCashSource(source)))
+                return CompletionUnavailable<CharacterCreationStartingNuyenSource>();
+            return result;
+        }, cancellationToken), cancellationToken);
+    }
+
     public Task<CharacterCreationFoundationResult<CharacterCreationCompletionApplyReview>> ReviewCreationCompletionAsync(
         CompletionAssistantProposal proposal, CharacterCreationStartingCashChoice startingCash,
         CancellationToken cancellationToken = default)

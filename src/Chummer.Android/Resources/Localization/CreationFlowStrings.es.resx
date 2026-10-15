@@ -1,10 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
   <data name="Completion.Working" xml:space="preserve"><value>Comprobando tus elecciones…</value></data>
+  <data name="Completion.Loss.Title" xml:space="preserve"><value>Recursos sin usar que se perderán</value></data>
+  <data name="Completion.Loss.Help" xml:space="preserve"><value>Estos recursos no pasarán a la carrera. Sigue editando para usarlos o confirma que quieres continuar.</value></data>
+  <data name="Completion.Loss.Continue" xml:space="preserve"><value>Continuar con estas pérdidas</value></data>
+  <data name="Completion.Loss.Back" xml:space="preserve"><value>Seguir editando</value></data>
+  <data name="Completion.Loss.NormalAttributes" xml:space="preserve"><value>Puntos de atributos normales</value></data>
+  <data name="Completion.Loss.SpecialAttributes" xml:space="preserve"><value>Puntos de atributos especiales</value></data>
+  <data name="Completion.Loss.ActiveSkills" xml:space="preserve"><value>Puntos de habilidades activas</value></data>
+  <data name="Completion.Loss.SkillGroups" xml:space="preserve"><value>Puntos de grupos de habilidades</value></data>
+  <data name="Completion.Loss.KnowledgeSkills" xml:space="preserve"><value>Puntos de habilidades de conocimiento</value></data>
+  <data name="Completion.Loss.Karma" xml:space="preserve"><value>Karma de creación</value></data>
+  <data name="Completion.Loss.Nuyen" xml:space="preserve"><value>Nuyen de creación</value></data>
   <data name="Completion.Title" xml:space="preserve"><value>Terminar este personaje</value></data>
   <data name="Completion.Entry" xml:space="preserve"><value>Revisa sugerencias iniciales conservando tus elecciones. Aplica solo tras la revisión final.</value></data>
   <data name="Completion.Unsupported" xml:space="preserve"><value>Las sugerencias iniciales admiten Prioridad y Suma de diez de SR5. Continúa con los pasos normales de este método.</value></data>
-  <data name="Completion.Scope" xml:space="preserve"><value>Sugerencias iniciales de atributos y habilidades, no un equipo completo. Magia, equipo, contactos e historia pueden necesitar elecciones. Nada cambia hasta aplicar.</value></data>
+  <data name="Completion.Scope" xml:space="preserve"><value>Reparte los puntos libres y recibe sugerencias de contactos, estilo de vida y equipo básico. Revisa manualmente armas, armadura y algunas opciones de magia. Nada cambia hasta aplicar.</value></data>
+  <data name="Completion.ContactAddition" xml:space="preserve"><value>{0} · Conexión {1}, Lealtad {2}</value></data>
+  <data name="Completion.NoLoss" xml:space="preserve"><value>No se perderán puntos libres ni fondos sobrantes.</value></data>
   <data name="Completion.LoadBlocked" xml:space="preserve"><value>Completa primero el método de creación y vuelve a abrir las sugerencias. Tus elecciones no cambian.</value></data>
   <data name="Completion.Stale" xml:space="preserve"><value>Tu runner o cuenta ha cambiado. Vuelve a creación y abre una nueva revisión.</value></data>
   <data name="Completion.Archetype" xml:space="preserve"><value>Arquetipo</value></data>
@@ -46,7 +59,7 @@
   <data name="Completion.Blocked" xml:space="preserve"><value>No se pudieron verificar algunas elecciones. Vuelve a creación, revisa los pasos obligatorios y genera una nueva propuesta.</value></data>
   <data name="Completion.UnknownSkill" xml:space="preserve"><value>Habilidad no disponible</value></data>
   <data name="Completion.SkillGroup" xml:space="preserve"><value>Grupo de habilidades</value></data>
-  <data name="Completion.Loadout" xml:space="preserve"><value>El equipo no se elige automáticamente. Revisa tu equipo práctico en creación.</value></data>
+  <data name="Completion.Loadout" xml:space="preserve"><value>El equipo básico no es un equipo completo. Revisa armas, armadura y equipo con niveles en creación.</value></data>
   <data name="Completion.Identity" xml:space="preserve"><value>Revisa tú mismo tu nombre, identidad e historia.</value></data>
   <data name="Completion.Targets" xml:space="preserve"><value>Algunos objetivos iniciales están bloqueados, no disponibles o sin alcanzar. Son consejos, no permiso automático para cambiar tus elecciones.</value></data>
   <data name="Completion.Magic" xml:space="preserve"><value>Revisa las elecciones mágicas que requiere tu talento.</value></data>

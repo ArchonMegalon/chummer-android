@@ -23,12 +23,13 @@ internal static partial class AfterRunAuthorityHarness
             var window = (Window)((Microsoft.Maui.IApplication)app).CreateWindow(null!);
             try
             {
-                foreach (string scenario in new[] { "prerequisite", "busy-cancel", "cancel", "apply", "lost-reply", "unknown" })
+                foreach (string scenario in new[] { "prerequisite", "cash-read-throws", "busy-cancel", "cancel", "loss-decline", "loss-owner-aba", "loss-departure", "apply", "lost-reply", "unknown" })
                 {
                     CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(scenario == "apply" ? "de-AT" : "en-GB");
                     var owners = new ControlledLinkedOwner();
                     using var reviewPause = scenario == "busy-cancel" ? new CompletionReviewPause() : null;
                     CompletionServiceProbe? service = null;
+                    ThrowingCompletionCashService? throwingCash = null;
                     await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
                         creationCompletion: true, creationFinalization: true, creationPrerequisite: true,
                         productionCreationOverview: true,
@@ -39,6 +40,7 @@ internal static partial class AfterRunAuthorityHarness
                                 ThrowAfterApply = scenario == "lost-reply",
                                 ThrowBeforeApply = scenario == "unknown"
                             };
+                            if (scenario == "cash-read-throws") return throwingCash = new(service);
                             return reviewPause is null ? service : new PausedCompletionReviewService(service, reviewPause);
                         });
                     await runtime.Coordinator.InitializeAsync();
@@ -77,7 +79,30 @@ internal static partial class AfterRunAuthorityHarness
                         "The real Build entry did not open the completion assistant.");
                     var page = (CreationCompletionPage)navigation.NavigationStack.Last();
                     IssuedPageLifecycle(root, "OnDisappearing");
-                    using var alerts = new IssuedPageAlerts(page, window);
+                    int lossConfirmations = 0;
+                    using var alerts = new IssuedPageAlerts(page, window, confirmation =>
+                    {
+                        var reviewed = (CharacterCreationCompletionApplyReview?)typeof(CreationCompletionPage)
+                            .GetField("_review", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)
+                            ?? throw new InvalidOperationException("A loss confirmation has no actual Core review.");
+                        Require(confirmation.Title == CreationCompletionPage.Copy("Loss.Title", "missing")
+                            && confirmation.Accept == CreationCompletionPage.Copy("Loss.Continue", "missing")
+                            && confirmation.Cancel == CreationCompletionPage.Copy("Loss.Back", "missing")
+                            && confirmation.Message == ExpectedCompletionLossMessage(reviewed.Projection)
+                            && service!.ApplyCalls == 0 && lossConfirmations == 0,
+                            "Unexpected or repeated confirmation reached the completion handler.");
+                        lossConfirmations++;
+                        if (scenario == "loss-owner-aba")
+                        {
+                            var originalOwner = owners.Capture();
+                            owners.Set(ContactsOwnerB);
+                            owners.Set(originalOwner.Owner);
+                            Require(owners.Capture() != originalOwner,
+                                "SETUP: the real owner stamp must change through A→B→A.");
+                        }
+                        else if (scenario == "loss-departure") IssuedPageLifecycle(page, "OnDisappearing");
+                        confirmation.SetResult(scenario != "loss-decline"); // Explicit synthetic user choice only.
+                    });
                     await alerts.PreflightAsync();
                     await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
                     AssertCompletionHasNoAllocationSettings(page);
@@ -128,7 +153,19 @@ internal static partial class AfterRunAuthorityHarness
                         Require(language.ItemsSource.Count > 0, "SETUP: no actual source-backed native language available.");
                         language.SelectedIndex = 0;
                     }
-                    await ClickCompletionControlAsync(ui, CompletionPageControl<Button>(page, "creation-completion-preview"));
+                    CharacterCreationStartingNuyenSource? originalCashSource = null;
+                    if (scenario == "cash-read-throws")
+                    {
+                        var originalSources = (CharacterCreationStartingNuyenSource[])typeof(CreationCompletionPage)
+                            .GetField("_cashSources", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+                        string? originalDigest = (string?)typeof(CreationCompletionPage)
+                            .GetField("_cashDigest", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page);
+                        originalCashSource = originalSources.SingleOrDefault(row => row.AuthorityDigest == originalDigest);
+                        Require(originalCashSource is not null && throwingCash!.CashReads == 0,
+                            "SETUP: the page must retain real original cash terms before its proposed-home read fails.");
+                    }
+                    Button preview = CompletionPageControl<Button>(page, "creation-completion-preview");
+                    await ClickCompletionControlAsync(ui, preview);
                     AssertCompletionHasNoAllocationSettings(page);
                     var proposal = (CompletionAssistantProposal?)typeof(CreationCompletionPage)
                         .GetField("_proposal", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)
@@ -139,6 +176,40 @@ internal static partial class AfterRunAuthorityHarness
                         && proposal.Intent.InputsSnapshotDigest == inputs.SnapshotDigest
                         && CharacterCreationCompletionReviewRules.ComputeInputsDigest(inputs) == inputsDigest,
                         "The default UI must request missing-only suggestions without additive permissions or changed original inputs.");
+                    if (scenario == "cash-read-throws")
+                    {
+                        var retainedSources = (CharacterCreationStartingNuyenSource[])typeof(CreationCompletionPage)
+                            .GetField("_cashSources", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+                        var retainedDigest = typeof(CreationCompletionPage)
+                            .GetField("_cashDigest", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page);
+                        Require(throwingCash!.CashReads == 1 && retainedSources.Length == 0 && retainedDigest is null
+                            && !MinimalVisible(page).Any(element => element.AutomationId is
+                                "creation-completion-cash-roll" or "creation-completion-cash-source"
+                                or "creation-completion-review" or "creation-completion-apply")
+                            && !MinimalVisible(page).OfType<Label>().Any(label => label.Text ==
+                                CreationKarmaCopy.StartingCash(originalCashSource!.Name,
+                                    originalCashSource.Dice, originalCashSource.Multiplier))
+                            && MinimalVisible(page).OfType<Label>().Any(label => label.Text ==
+                                CreationCompletionPage.Copy("CashUnavailable", "missing-cash-unavailable"))
+                            && service!.ReviewCalls == 0 && service.ApplyCalls == 0,
+                            "A failed proposal cash read retained stale original cash terms or exposed Review/Apply.");
+                        MinimalRequireNoMachineValues(page);
+                        AssertCompletionFilesUnchanged(runtime, files);
+                        await ClickCompletionControlAsync(ui, CompletionPageControl<Button>(page, "creation-completion-cancel"));
+                        ((IButtonController)preview).SendClicked();
+                        await ui.DrainDispatchedAsyncVoidAsync();
+                        Require(navigation.NavigationStack.Count == 1
+                            && ReferenceEquals(Shell.Current?.CurrentPage, root)
+                            && coordinator.State.Profile?.Created == false
+                            && throwingCash.CashReads == 1 && service.ReviewCalls == 0 && service.ApplyCalls == 0
+                            && owners.ActiveLeases == 0 && alerts.Titles.Count == 0,
+                            "Cancel after a failed cash read must leave creation unchanged without replay or leaked authority.");
+                        AssertCompletionFilesUnchanged(runtime, files);
+                        IssuedPageLifecycle(page, "OnDisappearing");
+                        ui.AssertHealthy();
+                        Console.WriteLine("PASS actual Core/MAUI completion page: cash-read-throws");
+                        continue;
+                    }
                     if (scenario == "cancel")
                     {
                         var savedAttributes = inputs.Skills.Attributes.PendingDraft
@@ -176,11 +247,26 @@ internal static partial class AfterRunAuthorityHarness
 
                     // The test enters a legal roll explicitly; production must not
                     // invent a roll or silently use this fixture's deterministic value.
-                    var originalCash = coordinator.LoadCreationFinalization().Value!;
-                    var cashSource = originalCash.StartingCashSources?.FirstOrDefault()
-                        ?? originalCash.StartingCashSource;
-                    Require(cashSource is not null, "SETUP: actual starting-cash authority is missing.");
-                    cash.Text = (cashSource!.Dice * 3).ToString(CultureInfo.InvariantCulture);
+                    var proposedCash = await coordinator.LoadCreationCompletionStartingCashAsync(proposal);
+                    Require(proposedCash is { Outcome: CharacterCreationFoundationOutcomes.Success,
+                            Value: not null, Blockers.Count: 0 },
+                        "The admitted proposal did not resolve its actual starting-cash authority: "
+                        + string.Join(", ", proposedCash.Blockers));
+                    var cashSource = proposedCash.Value!;
+                    var pageCashSources = (CharacterCreationStartingNuyenSource[])typeof(CreationCompletionPage)
+                        .GetField("_cashSources", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+                    string? pageCashDigest = (string?)typeof(CreationCompletionPage)
+                        .GetField("_cashDigest", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page);
+                    Require(pageCashDigest == cashSource.AuthorityDigest
+                        && pageCashSources.Count(row => row.AuthorityDigest == pageCashDigest) == 1
+                        && CharacterCreationFinalizationDigest.Compute(pageCashSources.Single(row =>
+                            row.AuthorityDigest == pageCashDigest)) == CharacterCreationFinalizationDigest.Compute(cashSource)
+                        && MinimalVisible(page).OfType<Label>().Any(label => label.Text ==
+                            CreationKarmaCopy.StartingCash(cashSource.Name, cashSource.Dice, cashSource.Multiplier)),
+                        "The page's selected and displayed cash terms must match the exact admitted proposal source.");
+                    if (scenario == "apply") AssertCompletionRichProposal(page, inputs, proposal, cashSource);
+                    AssertCompletionFilesUnchanged(runtime, files);
+                    cash.Text = (cashSource.Dice * 3).ToString(CultureInfo.InvariantCulture);
                     Require(check.IsEnabled, "A valid explicit cash total did not enable the Core review.");
                     if (reviewPause is not null)
                     {
@@ -225,6 +311,10 @@ internal static partial class AfterRunAuthorityHarness
                     AssertCompletionFilesUnchanged(runtime, files);
                     Require(!MinimalVisible(page).Any(element => element.AutomationId == "creation-completion-read-busy"),
                         "Read-only progress remained visible after review completed.");
+                    var reviewed = (CharacterCreationCompletionApplyReview)typeof(CreationCompletionPage)
+                        .GetField("_review", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+                    AssertCompletionLossDisclosure(page, reviewed.Projection);
+                    int expectedLossConfirmations = CreationCompletionPage.LossItems(reviewed.Projection).Count > 0 ? 1 : 0;
 
                     if (scenario == "cancel")
                     {
@@ -238,6 +328,24 @@ internal static partial class AfterRunAuthorityHarness
                         AssertCompletionFilesUnchanged(runtime, files);
                         Require(service!.ApplyCalls == 0 && coordinator.State.Profile?.Created == false,
                             "A retained Apply control saved after cancellation.");
+                    }
+                    else if (scenario.StartsWith("loss-", StringComparison.Ordinal))
+                    {
+                        Require(expectedLossConfirmations == 1, "SETUP: loss guards need a genuinely lossy Core projection.");
+                        await ClickCompletionControlAsync(ui, apply);
+                        Require(lossConfirmations == 1 && service!.ApplyCalls == 0
+                            && coordinator.State.Profile?.Created == false
+                            && (bool)typeof(CreationCompletionPage).GetField("_applyStarted",
+                                BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)! == false,
+                            "Declined, departed or owner-stale loss acknowledgement dispatched a save.");
+                        AssertCompletionFilesUnchanged(runtime, files);
+                        if (scenario != "loss-decline")
+                        {
+                            ((IButtonController)apply).SendClicked();
+                            await ui.DrainDispatchedAsyncVoidAsync();
+                            Require(lossConfirmations == 1 && service.ApplyCalls == 0,
+                                "A retained stale Apply control reopened confirmation or dispatched completion.");
+                        }
                     }
                     else
                     {
@@ -253,8 +361,9 @@ internal static partial class AfterRunAuthorityHarness
                             ((IButtonController)apply).SendClicked();
                             await ui.DrainDispatchedAsyncVoidAsync();
                             Require(service.ApplyCalls == 1
+                                && lossConfirmations == expectedLossConfirmations
                                 && ReferenceEquals(navigation.NavigationStack.Last(), page),
-                                "Unknown-outcome recovery repeated Apply or claimed a completed Career transition.");
+                                "Unknown-outcome recovery repeated Apply/acknowledgement or claimed a completed Career transition.");
                             AssertCompletionFilesUnchanged(runtime, files);
                             MinimalRequireNoMachineValues(page);
                         }
@@ -282,7 +391,8 @@ internal static partial class AfterRunAuthorityHarness
                             IssuedPageLifecycle(root, "OnDisappearing");
                         }
                     }
-                    Require(owners.ActiveLeases == 0 && alerts.Titles.Count == 0,
+                    Require(owners.ActiveLeases == 0 && alerts.Titles.Count == lossConfirmations
+                        && lossConfirmations == (scenario == "cancel" ? 0 : expectedLossConfirmations),
                         "Completion leaked an owner lease or hid a callback error in an alert.");
                     IssuedPageLifecycle(page, "OnDisappearing");
                     ui.AssertHealthy();
@@ -314,6 +424,50 @@ internal static partial class AfterRunAuthorityHarness
             "Missing-only completion must not expose allocation opt-ins or a configurable replacement policy.");
     }
 
+    private static void AssertCompletionRichProposal(CreationCompletionPage page,
+        CharacterCreationCompletionReviewInputs inputs, CompletionAssistantProposal proposal,
+        CharacterCreationStartingNuyenSource cashSource)
+    {
+        var plan = proposal.Evaluation.Value
+            ?? throw new InvalidOperationException("The rich proposal has no actual Core evaluation.");
+        var purchases = plan.Review.Lifestyles
+            ?? throw new InvalidOperationException("The rich proposal has no evaluated purchases.");
+        Require(inputs.Lifestyles.Lifestyles.Count == 0 && purchases.StartingLifestyleId is not null,
+            "SETUP: the positive page route must propose a starting home that has not been saved.");
+        var home = purchases.Lifestyles.Single(row =>
+            row.Configuration.LifestyleId == purchases.StartingLifestyleId);
+        var homeOption = purchases.Authority.LifestyleOptions.Single(row =>
+            row.OptionId == home.Configuration.BaseLifestyleOptionId);
+        Require(cashSource.SourceId == homeOption.SourceId.ToString("D")
+            && CharacterCreationFinalizationStartingCashRules.SourcesMatch(cashSource, purchases.Authority),
+            "Starting cash came from the old fallback rather than the proposed home's exact source authority.");
+
+        var contacts = plan.Selections.Contacts.Where(row =>
+            !inputs.Contacts.Contacts.Any(original => original.ContactId == row.ContactId)).ToArray();
+        var homes = purchases.Lifestyles.Where(row =>
+            !inputs.Lifestyles.Lifestyles.Any(original => original.LifestyleId == row.Configuration.LifestyleId)).ToArray();
+        var equipment = purchases.Gear.Lines.Where(row =>
+            inputs.Lifestyles.Gear.State.PendingDraft?.Lines.Any(original => original.OptionId == row.OptionId) != true).ToArray();
+        Require(contacts.Length > 0 && homes.Length > 0 && equipment.Length > 0
+            && homes.All(row => row.Economics.TotalCost > 0) && equipment.All(row => row.TotalCost > 0),
+            "SETUP: the real rich proposal must include contacts, a priced home and priced equipment.");
+        Require(VisibleRows("creation-completion-proposed-contact").SequenceEqual(contacts.Select(row =>
+                    CreationFlowStrings.Format("Completion.ContactAddition", "{0} · Connection {1}, Loyalty {2}",
+                        row.Identity.Name, row.Connection, row.Loyalty)).OrderBy(value => value, StringComparer.Ordinal))
+            && VisibleRows("creation-completion-proposed-lifestyle").SequenceEqual(homes.Select(row =>
+                    row.BaseLifestyleName + ": " + row.Economics.TotalCost.ToString("0.##", CultureInfo.CurrentCulture) + " ¥")
+                .OrderBy(value => value, StringComparer.Ordinal))
+            && VisibleRows("creation-completion-proposed-equipment").SequenceEqual(equipment.Select(row =>
+                    row.Name + " × " + row.Quantity.ToString(CultureInfo.CurrentCulture) + ": "
+                    + row.TotalCost.ToString("0.##", CultureInfo.CurrentCulture) + " ¥")
+                .OrderBy(value => value, StringComparer.Ordinal)),
+            "Visible proposed contacts, home and equipment must show the actual selections, quantities and Core-evaluated costs.");
+
+        IEnumerable<string?> VisibleRows(string id) => MinimalVisible(page).OfType<Label>()
+            .Where(row => row.AutomationId == id).Select(row => row.Text)
+            .OrderBy(value => value, StringComparer.Ordinal);
+    }
+
     private static void AssertCompletionReadProgress(CreationCompletionPage page)
     {
         var progress = CompletionPageControl<Grid>(page, "creation-completion-read-busy");
@@ -338,9 +492,39 @@ internal static partial class AfterRunAuthorityHarness
         public void Dispose() => Release.Dispose();
     }
 
+    private sealed class ThrowingCompletionCashService(IOwnerBoundCharacterCreationCompletionService actual)
+        : IOwnerBoundCharacterCreationCompletionService
+    {
+        public int CashReads { get; private set; }
+
+        public CharacterCreationFoundationResult<CharacterCreationStartingNuyenSource> LoadStartingCash(
+            OwnerContextStamp owner, CharacterWorkspaceId workspaceId, CharacterCreationCompletionReviewRequest proposal,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            CashReads++;
+            throw new IOException("Synthetic proposal cash-read failure.");
+        }
+
+        public CharacterCreationFoundationResult<CharacterCreationCompletionApplyReview> Review(
+            OwnerContextStamp owner, CharacterWorkspaceId workspaceId, CharacterCreationCompletionReviewRequest proposal,
+            CharacterCreationStartingCashChoice startingCash, CancellationToken cancellationToken = default)
+            => actual.Review(owner, workspaceId, proposal, startingCash, cancellationToken);
+
+        public CharacterCreationFoundationResult<CharacterCreationFinalizationReceipt> Apply(
+            OwnerContextStamp owner, CharacterCreationCompletionApplyRequest request,
+            CancellationToken cancellationToken = default)
+            => actual.Apply(owner, request, cancellationToken);
+    }
+
     private sealed class PausedCompletionReviewService(IOwnerBoundCharacterCreationCompletionService actual,
         CompletionReviewPause pause) : IOwnerBoundCharacterCreationCompletionService
     {
+        public CharacterCreationFoundationResult<CharacterCreationStartingNuyenSource> LoadStartingCash(
+            OwnerContextStamp owner, CharacterWorkspaceId workspaceId, CharacterCreationCompletionReviewRequest proposal,
+            CancellationToken cancellationToken = default)
+            => actual.LoadStartingCash(owner, workspaceId, proposal, cancellationToken);
+
         public CharacterCreationFoundationResult<CharacterCreationCompletionApplyReview> Review(
             OwnerContextStamp owner, CharacterWorkspaceId workspaceId, CharacterCreationCompletionReviewRequest proposal,
             CharacterCreationStartingCashChoice startingCash, CancellationToken cancellationToken = default)

@@ -1,10 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
   <data name="Completion.Working" xml:space="preserve"><value>Deine Auswahl wird geprüft…</value></data>
+  <data name="Completion.Loss.Title" xml:space="preserve"><value>Ungenutzte Ressourcen, die verfallen</value></data>
+  <data name="Completion.Loss.Help" xml:space="preserve"><value>Diese Ressourcen werden nicht in die Karriere übernommen. Verteile sie noch oder fahre ausdrücklich fort.</value></data>
+  <data name="Completion.Loss.Continue" xml:space="preserve"><value>Mit diesen Verlusten fortfahren</value></data>
+  <data name="Completion.Loss.Back" xml:space="preserve"><value>Weiter bearbeiten</value></data>
+  <data name="Completion.Loss.NormalAttributes" xml:space="preserve"><value>Normale Attributspunkte</value></data>
+  <data name="Completion.Loss.SpecialAttributes" xml:space="preserve"><value>Spezielle Attributspunkte</value></data>
+  <data name="Completion.Loss.ActiveSkills" xml:space="preserve"><value>Punkte für Aktionsfertigkeiten</value></data>
+  <data name="Completion.Loss.SkillGroups" xml:space="preserve"><value>Fertigkeitsgruppenpunkte</value></data>
+  <data name="Completion.Loss.KnowledgeSkills" xml:space="preserve"><value>Punkte für Wissensfertigkeiten</value></data>
+  <data name="Completion.Loss.Karma" xml:space="preserve"><value>Erschaffungskarma</value></data>
+  <data name="Completion.Loss.Nuyen" xml:space="preserve"><value>Erschaffungsnuyen</value></data>
   <data name="Completion.Title" xml:space="preserve"><value>Diesen Charakter fertigstellen</value></data>
   <data name="Completion.Entry" xml:space="preserve"><value>Prüfe Startvorschläge unter Beibehaltung deiner Auswahl. Übernimm sie erst nach der Abschlussprüfung.</value></data>
   <data name="Completion.Unsupported" xml:space="preserve"><value>Startvorschläge unterstützen derzeit SR5-Priorität und Sum-to-Ten. Nutze für diese Methode die normalen Erstellungsschritte.</value></data>
-  <data name="Completion.Scope" xml:space="preserve"><value>Startvorschläge für Attribute und Fertigkeiten, keine vollständige Ausstattung. Magie, Ausrüstung, Kontakte und Geschichte benötigen eventuell weitere Entscheidungen. Erst Übernehmen ändert deinen Charakter.</value></data>
+  <data name="Completion.Scope" xml:space="preserve"><value>Verteile freie Punkte und erhalte Vorschläge für Kontakte, Lebensstil und Grundausstattung. Waffen, Rüstung und manche Magieoptionen bleiben manuell zu prüfen. Erst Übernehmen ändert deinen Charakter.</value></data>
+  <data name="Completion.ContactAddition" xml:space="preserve"><value>{0} · Einfluss {1}, Loyalität {2}</value></data>
+  <data name="Completion.NoLoss" xml:space="preserve"><value>Es verfallen keine freien Punkte oder überschüssigen Mittel.</value></data>
   <data name="Completion.LoadBlocked" xml:space="preserve"><value>Schließe zuerst die Erstellungsmethode ab und öffne die Vorschläge erneut. Deine bisherige Auswahl bleibt unverändert.</value></data>
   <data name="Completion.Stale" xml:space="preserve"><value>Dein Runner oder Konto hat sich geändert. Kehre zur Erstellung zurück und öffne eine neue Prüfung.</value></data>
   <data name="Completion.Archetype" xml:space="preserve"><value>Archetyp</value></data>
@@ -46,7 +59,7 @@
   <data name="Completion.Blocked" xml:space="preserve"><value>Einige Entscheidungen konnten nicht geprüft werden. Kehre zur Erstellung zurück, prüfe die Pflichtschritte und erstelle einen neuen Vorschlag.</value></data>
   <data name="Completion.UnknownSkill" xml:space="preserve"><value>Nicht verfügbare Fertigkeit</value></data>
   <data name="Completion.SkillGroup" xml:space="preserve"><value>Fertigkeitsgruppe</value></data>
-  <data name="Completion.Loadout" xml:space="preserve"><value>Ausrüstung wird nicht automatisch gewählt. Prüfe deine praktische Ausstattung in der Erstellung.</value></data>
+  <data name="Completion.Loadout" xml:space="preserve"><value>Die Grundausstattung ist noch nicht vollständig. Prüfe Waffen, Rüstung und Ausrüstung mit Stufen in der Erschaffung.</value></data>
   <data name="Completion.Identity" xml:space="preserve"><value>Prüfe Namen, Identität und Geschichte selbst.</value></data>
   <data name="Completion.Targets" xml:space="preserve"><value>Einige Startziele sind gesperrt, nicht verfügbar oder unerreicht. Sie sind Empfehlungen, keine automatische Änderungserlaubnis.</value></data>
   <data name="Completion.Magic" xml:space="preserve"><value>Prüfe die für dein Talent erforderlichen Magieentscheidungen.</value></data>

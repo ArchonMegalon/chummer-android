@@ -35,6 +35,94 @@ class FinalizationOwnerNavigationSourceContractTests(unittest.TestCase):
         self.assertIn("InvalidateProposal();", cash)
         self.assertNotIn("Random", source)
 
+    def test_completion_starting_cash_read_retains_exact_proposal_owner_and_source_guards(self):
+        source = (NATIVE / "RunnerSessionCoordinator.CreationCompletion.cs").read_text(encoding="utf-8")
+        cash = source.split("LoadCreationCompletionStartingCashAsync(", 1)[1].split(
+            "ReviewCreationCompletionAsync(", 1)[0]
+        dispatch = cash.index("service.LoadStartingCash(owner, workspaceId, request, cancellationToken)")
+        before, after = cash[:dispatch], cash[dispatch:]
+        for guard in ("WithWorkspaceActivationGateAsync", "cancellationToken.ThrowIfCancellationRequested()",
+                      "_completionProposals.TryGetValue(proposal, out var issued)",
+                      "!CompletionDisplayCurrent(issued.Display)",
+                      "issued.Display.DisplayOwnerContext is not { } owner",
+                      "issued.Display.WorkspaceId is not { } workspaceId",
+                      "FreezeCompletionValue(proposal)",
+                      "OwnerContext = proposal.Intent.OwnerContext",
+                      "frozen.ProposalDigest != issued.ProposalDigest",
+                      "CompletionAssistantRules.ComputeProposalDigest(frozen) != issued.ProposalDigest",
+                      "frozen.Intent.OwnerContext != owner", "frozen.Evaluation.Value is not { } plan",
+                      "new CharacterCreationCompletionReviewRequest(frozen.Intent.InputsSnapshotDigest, plan.Selections)",
+                      "ReadCreationAuthority(issued.Display"):
+            self.assertIn(guard, before)
+        self.assertIn("!CompletionDisplayCurrent(issued.Display)", after)
+        self.assertIn("CompletionAssistantRules.ComputeProposalDigest(proposal) != issued.ProposalDigest", after)
+        self.assertIn("result.Outcome != CharacterCreationFoundationOutcomes.Success", after)
+        self.assertIn("!CharacterCreationKarmaFinalizationBudgetRules.IsValidStartingCashSource(source)", after)
+        self.assertNotIn("new CharacterCreationStartingNuyenSource", cash)
+        self.assertNotIn("service.Apply(", cash)
+        self.assertNotIn("service.Review(", cash)
+        self.assertNotIn("Random", cash)
+
+    def test_completion_page_uses_current_proposal_cash_and_clears_stale_fallback_on_failure(self):
+        source = (NATIVE / "CreationCompletionPage.cs").read_text(encoding="utf-8")
+        build = source.split("private async Task BuildAsync()", 1)[1].split("private void RenderProposal()", 1)[0]
+        invocation = build.index("await Coordinator.LoadCreationCompletionStartingCashAsync(proposal, ReadToken)")
+        self.assertLess(build.index("if (!CurrentInput(appearance, version)) return;"), invocation)
+        self.assertLess(build.index("_proposal = result.Value;"), invocation)
+        before = build[:invocation]
+        self.assertLess(before.index("var candidateCashSources = _cashSources;"), before.index("_cashSources = [];"))
+        self.assertIn("_cashDigest = null;", before)
+        after = build[invocation:]
+        current = after.index("if (!CurrentInput(appearance, version) || !ReferenceEquals(_proposal, proposal)) return;")
+        accepted = after.index("_cashDigest = source.AuthorityDigest;")
+        self.assertLess(current, accepted)
+        success = after.split("Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } source, Blockers.Count: 0", 1)[1]
+        success = success.split("else", 1)[0]
+        self.assertIn("_cashSources = candidateCashSources.Any(row => row.AuthorityDigest == source.AuthorityDigest)", success)
+        self.assertIn("? candidateCashSources.Select(row => row.AuthorityDigest == source.AuthorityDigest ? source : row).ToArray()", success)
+        self.assertIn(": [source];", success)
+        self.assertIn("_cashDigest = source.AuthorityDigest;", success)
+        self.assertIn("_cashSources = [];", after[accepted:])
+        self.assertIn("_cashDigest = null;", after[accepted:])
+        self.assertIn(".. cash.Blockers", after[accepted:])
+        self.assertNotIn("_cashSources =", build.split("catch (OperationCanceledException)", 1)[1])
+        self.assertNotIn("_cashDigest =", build.split("catch (OperationCanceledException)", 1)[1])
+        self.assertIn('_roll = string.Empty;', build)
+        self.assertNotIn("LoadCreationFinalizationInBackground", build)
+        self.assertIn("private bool CurrentInput(long appearance, long version) => IsCurrentPage(appearance)"
+                      " && version == _inputVersion && InputsCurrent();", source)
+        self.assertIn("Coordinator.IsCreationCompletionInputsCurrent(_inputs)", source)
+        review = source.split("private async Task ReviewAsync()", 1)[1].split("private void RenderFinalReview", 1)[0]
+        self.assertIn("!InputsCurrent()", review)
+        self.assertIn("!Coordinator.IsCreationCompletionProposalCurrent(proposal)", review)
+        self.assertIn("_cashSources.FirstOrDefault(row => row.AuthorityDigest == _cashDigest)", review)
+        self.assertIn("new(source.AuthorityDigest, dice)", review)
+
+    def test_completion_resource_summary_displays_evaluated_additions_before_cash_review(self):
+        source = (NATIVE / "CreationCompletionPage.cs").read_text(encoding="utf-8")
+        proposal = source.split("private void RenderProposal()", 1)[1].split("private void RenderResourceProposal()", 1)[0]
+        self.assertLess(proposal.index("RenderResourceProposal();"), proposal.index('Copy("Remaining"'))
+        resources = source.split("private void RenderResourceProposal()", 1)[1].split("private void RenderCashAndReview", 1)[0]
+        self.assertIn("_proposal?.Evaluation.Value is not { } plan", resources)
+        for identity, displayed in (
+                ("native-language", "SkillCatalogStrings.SkillName(language.Kind, language.SourceSkillId, language.Name)"),
+                ("contact", "contact.Identity.Name, contact.Connection, contact.Loyalty"),
+                ("lifestyle", "home.BaseLifestyleName"),
+                ("equipment", "item.Name + \" × \" + item.Quantity.ToString(CultureInfo.CurrentCulture)")):
+            self.assertIn(f'value.AutomationId = "creation-completion-proposed-{identity}";', resources)
+            self.assertIn(displayed, resources)
+        self.assertIn("plan.Selections.SkillAllocations.SingleOrDefault(row => row.IsNativeLanguage)", resources)
+        self.assertIn("plan.Selections.Contacts.Where", resources)
+        self.assertIn("!inputs.Contacts.Contacts.Any(original => original.ContactId == row.ContactId)", resources)
+        self.assertIn("plan.Review.Lifestyles is not { } purchases", resources)
+        self.assertIn("!inputs.Lifestyles.Lifestyles.Any(original => original.LifestyleId == row.Configuration.LifestyleId)", resources)
+        self.assertIn("Number(home.Economics.TotalCost)", resources)
+        self.assertIn("purchases.Gear.Lines.Where", resources)
+        self.assertIn("inputs.Lifestyles.Gear.State.PendingDraft?.Lines.Any(original => original.OptionId == row.OptionId) != true", resources)
+        self.assertIn("Number(item.TotalCost)", resources)
+        self.assertEqual(4, resources.count("_body.Add(value);"))
+        self.assertNotIn("ApplyCreationCompletionAsync", resources)
+
     def test_completion_retains_known_receipt_and_only_recovers_returned_unknown_outcomes(self):
         source = (NATIVE / "CreationCompletionPage.cs").read_text(encoding="utf-8")
         apply = source.split("private async Task ApplyAsync(", 1)[1].split("private void RenderSaved", 1)[0]
@@ -56,7 +144,7 @@ class FinalizationOwnerNavigationSourceContractTests(unittest.TestCase):
         source = (NATIVE / "CreationCompletionPage.cs").read_text(encoding="utf-8")
         dashboard = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         keys = {"Completion." + key for key in re.findall(r'\bCopy\("([^"]+)"', source + dashboard)}
-        keys.add("Completion.Rating")
+        keys.update({"Completion.Rating", "Completion.ContactAddition"})
         # BuildPage contains other copy helpers; only this page and its named entry use this prefix.
         keys = {key for key in keys if key != "Completion.Receipt"}
         resources = NATIVE.parent / "Resources" / "Localization"

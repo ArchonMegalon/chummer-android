@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Chummer.Android.Native;
 using Chummer.Application.Characters;
+using Chummer.Application.LifeModules;
 using Chummer.Application.Owners;
 using Chummer.Application.Workspaces;
 using Chummer.Contracts.Characters;
@@ -103,9 +104,28 @@ internal static partial class AfterRunAuthorityHarness
             creationCompletion: true, creationFinalization: true, productionCreationOverview: true,
             completionServiceDecorator: actual => service = new(actual, ui));
         var before = PrepareActualFinalizationReadyContext(runtime, stopBeforeAttributes: true);
+        CloneFinalizationRecordFixture(runtime, ContactsOwnerA, before);
+        owners.Set(ContactsOwnerA);
         await HydrateFinalizationOwnerAsync(runtime, owners, before);
         var files = CompletionFiles(runtime);
-        var (_, _, review) = await PrepareCompletionReviewAsync(runtime, owners, ui);
+        var (_, proposal, review) = await PrepareCompletionReviewAsync(runtime, owners, ui, includePurchases: true);
+        var plan = proposal.Evaluation.Value!;
+        Require(proposal.FillsRemainingResources && plan.Request.Attributes.FillRemainingPoints
+            && plan.Request.Skills.FillRemainingPoints
+            && plan.Attributes?.Preview.NormalPointBudget.Remaining == 0
+            && plan.Attributes.Preview.SpecialPointBudget.Used > 0
+            && plan.Skills?.Preview.ActiveSkillPointBudget.Remaining == 0
+            && plan.Skills.Preview.SkillGroupPointBudget.Remaining == 0
+            && plan.Skills.Preview.KnowledgeSkillPointBudget.Remaining == 0,
+            "The actual resource proposal did not fill the usable attribute and skill pools.");
+        // Human Heritage A has more special points than Edge can legally use.
+        // Do not claim every special point was spent or weaken its source cap.
+        Require(plan.Selections.GroupAllocations.Any(row => row.Rating > 0)
+            && plan.Selections.SkillAllocations.Any(row => row.IsNativeLanguage && row.Rating is null)
+            && plan.Selections.Contacts.Count > 0 && plan.Selections.Gear.Count > 0
+            && plan.Selections.Lifestyles.Count > 0 && plan.Selections.StartingLifestyleId is not null
+            && plan.Review.Balances.RemainingNuyen >= 0 && plan.Review.Balances.RemainingCreationKarma >= 0,
+            "The wire fixture must contain the real native-language, contact, home and gear proposal, not an empty starter.");
         AssertCompletionFilesUnchanged(runtime, files);
 
         const string key = "native-completion-explicit-once";
@@ -122,7 +142,8 @@ internal static partial class AfterRunAuthorityHarness
         Require(applied.Outcome == CharacterCreationFoundationOutcomes.Success && applied.Value is not null,
             "Confirmed completion did not produce a durable receipt: " + string.Join(",", applied.Blockers));
         var receipt = applied.Value!;
-        var cold = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+        var coldStore = new FileWorkspaceStore(runtime.StateDirectory);
+        var cold = coldStore.Get(ContactsOwnerA, runtime.Id).Value!;
         Require(service!.ApplyCalls == 1 && cold.ContentRevision == before.ContentRevision + 1
             && cold.SavedRevision == cold.ContentRevision
             && cold.Document.Content == review.Projection.CharacterXml
@@ -140,8 +161,67 @@ internal static partial class AfterRunAuthorityHarness
             && (repeat.Value is null || repeat.Value.ReceiptDigest == receipt.ReceiptDigest),
             "Reusing a consumed completion review dispatched another Apply or returned a different receipt.");
         AssertCompletionFilesUnchanged(runtime, committed);
+
+        const int maximumBytes = 512 * 1024;
+        var exported = new WorkspaceContinuationExportService(coldStore, owners).Export(owners.Capture(), runtime.Id);
+        Require(exported.Success && exported.Value is not null,
+            "The completed linked runner could not be exported: " + exported.Error);
+        byte[] wire = WorkspaceContinuationCodec.Encode(exported.Value!, maximumBytes);
+        Console.WriteLine($"Completion rich native proposal wire: bytes={wire.Length}, limit={maximumBytes}, "
+            + $"attributes={plan.Selections.AttributeAllocations.Count}, skills={plan.Selections.SkillAllocations.Count}, "
+            + $"groups={plan.Selections.GroupAllocations.Count}, contacts={plan.Selections.Contacts.Count}, "
+            + $"homes={plan.Selections.Lifestyles.Count}, gear={plan.Selections.Gear.Count}.");
+        Require(wire.Length <= maximumBytes
+            && WorkspaceContinuationCodec.TryDecodeCandidate(wire, maximumBytes, out var decoded)
+            && wire.SequenceEqual(WorkspaceContinuationCodec.Encode(decoded!, maximumBytes)),
+            "The actual richer completion did not round-trip through the unchanged 512 KiB transport.");
+        var authority = cold.Document.AuxiliaryState.CharacterCreationFinalizationArchive?.CompletionAuthority;
+        Require(authority is { Schema: CharacterCreationCompletionAuthority.SchemaV3, SelectedReplay: not null,
+                Inputs: null, BootstrapSourceSnapshot: null },
+            "The richer completion did not retain its selected V3 replay authority.");
+
+        var targetOwners = new ControlledLinkedOwner();
+        targetOwners.Set(ContactsOwnerA);
+        Require(targetOwners.Capture() != owners.Capture(), "The cold target must have a new owner lifetime.");
+        var targetDirectory = Directory.CreateTempSubdirectory("chummer-completion-rich-continuation-");
+        try
+        {
+            var targetStore = new FileWorkspaceStore(targetDirectory.FullName);
+            var restore = new WorkspaceContinuationRestoreService(targetStore, targetOwners,
+                runtime.Services.GetRequiredService<ICharacterSourceDataResolver>(),
+                runtime.Services.GetRequiredService<ICharacterFileQueries>(),
+                runtime.Services.GetRequiredService<ILifeModulesCatalogService>(), maximumBytes);
+            using var restoreReview = restore.Review(targetOwners.Capture(), wire);
+            Require(restoreReview.Result.Outcome == WorkspaceContinuationRestoreOutcome.Available
+                && restoreReview.Result.Target is { Exists: false },
+                "Rich continuation was not admitted for the fresh same-account store: "
+                + JsonSerializer.Serialize(restoreReview.Result));
+            var restored = restore.Confirm(restoreReview, explicitlyConfirmed: true);
+            Require(restored.Outcome == WorkspaceContinuationRestoreOutcome.Applied && restored.Receipt is not null,
+                "Rich continuation did not restore atomically: " + JsonSerializer.Serialize(restored));
+            var reopenedStore = new FileWorkspaceStore(targetDirectory.FullName);
+            var reopened = reopenedStore.Get(ContactsOwnerA, runtime.Id);
+            Require(reopened.Success && reopened.Value is { } saved
+                && saved.Document.Content == cold.Document.Content
+                && saved.Document.AuxiliaryStateDigest == cold.Document.AuxiliaryStateDigest
+                && saved.ContentRevision == cold.ContentRevision && saved.SavedRevision == cold.SavedRevision
+                && saved.LocalHistory?.ImportedSnapshotDigest == exported.Value!.SnapshotDigest
+                && saved.LocalHistory.LastRestore == restored.Receipt
+                && !saved.CanReplayReceipt(receipt.ContentRevision)
+                && !reopenedStore.Get(runtime.Id).Success
+                && !reopenedStore.Get(ContactsOwnerB, runtime.Id).Success,
+                "Cold linked recovery changed accepted choices or borrowed local/other-account replay authority.");
+            var reexported = new WorkspaceContinuationExportService(reopenedStore, targetOwners)
+                .Export(targetOwners.Capture(), runtime.Id);
+            Require(reexported.Success && reexported.Value is not null
+                && wire.SequenceEqual(WorkspaceContinuationCodec.Encode(reexported.Value, maximumBytes)),
+                "Cold restored completion did not retain the exact exported bytes.");
+            Require(targetOwners.ActiveLeases == 0, "Cold continuation restore retained an owner lease.");
+        }
+        finally { targetDirectory.Delete(recursive: true); }
+        AssertCompletionFilesUnchanged(runtime, committed);
         Require(owners.ActiveLeases == 0, "Completion Apply retained an owner lease.");
-        Console.WriteLine("PASS explicit completion atomically saves once and reopens Career");
+        Console.WriteLine("PASS explicit rich completion saves once and cold-restores its linked 512 KiB continuation");
     }
 
     private static async Task CompletionCommittedReplyIsRecoveredAsync(string contentRoot)
@@ -282,14 +362,16 @@ internal static partial class AfterRunAuthorityHarness
 
     private static async Task<(CharacterCreationCompletionReviewInputs Inputs, CompletionAssistantProposal Proposal,
         CharacterCreationCompletionApplyReview Review)> PrepareCompletionReviewAsync(
-        NativeRewardRuntime runtime, ControlledLinkedOwner owners, SynchronizationContext ui)
+        NativeRewardRuntime runtime, ControlledLinkedOwner owners, SynchronizationContext ui, bool includePurchases = false)
     {
         var loaded = await StartFromUiContext(ui, () => runtime.Coordinator.LoadCreationCompletionInputsAsync());
         Require(loaded.Outcome == CharacterCreationFoundationOutcomes.Success && loaded.Value is not null,
             "SETUP: real unfinished completion inputs unavailable: " + string.Join(",", loaded.Blockers));
         var inputs = loaded.Value!;
+        var intent = CompletionIntent(owners.Capture(), inputs);
+        if (includePurchases) intent = intent with { MaximumAdditionalPurchaseSpend = decimal.MaxValue };
         var built = await StartFromUiContext(ui, () => runtime.Coordinator.BuildCreationCompletionProposalAsync(
-            inputs, CompletionIntent(owners.Capture(), inputs)));
+            inputs, intent));
         Require(built.Value is { CanReview: true },
             "SETUP: actual starter proposal unavailable: " + string.Join(",", built.Blockers));
         var proposal = built.Value!;
@@ -297,9 +379,13 @@ internal static partial class AfterRunAuthorityHarness
         var read = owners.Current.IsLocalSingleUser ? store.Get(runtime.Id) : store.Get(owners.Current, runtime.Id);
         Require(read.Success && read.Value is not null,
             "SETUP: actual completion workspace unavailable from its original owner partition.");
-        var stored = read.Value!;
+        var cash = await StartFromUiContext(ui,
+            () => runtime.Coordinator.LoadCreationCompletionStartingCashAsync(proposal));
+        Require(cash.Outcome == CharacterCreationFoundationOutcomes.Success && cash.Value is not null,
+            "SETUP: proposed lifestyle starting-cash authority unavailable: " + string.Join(",", cash.Blockers));
         var reviewed = await StartFromUiContext(ui,
-            () => runtime.Coordinator.ReviewCreationCompletionAsync(proposal, CompletionCash(runtime, stored)));
+            () => runtime.Coordinator.ReviewCreationCompletionAsync(proposal,
+                new(cash.Value!.AuthorityDigest, cash.Value.Dice * 3)));
         Require(reviewed.Outcome == CharacterCreationFoundationOutcomes.Success && reviewed.Value is not null,
             "SETUP: Core did not admit the real starter proposal: " + string.Join(",", reviewed.Blockers));
         Require(runtime.Coordinator.IsCreationCompletionReviewCurrent(reviewed.Value!),
@@ -366,6 +452,15 @@ internal static partial class AfterRunAuthorityHarness
         public bool ThrowBeforeApply { get; init; }
         public bool ThrowAfterApply { get; init; }
         public CancellationTokenSource? CancelAfterCommit { get; init; }
+
+        public CharacterCreationFoundationResult<CharacterCreationStartingNuyenSource> LoadStartingCash(
+            OwnerContextStamp owner, CharacterWorkspaceId workspaceId, CharacterCreationCompletionReviewRequest proposal,
+            CancellationToken cancellationToken = default)
+        {
+            Require(!ReferenceEquals(SynchronizationContext.Current, ui),
+                "Completion starting-cash source read ran on the caller's UI context.");
+            return actual.LoadStartingCash(owner, workspaceId, proposal, cancellationToken);
+        }
 
         public CharacterCreationFoundationResult<CharacterCreationCompletionApplyReview> Review(
             OwnerContextStamp owner, CharacterWorkspaceId workspaceId, CharacterCreationCompletionReviewRequest proposal,

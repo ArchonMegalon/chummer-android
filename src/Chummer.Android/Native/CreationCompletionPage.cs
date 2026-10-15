@@ -5,7 +5,7 @@ using Chummer.Presentation.Overview;
 
 namespace Chummer.Android.Native;
 
-/// <summary>Read-only starter advice followed by one explicit, Core-reviewed atomic Apply.</summary>
+/// <summary>Read-only completion advice followed by one explicit, Core-reviewed atomic Apply.</summary>
 public sealed class CreationCompletionPage : NativePageBase
 {
     private readonly VerticalStackLayout _body = new() { Padding = new Thickness(20, 18), Spacing = 12 };
@@ -182,7 +182,7 @@ public sealed class CreationCompletionPage : NativePageBase
             _body.Add(NativeTheme.Body(Copy("Stale", "Your runner or account changed. Return to creation and open a fresh review."), NativeTheme.Danger));
             return;
         }
-        _body.Add(NativeTheme.Body(Copy("Scope", "Starter attribute and skill suggestions—not a complete loadout. Magic, equipment, contacts and story may still need your choices. Nothing changes until Apply."), NativeTheme.Muted));
+        _body.Add(NativeTheme.Body(Copy("Scope", "Fill unused points and suggest contacts, a lifestyle and basic supplies. Weapons, armor and some magic choices still need manual review. Nothing changes until Apply."), NativeTheme.Muted));
         if (_review is not null)
         {
             RenderFinalReview(appearance, render);
@@ -257,7 +257,8 @@ public sealed class CreationCompletionPage : NativePageBase
                 AutomationId = "creation-completion-native-language", TextColor = NativeTheme.Text,
                 TitleColor = NativeTheme.Danger, BackgroundColor = NativeTheme.Surface,
                 ItemsSource = languages.Select(row => SkillCatalogStrings.SkillName(row.Kind, row.SourceSkillId, row.Name)).ToArray(),
-                SelectedIndex = Array.FindIndex(languages, row => row.SourceSkillId == _nativeLanguageId)
+                SelectedIndex = Array.FindIndex(languages, row => row.SourceSkillId ==
+                    (_nativeLanguageId ?? _proposal?.Request.Skills.NativeLanguageSourceId))
             };
             language.SelectedIndexChanged += (_, _) =>
             {
@@ -274,6 +275,7 @@ public sealed class CreationCompletionPage : NativePageBase
         _inputVersion++;
         _proposal = null;
         _review = null;
+        _roll = string.Empty;
         _blockers = [];
         Refresh();
     }
@@ -288,7 +290,11 @@ public sealed class CreationCompletionPage : NativePageBase
         var intent = new CompletionAssistantIntent(owner, inputs.SnapshotDigest, _archetypeId, permissions, new())
         {
             NativeLanguageSourceId = _nativeLanguageId,
-            StartingLifestyleId = SelectedLifestyleId(inputs)
+            StartingLifestyleId = SelectedLifestyleId(inputs),
+            // Finish may propose spending the remaining creation budget; Core
+            // independently enforces actual affordability and all reserves.
+            // This is a proposal ceiling, not money or permission to save.
+            MaximumAdditionalPurchaseSpend = decimal.MaxValue
         };
         _busy = true;
         Refresh();
@@ -298,6 +304,33 @@ public sealed class CreationCompletionPage : NativePageBase
             if (!CurrentInput(appearance, version)) return;
             _proposal = result.Value;
             _blockers = result.Blockers;
+            _roll = string.Empty;
+            // Retire the previous proposal's terms before the next authority
+            // read. An exception/cancellation must not make stale cash reviewable.
+            var candidateCashSources = _cashSources;
+            _cashSources = [];
+            _cashDigest = null;
+            if (_proposal is { } proposal)
+            {
+                // A suggested home is not saved yet. Read its genuine source
+                // terms through the admitted proposal, never use the original
+                // Street fallback or construct an authority from display values.
+                var cash = await Coordinator.LoadCreationCompletionStartingCashAsync(proposal, ReadToken);
+                if (!CurrentInput(appearance, version) || !ReferenceEquals(_proposal, proposal)) return;
+                if (cash is { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } source, Blockers.Count: 0 })
+                {
+                    _cashSources = candidateCashSources.Any(row => row.AuthorityDigest == source.AuthorityDigest)
+                        ? candidateCashSources.Select(row => row.AuthorityDigest == source.AuthorityDigest ? source : row).ToArray()
+                        : [source];
+                    _cashDigest = source.AuthorityDigest;
+                }
+                else
+                {
+                    _cashSources = [];
+                    _cashDigest = null;
+                    _blockers = [.. _blockers, .. cash.Blockers];
+                }
+            }
         }
         catch (OperationCanceledException) { }
         catch (Exception error) when (error is not OutOfMemoryException)
@@ -321,6 +354,13 @@ public sealed class CreationCompletionPage : NativePageBase
         {
             string label = SuggestionLabel(suggestion.Choice);
             string actual = suggestion.EvaluatedRating?.ToString(CultureInfo.CurrentCulture) ?? "—";
+            if (_proposal.FillsRemainingResources)
+            {
+                if (suggestion.EvaluatedRating is > 0 && suggestion.State is
+                        CompletionSuggestionState.TargetMet or CompletionSuggestionState.TargetUnmet)
+                    _body.Add(NativeTheme.Metric(label, actual));
+                continue;
+            }
             string state = suggestion.State switch
             {
                 CompletionSuggestionState.TargetMet => Copy("Met", "target met"),
@@ -332,6 +372,7 @@ public sealed class CreationCompletionPage : NativePageBase
             _body.Add(NativeTheme.Body(CreationFlowStrings.Format("Completion.Rating", "{0}: proposed {1}, target {2} · {3}",
                 label, actual, suggestion.TargetRating, state)));
         }
+        RenderResourceProposal();
         _body.Add(NativeTheme.Eyebrow(Copy("Remaining", "Still needs attention")));
         foreach (var task in _proposal.RemainingTasks.Where(key => key != "completion.remaining.finalization-review").Distinct())
             _body.Add(NativeTheme.Body(RemainingTask(task), NativeTheme.Muted));
@@ -339,6 +380,44 @@ public sealed class CreationCompletionPage : NativePageBase
         {
             _body.Add(NativeTheme.Metric(Copy("KarmaBefore", "Creation Karma remaining"), Number(balance.RemainingCreationKarma)));
             _body.Add(NativeTheme.Metric(Copy("NuyenBefore", "Creation nuyen remaining"), Number(balance.RemainingNuyen)));
+        }
+    }
+
+    private void RenderResourceProposal()
+    {
+        if (_inputs is not { } inputs || _proposal?.Evaluation.Value is not { } plan) return;
+        if (!inputs.Skills.Allocations.Any(row => row.IsNativeLanguage)
+            && plan.Selections.SkillAllocations.SingleOrDefault(row => row.IsNativeLanguage) is { } native
+            && inputs.Skills.Authority.KnowledgeSkills.FirstOrDefault(row => row.SourceSkillId == native.SourceSkillId) is { } language)
+        {
+            Label value = NativeTheme.Body(CreationKarmaCopy.NativeLanguage + ": "
+                + SkillCatalogStrings.SkillName(language.Kind, language.SourceSkillId, language.Name));
+            value.AutomationId = "creation-completion-proposed-native-language";
+            _body.Add(value);
+        }
+        foreach (var contact in plan.Selections.Contacts.Where(row =>
+                     !inputs.Contacts.Contacts.Any(original => original.ContactId == row.ContactId)))
+        {
+            Label value = NativeTheme.Body(CreationFlowStrings.Format("Completion.ContactAddition",
+                "{0} · Connection {1}, Loyalty {2}", contact.Identity.Name, contact.Connection, contact.Loyalty));
+            value.AutomationId = "creation-completion-proposed-contact";
+            _body.Add(value);
+        }
+        if (plan.Review.Lifestyles is not { } purchases) return;
+        foreach (var home in purchases.Lifestyles.Where(row =>
+                     !inputs.Lifestyles.Lifestyles.Any(original => original.LifestyleId == row.Configuration.LifestyleId)))
+        {
+            Label value = NativeTheme.Body(home.BaseLifestyleName + ": " + Number(home.Economics.TotalCost) + " ¥");
+            value.AutomationId = "creation-completion-proposed-lifestyle";
+            _body.Add(value);
+        }
+        foreach (var item in purchases.Gear.Lines.Where(row =>
+                     inputs.Lifestyles.Gear.State.PendingDraft?.Lines.Any(original => original.OptionId == row.OptionId) != true))
+        {
+            Label value = NativeTheme.Body(item.Name + " × " + item.Quantity.ToString(CultureInfo.CurrentCulture)
+                + ": " + Number(item.TotalCost) + " ¥");
+            value.AutomationId = "creation-completion-proposed-equipment";
+            _body.Add(value);
         }
     }
 
@@ -442,7 +521,22 @@ public sealed class CreationCompletionPage : NativePageBase
         }
         _body.Add(NativeTheme.Metric(Copy("KarmaAfter", "Career Karma"), Number(projection.KarmaRemaining)));
         _body.Add(NativeTheme.Metric(Copy("NuyenAfter", "Career nuyen"), Number(projection.NuyenRemaining)));
-        _body.Add(NativeTheme.Body(Copy("Carryover", "Excess creation funds are lost at the Career boundary. Starting cash is added afterward."), NativeTheme.Muted));
+        var losses = LossItems(projection);
+        if (losses.Count > 0)
+        {
+            Label warning = NativeTheme.Eyebrow(Copy("Loss.Title", "Unused resources that will be lost"));
+            warning.TextColor = NativeTheme.Danger;
+            _body.Add(warning);
+            foreach (var loss in losses)
+            {
+                Label amount = NativeTheme.Body(loss.Label + ": " + Number(loss.Amount), NativeTheme.Danger);
+                amount.AutomationId = "creation-completion-loss-" + loss.Id;
+                _body.Add(amount);
+            }
+            _body.Add(NativeTheme.Body(Copy("Loss.Help", "These resources will not carry into Career. Keep editing to use them, or explicitly continue."), NativeTheme.Muted));
+        }
+        if (losses.Count == 0)
+            _body.Add(NativeTheme.Body(Copy("NoLoss", "No unused points or excess funds will be lost."), NativeTheme.Muted));
         _body.Add(NativeTheme.Body(Copy("ConfirmHelp", "Apply saves these reviewed changes together and enters Career. Cancel returns to creation without changing your runner."), NativeTheme.Muted));
         AddAction(_footer, Copy("Apply", "Apply and enter Career"), "creation-completion-apply",
             () => ApplyAsync(recoveryOnly: false), appearance, render,
@@ -457,6 +551,26 @@ public sealed class CreationCompletionPage : NativePageBase
             || !recoveryOnly && !Coordinator.IsCreationCompletionReviewCurrent(review)) return;
         long appearance = CaptureAppearanceGeneration();
         Page[] stack = Navigation.NavigationStack.ToArray();
+        if (!recoveryOnly)
+        {
+            var losses = LossItems(review.Projection);
+            if (losses.Count > 0)
+            {
+                // The acknowledgement applies only to this exact admitted
+                // projection. It is neither a reusable setting nor save authority.
+                string projectionDigest = review.Projection.ProjectionDigest;
+                bool accepted = await DisplayAlertAsync(Copy("Loss.Title", "Unused resources that will be lost"),
+                    string.Join(Environment.NewLine, losses.Select(loss => loss.Label + ": " + Number(loss.Amount)))
+                        + Environment.NewLine + Environment.NewLine
+                        + Copy("Loss.Help", "These resources will not carry into Career. Keep editing to use them, or explicitly continue."),
+                    Copy("Loss.Continue", "Continue with these losses"), Copy("Loss.Back", "Keep editing"));
+                if (!accepted || _busy || _applyStarted || _leaving || ReadToken.IsCancellationRequested
+                    || !ReferenceEquals(_review, review)
+                    || _idempotencyKey != key || review.Projection.ProjectionDigest != projectionDigest
+                    || !IsCurrentPage(appearance) || !Navigation.NavigationStack.SequenceEqual(stack)
+                    || !Coordinator.IsCreationCompletionReviewCurrent(review)) return;
+            }
+        }
         _applyStarted = true;
         _busy = true;
         Refresh();
@@ -486,6 +600,24 @@ public sealed class CreationCompletionPage : NativePageBase
             _busy = false;
             if (IsCurrentPage(CaptureAppearanceGeneration())) Refresh();
         }
+    }
+
+    internal static IReadOnlyList<(string Id, string Label, decimal Amount)> LossItems(
+        CharacterCreationCompletionFinalizationProjection projection)
+    {
+        // Display differences from Core's reviewed projection, not local
+        // carryover rules. Starting cash must never conceal discarded funds.
+        (string Id, string Label, decimal Amount)[] losses =
+        [
+            ("normal-attributes", Copy("Loss.NormalAttributes", "Normal attribute points"), projection.UnusedPoints.NormalAttributes),
+            ("special-attributes", Copy("Loss.SpecialAttributes", "Special attribute points"), projection.UnusedPoints.SpecialAttributes),
+            ("active-skills", Copy("Loss.ActiveSkills", "Active skill points"), projection.UnusedPoints.ActiveSkills),
+            ("skill-groups", Copy("Loss.SkillGroups", "Skill group points"), projection.UnusedPoints.SkillGroups),
+            ("knowledge-skills", Copy("Loss.KnowledgeSkills", "Knowledge skill points"), projection.UnusedPoints.KnowledgeSkills),
+            ("karma", Copy("Loss.Karma", "Creation Karma"), projection.KarmaBeforeCarryover - projection.KarmaRemaining),
+            ("nuyen", Copy("Loss.Nuyen", "Creation nuyen"), projection.NuyenBeforeCarryover - projection.CarriedNuyen)
+        ];
+        return losses.Where(loss => loss.Amount > 0).ToArray();
     }
 
     private void RenderSaved(CharacterCreationFinalizationReceipt receipt, long appearance, long render)
@@ -573,12 +705,14 @@ public sealed class CreationCompletionPage : NativePageBase
             ? SkillCatalogStrings.SkillName(skill.Kind, skill.SourceSkillId, skill.Name) : Copy("UnknownSkill", "Unavailable skill"),
         CompletionChoiceDomain.KnowledgeSkill => _inputs!.Skills.Authority.KnowledgeSkills.FirstOrDefault(row => row.SourceSkillId == choice.SourceId) is { } knowledge
             ? SkillCatalogStrings.SkillName(knowledge.Kind, knowledge.SourceSkillId, knowledge.Name) : Copy("UnknownSkill", "Unavailable skill"),
+        CompletionChoiceDomain.SkillGroup => _inputs!.Skills.Authority.SkillGroups.FirstOrDefault(row => row.GroupId == choice.SourceId) is { } group
+            ? SkillCatalogStrings.GroupName(group.Name) : Copy("SkillGroup", "Skill group"),
         _ => Copy("SkillGroup", "Skill group")
     };
 
     private static string RemainingTask(string key) => key switch
     {
-        "completion.remaining.practical-loadout" => Copy("Loadout", "Equipment is not automatically selected. Review your practical loadout in creation."),
+        "completion.remaining.practical-loadout" => Copy("Loadout", "Basic supplies are not a complete loadout. Review weapons, armor and rated equipment in creation."),
         "completion.remaining.identity-review" => Copy("Identity", "Review your name, identity and story yourself."),
         "completion.remaining.starter-targets" => Copy("Targets", "Some starter targets are locked, unavailable or unmet. They are advice, not automatic permission to change your choices."),
         "completion.remaining.magic-choices" or "completion.remaining.magic-evaluation" => Copy("Magic", "Review the magic choices required by your talent."),
