@@ -335,7 +335,7 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
             "compileRunner": "serialized-package-plane-build",
             "disableBuildServers": True,
             "maxCpuCount": 1,
-            "minimumExpectedTests": 834,
+            "minimumExpectedTests": 932,
             "project": project,
             "runner": "direct-exact-assembly",
             "sdkVersion": receipt["sdkVersion"],
@@ -748,7 +748,7 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
         original = copy.deepcopy(receipt)
         self.assertEqual(receipt, self.validate_receipt_copy(receipt))
         self.assertEqual(original, receipt)
-        self.assertEqual(834, receipt["testExecutions"][0]["minimumExpectedTests"])
+        self.assertEqual(932, receipt["testExecutions"][0]["minimumExpectedTests"])
         self.assertEqual([19, 26, 74, 27, 80, 5, 23, 6, 1, 60],
                          [row["minimumExpectedTests"] for row in self.owner_execution_rows(receipt)])
         self.assertFalse(Path(receipt["testExecutions"][0]["coreProjectionContent"]["sourceRoot"]).exists())
@@ -756,6 +756,15 @@ class InternalPhoneBetaPackageAuthorityTests(unittest.TestCase):
         for row in [*receipt["testExecutions"], *self.owner_execution_rows(receipt)]:
             row["coreProjectionContent"]["checkoutCommit"] = self.module.EXPECTED_SOURCE_GRAPH["coreRuntimeSourceCommit"]
         self.validate_receipt_copy(receipt)
+
+    def test_completion_intake_rejects_stale_partial_and_observed_test_floors(self) -> None:
+        # Bind the pinned producer's configured floor, not its observed total.
+        # A stale, shortened or invented invocation cannot substitute for it.
+        for floor in (834, 931, 933, 1057):
+            receipt = self.current_main_receipt_fixture()
+            receipt["testExecutions"][0]["minimumExpectedTests"] = floor
+            with self.subTest(floor=floor), self.assertRaises(ValueError):
+                self.validate_receipt_copy(receipt)
 
     def test_lifestyle_owner_intake_rejects_previous_and_partial_floors(self) -> None:
         # The exact new UI producer includes both original-owner Lifestyle
