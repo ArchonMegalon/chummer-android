@@ -905,6 +905,8 @@ public sealed class CreationCompletionPage : NativePageBase
     {
         "completion.remaining.practical-loadout" => Copy("Loadout", "Basic supplies, a weapon and armor do not make a complete loadout."),
         "completion.remaining.ammo-modifications-rated-gear" => Copy("LoadoutExtras", "Review ammunition, modifications and rated gear in creation; these are not included in the weapon and armor suggestions."),
+        "completion.remaining.ammo-binding-loading-modifications" => Copy("AmmoExtras", "Loose ammunition may be proposed. Weapon assignment, loading and modifications still need review."),
+        "completion.remaining.commlinks-rated-gear-child-graphs" => Copy("AdvancedGear", "Commlinks, rated gear and bundled accessories are not included in these suggestions."),
         "completion.remaining.weapon-choices" => Copy("WeaponNeeded", "Review your weapon choices in creation."),
         "completion.remaining.armor-choices" => Copy("ArmorNeeded", "Review your armor choices in creation."),
         "completion.remaining.identity-review" => Copy("Identity", "Review your name, identity and story yourself."),

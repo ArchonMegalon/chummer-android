@@ -72,6 +72,8 @@
   <data name="Completion.Loadout" xml:space="preserve"><value>Grundausstattung, eine Waffe und Rüstung ergeben noch keine vollständige Ausrüstung.</value></data>
   <data name="Completion.LoadoutItems" xml:space="preserve"><value>Vorgeschlagene Waffen und Rüstung (einschließlich beibehaltener Auswahl)</value></data>
   <data name="Completion.LoadoutLine" xml:space="preserve"><value>{0} × {1}: {2} ¥</value></data>
+  <data name="Completion.AmmoExtras" xml:space="preserve"><value>Lose Munition kann vorgeschlagen werden. Waffenzuordnung, Laden und Modifikationen musst du noch prüfen.</value></data>
+  <data name="Completion.AdvancedGear" xml:space="preserve"><value>Kommlinks, Ausrüstung mit Stufen und mitgeliefertes Zubehör sind in diesen Vorschlägen nicht enthalten.</value></data>
   <data name="Completion.LoadoutExtras" xml:space="preserve"><value>Prüfe Munition, Modifikationen und Ausrüstung mit Stufen in der Erschaffung; sie sind in den Waffen- und Rüstungsvorschlägen nicht enthalten.</value></data>
   <data name="Completion.WeaponNeeded" xml:space="preserve"><value>Prüfe deine Waffenauswahl in der Erschaffung.</value></data>
   <data name="Completion.ArmorNeeded" xml:space="preserve"><value>Prüfe deine Rüstungsauswahl in der Erschaffung.</value></data>

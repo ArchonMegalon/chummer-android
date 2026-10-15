@@ -72,6 +72,8 @@
   <data name="Completion.Loadout" xml:space="preserve"><value>El equipo básico, un arma y una armadura no forman un equipo completo.</value></data>
   <data name="Completion.LoadoutItems" xml:space="preserve"><value>Armas y armadura propuestas (incluidas las elecciones conservadas)</value></data>
   <data name="Completion.LoadoutLine" xml:space="preserve"><value>{0} × {1}: {2} ¥</value></data>
+  <data name="Completion.AmmoExtras" xml:space="preserve"><value>Se puede proponer munición suelta. Aún debes revisar su asignación al arma, la carga y las modificaciones.</value></data>
+  <data name="Completion.AdvancedGear" xml:space="preserve"><value>Estas sugerencias no incluyen commlinks, equipo con niveles ni accesorios incluidos.</value></data>
   <data name="Completion.LoadoutExtras" xml:space="preserve"><value>Revisa munición, modificaciones y equipo con niveles en creación; no están incluidos en las sugerencias de armas y armadura.</value></data>
   <data name="Completion.WeaponNeeded" xml:space="preserve"><value>Revisa tus armas en creación.</value></data>
   <data name="Completion.ArmorNeeded" xml:space="preserve"><value>Revisa tu armadura en creación.</value></data>

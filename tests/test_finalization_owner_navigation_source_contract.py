@@ -205,7 +205,9 @@ class FinalizationOwnerNavigationSourceContractTests(unittest.TestCase):
         self.assertNotIn("OptionId", loadout)
         self.assertNotIn("SourceNodeXml", loadout)
         self.assertNotIn("ApplyCreationCompletionAsync", loadout)
-        for task, key in (("ammo-modifications-rated-gear", "LoadoutExtras"), ("weapon-choices", "WeaponNeeded"),
+        for task, key in (("ammo-modifications-rated-gear", "LoadoutExtras"),
+                          ("ammo-binding-loading-modifications", "AmmoExtras"),
+                          ("commlinks-rated-gear-child-graphs", "AdvancedGear"), ("weapon-choices", "WeaponNeeded"),
                           ("armor-choices", "ArmorNeeded")):
             self.assertIn(f'"completion.remaining.{task}" => Copy("{key}"', source)
         coordinator = (NATIVE / "RunnerSessionCoordinator.CreationCompletion.cs").read_text(encoding="utf-8")

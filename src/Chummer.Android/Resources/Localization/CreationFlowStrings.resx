@@ -72,6 +72,8 @@
   <data name="Completion.Loadout" xml:space="preserve"><value>Basic supplies, a weapon and armor do not make a complete loadout.</value></data>
   <data name="Completion.LoadoutItems" xml:space="preserve"><value>Proposed weapons and armor (including retained choices)</value></data>
   <data name="Completion.LoadoutLine" xml:space="preserve"><value>{0} × {1}: {2} ¥</value></data>
+  <data name="Completion.AmmoExtras" xml:space="preserve"><value>Loose ammunition may be proposed. Weapon assignment, loading and modifications still need review.</value></data>
+  <data name="Completion.AdvancedGear" xml:space="preserve"><value>Commlinks, rated gear and bundled accessories are not included in these suggestions.</value></data>
   <data name="Completion.LoadoutExtras" xml:space="preserve"><value>Review ammunition, modifications and rated gear in creation; these are not included in the weapon and armor suggestions.</value></data>
   <data name="Completion.WeaponNeeded" xml:space="preserve"><value>Review your weapon choices in creation.</value></data>
   <data name="Completion.ArmorNeeded" xml:space="preserve"><value>Review your armor choices in creation.</value></data>

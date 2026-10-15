@@ -699,10 +699,25 @@ internal static partial class AfterRunAuthorityHarness
                         row.Name, row.Quantity.ToString(CultureInfo.CurrentCulture),
                         row.TotalCost.ToString("0.##", CultureInfo.CurrentCulture)))
                 .OrderBy(value => value, StringComparer.Ordinal))
-            && proposal.RemainingTasks.Contains("completion.remaining.ammo-modifications-rated-gear")
+            && proposal.RemainingTasks.Contains("completion.remaining.ammo-binding-loading-modifications")
+            && proposal.RemainingTasks.Contains("completion.remaining.commlinks-rated-gear-child-graphs")
             && MinimalVisible(page).OfType<Label>().Any(label => label.Text == CreationCompletionPage.Copy("Loadout", "missing-loadout"))
-            && MinimalVisible(page).OfType<Label>().Any(label => label.Text == CreationCompletionPage.Copy("LoadoutExtras", "missing-loadout-extras")),
-            "The summary must show Core's names, quantities and costs while keeping the incomplete ammunition/modification/rated-gear limitation visible.");
+            && MinimalVisible(page).OfType<Label>().Any(label => label.Text == CreationCompletionPage.Copy("AmmoExtras", "missing-ammo-extras"))
+            && MinimalVisible(page).OfType<Label>().Any(label => label.Text == CreationCompletionPage.Copy("AdvancedGear", "missing-advanced-gear")),
+            "The summary must show Core's names, quantities and costs while distinguishing loose ammo from unsupported loading, modifications and advanced gear.");
+
+        var previousCulture = CultureInfo.CurrentUICulture;
+        try
+        {
+            foreach (string locale in new[] { "en-GB", "de-AT", "es-ES" })
+            {
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(locale);
+                foreach (string key in new[] { "AmmoExtras", "AdvancedGear" })
+                    Require(CreationCompletionPage.Copy(key, "missing-coverage") != "missing-coverage",
+                        "Completion equipment limitations must remain readable in every shipping language.");
+            }
+        }
+        finally { CultureInfo.CurrentUICulture = previousCulture; }
 
         IEnumerable<string?> VisibleRows(string id) => MinimalVisible(page).OfType<Label>()
             .Where(row => row.AutomationId == id).Select(row => row.Text)
