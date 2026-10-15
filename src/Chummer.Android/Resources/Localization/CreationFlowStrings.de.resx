@@ -2411,4 +2411,21 @@
   <data name="Lifestyles.OpeningCash" xml:space="preserve"><value>Startgeld wird geöffnet…</value></data>
   <data name="Lifestyles.ShowQualities" xml:space="preserve"><value>Optionale Lebensstil-Vor- und Nachteile</value></data>
   <data name="Lifestyles.HideQualities" xml:space="preserve"><value>Lebensstil-Vor- und Nachteile zuklappen</value></data>
+  <data name="Loadout.Title" xml:space="preserve"><value>Waffen und Rüstung</value></data>
+  <data name="Loadout.CatalogScope" xml:space="preserve"><value>Hier erscheinen nur unterstützte Waffen und Rüstungen aus deinen aktivierten Büchern.</value></data>
+  <data name="Loadout.Unavailable" xml:space="preserve"><value>Waffen und Rüstungen sind nicht verfügbar. Öffne diesen Runner erneut.</value></data>
+  <data name="Loadout.Retained" xml:space="preserve"><value>Gespeichert — bleibt erhalten</value></data>
+  <data name="Loadout.RetainedHelp" xml:space="preserve"><value>Gespeicherte Einträge bleiben beim Fertigstellen erhalten. Hier kannst du nur neue Auswahlen entfernen.</value></data>
+  <data name="Loadout.CheckReceipt" xml:space="preserve"><value>Gespeicherten Kauf prüfen</value></data>
+  <data name="Loadout.Confirm" xml:space="preserve"><value>Waffen und Rüstung bestätigen</value></data>
+  <data name="Loadout.CancelPreview" xml:space="preserve"><value>Zurück zur Auswahl</value></data>
+  <data name="Loadout.Preview" xml:space="preserve"><value>Waffen und Rüstung prüfen</value></data>
+  <data name="Loadout.InsufficientFunds" xml:space="preserve"><value>Nicht genug Geld. Entferne eine neue Auswahl oder wähle etwas Günstigeres.</value></data>
+  <data name="Loadout.Weapons" xml:space="preserve"><value>Waffen</value></data>
+  <data name="Loadout.Armor" xml:space="preserve"><value>Rüstung</value></data>
+  <data name="Loadout.Changed" xml:space="preserve"><value>Diese Auswahl konnte nicht geprüft werden. Öffne diesen Runner erneut.</value></data>
+  <data name="Loadout.SavedReopen" xml:space="preserve"><value>Gespeichert. Öffne den Charakter erneut, um beide Warenkörbe zu aktualisieren.</value></data>
+  <data name="Loadout.Saved" xml:space="preserve"><value>Waffen und Rüstung gespeichert. Du kannst weitere Ausrüstung auswählen.</value></data>
+  <data name="Loadout.Unknown" xml:space="preserve"><value>Der Kauf ist nicht bestätigt. Prüfe den gespeicherten Kauf, bevor du es erneut versuchst.</value></data>
+  <data name="Loadout.BudgetUnavailable" xml:space="preserve"><value>Prüfe einen Kauf in der Vorschau, um dein verbleibendes Guthaben zu sehen.</value></data>
 </root>

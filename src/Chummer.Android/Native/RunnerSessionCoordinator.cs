@@ -343,6 +343,7 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
     private readonly ICharacterOverviewPresenter _presenter;
     private readonly ICharacterCreationResourcesInteractionPresenter? _creationResourcesPresenter;
     private readonly ICharacterCreationGearInteractionPresenter? _creationGearPresenter;
+    private readonly ICharacterCreationLoadoutInteractionPresenter? _creationLoadoutPresenter;
     private readonly IChummerClient _client;
     private readonly IOwnerContextAccessor? _damageJournalOwnerAccessor;
     private readonly IWorkspaceOperationCoordinator _workspaceOperationCoordinator;
@@ -473,12 +474,14 @@ public sealed partial class RunnerSessionCoordinator : IDisposable
         ICharacterCreationResourcesInteractionPresenter? creationResourcesPresenter = null,
         ICharacterCreationGearInteractionPresenter? creationGearPresenter = null,
         IOwnerBoundCharacterCreationCompletionReader? creationCompletionReader = null,
-        IOwnerBoundCharacterCreationCompletionService? creationCompletionService = null)
+        IOwnerBoundCharacterCreationCompletionService? creationCompletionService = null,
+        ICharacterCreationLoadoutInteractionPresenter? creationLoadoutPresenter = null)
     {
         _localRunnerAdoption = localRunnerAdoptionService;
         _presenter = presenter;
         _creationResourcesPresenter = creationResourcesPresenter;
         _creationGearPresenter = creationGearPresenter;
+        _creationLoadoutPresenter = creationLoadoutPresenter;
         _client = client;
         // Maui's existing IOwnerContextAccessor registration is the same issuing
         // accessor used by Core. Hosts that omit this capability fail closed.

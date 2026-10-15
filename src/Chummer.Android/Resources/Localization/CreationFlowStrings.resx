@@ -3635,4 +3635,21 @@
   <data name="Lifestyles.OpeningCash" xml:space="preserve"><value>Opening starting cash…</value></data>
   <data name="Lifestyles.ShowQualities" xml:space="preserve"><value>Optional lifestyle qualities</value></data>
   <data name="Lifestyles.HideQualities" xml:space="preserve"><value>Hide optional lifestyle qualities</value></data>
+  <data name="Loadout.Title" xml:space="preserve"><value>Weapons and armor</value></data>
+  <data name="Loadout.CatalogScope" xml:space="preserve"><value>Only supported weapons and armor from your enabled books are offered here.</value></data>
+  <data name="Loadout.Unavailable" xml:space="preserve"><value>Weapon and armor choices are unavailable. Reopen this runner to refresh.</value></data>
+  <data name="Loadout.Retained" xml:space="preserve"><value>Saved — retained</value></data>
+  <data name="Loadout.RetainedHelp" xml:space="preserve"><value>Saved entries will be kept when you finish this character. Only new selections can be removed here.</value></data>
+  <data name="Loadout.CheckReceipt" xml:space="preserve"><value>Check saved purchase</value></data>
+  <data name="Loadout.Confirm" xml:space="preserve"><value>Confirm weapons and armor</value></data>
+  <data name="Loadout.CancelPreview" xml:space="preserve"><value>Back to selections</value></data>
+  <data name="Loadout.Preview" xml:space="preserve"><value>Preview weapons and armor</value></data>
+  <data name="Loadout.InsufficientFunds" xml:space="preserve"><value>Not enough funds. Remove a new selection or choose something cheaper.</value></data>
+  <data name="Loadout.Weapons" xml:space="preserve"><value>Weapons</value></data>
+  <data name="Loadout.Armor" xml:space="preserve"><value>Armor</value></data>
+  <data name="Loadout.Changed" xml:space="preserve"><value>These choices could not be reviewed. Reopen this runner to refresh.</value></data>
+  <data name="Loadout.SavedReopen" xml:space="preserve"><value>Saved. Reopen the character to refresh both baskets.</value></data>
+  <data name="Loadout.Saved" xml:space="preserve"><value>Weapons and armor saved. You can continue choosing equipment.</value></data>
+  <data name="Loadout.Unknown" xml:space="preserve"><value>The purchase is not verified. Check the saved purchase before trying again.</value></data>
+  <data name="Loadout.BudgetUnavailable" xml:space="preserve"><value>Preview a purchase to review your remaining funds.</value></data>
 </root>

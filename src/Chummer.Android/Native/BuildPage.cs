@@ -2353,7 +2353,21 @@ public sealed class BuildPage : NativePageBase
         Action<CreationDashboardProjectionBinding, TResult, Exception?> accept)
     {
         TraceCreationPhase(phase, "dispatch-post", request);
-        MainThread.BeginInvokeOnMainThread(() =>
+        try
+        {
+            // Keep the terminal outcome in the queue if posting fails. The next
+            // UI refresh can take it through ResolveCreationPhase; never consume
+            // it or refresh the page on this background completion thread.
+            if (!Dispatcher.Dispatch(AcceptOnDispatcher))
+                TraceCreationPhase(phase, "dispatch-rejected", request);
+        }
+        catch (Exception error)
+        {
+            TraceCreationPhase(phase, $"dispatch-failed-{error.GetType().Name}", request);
+            throw;
+        }
+
+        void AcceptOnDispatcher()
         {
             TraceCreationPhase(phase, "dispatch-enter", request);
             if (!CanAcceptCreationPhase(request))
@@ -2395,7 +2409,7 @@ public sealed class BuildPage : NativePageBase
             {
                 RequestCreationAuthorityRefresh();
             }
-        });
+        }
     }
 
     private static void TraceCreationPhase(

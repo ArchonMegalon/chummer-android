@@ -7,6 +7,7 @@ using Chummer.Contracts.Characters;
 using Chummer.Contracts.Workspaces;
 using Chummer.Infrastructure.Workspaces;
 using Chummer.Presentation.Creation;
+using Chummer.Presentation.Overview;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui.Controls;
 
@@ -25,7 +26,7 @@ internal static partial class AfterRunAuthorityHarness
             try
             {
                 foreach (string scenario in scenarioFilter is null
-                    ? new[] { "prerequisite", "cash-read-throws", "busy-cancel", "cancel", "magic-choice-cancel", "loss-decline", "loss-owner-aba", "loss-departure", "apply", "lost-reply", "unknown", "optional-karma" }
+                    ? new[] { "prerequisite", "cash-read-throws", "busy-cancel", "cancel", "magic-choice-cancel", "loss-decline", "loss-owner-aba", "loss-departure", "apply", "lost-reply", "unknown", "optional-karma", "manual-weapon", "manual-armor", "manual-both", "manual-lost-reply", "manual-refresh-fault", "manual-cancel" }
                     : new[] { scenarioFilter })
                 {
                     CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(scenario switch
@@ -38,9 +39,12 @@ internal static partial class AfterRunAuthorityHarness
                     using var reviewPause = scenario == "busy-cancel" ? new CompletionReviewPause() : null;
                     CompletionServiceProbe? service = null;
                     ThrowingCompletionCashService? throwingCash = null;
+                    ManualLoadoutServiceProbe? loadoutService = null;
                     await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
                         creationCompletion: true, creationFinalization: true, creationPrerequisite: true,
                         productionCreationOverview: true,
+                        loadoutDecorator: actual => loadoutService = new(actual, ui)
+                        { LoseReply = scenario == "manual-lost-reply", FailRefresh = scenario == "manual-refresh-fault" },
                         completionServiceDecorator: actual =>
                         {
                             service = new(actual, ui)
@@ -55,6 +59,8 @@ internal static partial class AfterRunAuthorityHarness
                     await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
                     var before = scenario == "prerequisite"
                         ? PreparePrerequisiteOwnerFixture(runtime, CharacterCreationBuildMethods.Priority)
+                        : scenario.StartsWith("manual-", StringComparison.Ordinal)
+                            ? PrepareActualFinalizationReadyContext(runtime, stopBeforeGear: true, omitSkillsBeforeGear: true)
                         : scenario == "magic-choice-cancel"
                             ? PrepareActualFinalizationReadyContext(runtime, stopBeforeAttributes: true,
                                 attributeTalent: "Magician", attributeTalentRank: "B", completionMagic: true)
@@ -70,7 +76,13 @@ internal static partial class AfterRunAuthorityHarness
                     }
                     var files = CompletionFiles(runtime);
                     var coordinator = runtime.Coordinator;
-                    var root = new BuildPage(coordinator);
+                    var root = !scenario.StartsWith("manual-", StringComparison.Ordinal) ? new BuildPage(coordinator) : new BuildPage(coordinator,
+                        new CharacterCreationResourcesInteractionPresenter(
+                            runtime.Services.GetRequiredService<ICharacterCreationResourcesService>(),
+                            runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationResourcesService>()),
+                        runtime.Presenter, new CharacterCreationGearInteractionPresenter(
+                            runtime.Services.GetRequiredService<ICharacterCreationGearService>(),
+                            runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationGearService>()));
                     var rootScroll = (IScrollViewController)(ScrollView)root.Content!;
                     rootScroll.ScrollToRequested += (_, _) => rootScroll.SendScrollFinished();
                     var shell = new Shell();
@@ -83,6 +95,13 @@ internal static partial class AfterRunAuthorityHarness
                     await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(root, "OnAppearing")));
                     await ui.DrainDispatchedAsyncVoidAsync();
                     var navigation = root.Navigation;
+                    CharacterCreationLoadoutDraft? manualLoadout = null;
+                    if (scenario.StartsWith("manual-", StringComparison.Ordinal))
+                    {
+                        before = await PurchaseManualLoadoutThroughGearAsync(ui, runtime, owners, root, before, scenario, loadoutService!);
+                        manualLoadout = before.Document.AuxiliaryState.CharacterCreationLoadoutDraft!;
+                        files = CompletionFiles(runtime);
+                    }
                     Button open = CompletionPageControl<Button>(root, "creation-completion-open");
                     Require(open.IsEnabled, "SETUP: the unfinished Priority runner has no completion entry.");
                     await ClickCompletionControlAsync(ui, open);
@@ -203,6 +222,7 @@ internal static partial class AfterRunAuthorityHarness
                         && proposal.Intent.InputsSnapshotDigest == inputs.SnapshotDigest
                         && CharacterCreationCompletionReviewRules.ComputeInputsDigest(inputs) == inputsDigest,
                         "The default UI must request missing-only suggestions without additive permissions or changed original inputs.");
+                    if (manualLoadout is not null) AssertManualLoadoutProposal(inputs, proposal, manualLoadout);
                     if (scenario == "cash-read-throws")
                     {
                         var retainedSources = (CharacterCreationStartingNuyenSource[])typeof(CreationCompletionPage)
@@ -428,7 +448,7 @@ internal static partial class AfterRunAuthorityHarness
                     if (scenario == "optional-karma") AssertOptionalAttributeKarmaDisclosure(page, proposal);
                     int expectedLossConfirmations = CreationCompletionPage.LossItems(reviewed.Projection).Count > 0 ? 1 : 0;
 
-                    if (scenario == "cancel")
+                    if (scenario is "cancel" or "manual-cancel")
                     {
                         Button cancel = CompletionPageControl<Button>(page, "creation-completion-cancel");
                         await ClickCompletionControlAsync(ui, cancel);
@@ -482,6 +502,7 @@ internal static partial class AfterRunAuthorityHarness
                         else
                         {
                             var saved = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+                            if (manualLoadout is not null) AssertFinalManualLoadout(saved, proposal, manualLoadout);
                             Require(saved.ContentRevision == before.ContentRevision + 1
                                 && saved.SavedRevision == saved.ContentRevision
                                 && saved.Document.AuxiliaryState.CharacterCreationFinalizationReceipts?.Count == 1
@@ -504,7 +525,7 @@ internal static partial class AfterRunAuthorityHarness
                         }
                     }
                     Require(owners.ActiveLeases == 0 && alerts.Titles.Count == lossConfirmations
-                        && lossConfirmations == (scenario == "cancel" ? 0 : expectedLossConfirmations),
+                        && lossConfirmations == (scenario is "cancel" or "manual-cancel" ? 0 : expectedLossConfirmations),
                         "Completion leaked an owner lease or hid a callback error in an alert.");
                     IssuedPageLifecycle(page, "OnDisappearing");
                     ui.AssertHealthy();

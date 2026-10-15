@@ -12,6 +12,60 @@ public sealed partial class RunnerSessionCoordinator
     private sealed class CreationPurchaseAttempt { public int Started; }
     private readonly ConditionalWeakTable<object, CreationPurchaseAttempt> _purchaseAttempts = new();
 
+    internal Task<CharacterCreationFoundationResult<CharacterCreationLoadoutState>> LoadCreationLoadoutForDisplayAsync(
+        CharacterOverviewState display, CancellationToken ct)
+        => WithWorkspaceActivationGateAsync(() => Task.Run(() => ReadCreationAuthority(display,
+            () => _creationLoadoutPresenter?.Load(display, ct) ?? new(CharacterCreationFoundationOutcomes.Blocked,
+                null, [CharacterCreationLoadoutBlockers.AuthorityUnavailable]), ct), ct), ct);
+
+    internal Task<CharacterCreationLoadoutPrepareResult> PrepareCreationLoadoutForDisplayAsync(
+        CharacterOverviewState display, CharacterCreationLoadoutSelections selections, CancellationToken ct)
+        => WithWorkspaceActivationGateAsync(() => Task.Run(() => ReadCreationAuthority(display,
+            () => _creationLoadoutPresenter?.Prepare(display, selections, ct) ?? new(CharacterCreationFoundationOutcomes.Blocked,
+                null, null, [CharacterCreationLoadoutBlockers.AuthorityUnavailable]), ct), ct), ct);
+
+    internal void CancelCreationLoadout(CharacterCreationLoadoutPreparedPreview prepared)
+        => _creationLoadoutPresenter?.Cancel(prepared);
+
+    internal sealed record CreationLoadoutPurchaseResult(CharacterCreationLoadoutConfirmResult Result,
+        CharacterOverviewState? Display = null, CharacterCreationGearInteractionLoadResult? Gear = null,
+        CharacterCreationLoadoutState? Loadout = null, CharacterCreationResourcesBudget? Budget = null);
+
+    internal Task<CreationLoadoutPurchaseResult> ConfirmCreationLoadoutPurchaseAsync(
+        CharacterOverviewState original, CharacterCreationLoadoutPreparedPreview prepared, bool lookupOnly, CancellationToken ct)
+        => WithWorkspaceActivationGateAsync(async () =>
+        {
+            if (_creationLoadoutPresenter is null || _creationGearPresenter is null
+                || !(lookupOnly ? CanDisplayCreationPurchase(original) : IsCreationCatalogDisplayCurrent(original)))
+                return new CreationLoadoutPurchaseResult(new(CharacterCreationFoundationOutcomes.Blocked, null,
+                    [CharacterCreationLoadoutInteractionPresenter.DisplayMismatch]));
+            // Cancellation before scheduling does not dispatch. Once entered, recover the durable outcome separately.
+            var result = await Task.Run(() => lookupOnly
+                ? _creationLoadoutPresenter.LookupReceipt(original, prepared)
+                : _creationLoadoutPresenter.Confirm(original,
+                    new(prepared, prepared.Preview.PreviewDigest, prepared.IdempotencyKey, true), ct), ct);
+            if (result.Outcome != CharacterCreationFoundationOutcomes.Success || result.Receipt is not { } receipt)
+                return new CreationLoadoutPurchaseResult(result);
+            try
+            {
+                if (!await RefreshCreationPurchaseAsync(original, receipt.WorkspaceId, receipt.ContentRevision, receipt.SavedRevision, ct))
+                    return new CreationLoadoutPurchaseResult(result);
+                var display = State;
+                var baskets = await Task.Run(() => ReadCreationAuthority(display, () =>
+                    (Gear: _creationGearPresenter.Load(display), Loadout: _creationLoadoutPresenter.Load(display, ct)), ct), ct);
+                if (baskets.Gear.State is not { } gear || !CreationGearPhoneAuthority.IsReady(gear, display)
+                    || baskets.Loadout.Value is not { } loadout || loadout.Inputs.PendingDraft?.DraftDigest != receipt.Draft.DraftDigest
+                    || !IsCreationCatalogDisplayCurrent(display)) return new CreationLoadoutPurchaseResult(result);
+                NotifyChanged();
+                return new CreationLoadoutPurchaseResult(result, display, baskets.Gear, loadout, loadout.Budget);
+            }
+            catch (Exception error) when (error is not OutOfMemoryException)
+            {
+                // A failed/canceled refresh cannot erase a successfully validated receipt.
+                return new CreationLoadoutPurchaseResult(result);
+            }
+        }, ct);
+
     internal Task<CharacterCreationLifestylesInteractionLoadResult> LoadCreationLifestylesForDisplayAsync(
         CharacterOverviewState original, CancellationToken ct)
         => WithWorkspaceActivationGateAsync(() => Task.Run(() =>
@@ -362,6 +416,13 @@ public sealed partial class RunnerSessionCoordinator
                     || !CreationGearPhoneAuthority.RefreshedStateMatches(prepared, receipt, state)
                     || !CanDisplayCreationPurchase(original))
                     return NeedsReopen();
+                // Both purchase lanes spend the same Core budget. Never keep a pre-purchase loadout observation.
+                if (_creationLoadoutPresenter is not null)
+                {
+                    var loadout = await Task.Run(() => ReadCreationAuthority(refreshedDisplay,
+                        () => _creationLoadoutPresenter.Load(refreshedDisplay, ct), ct), ct);
+                    if (loadout.Value is null || !IsCreationCatalogDisplayCurrent(refreshedDisplay)) return NeedsReopen();
+                }
                 NotifyChanged();
                 return result with { RefreshedState = state, Blockers = [] };
             }

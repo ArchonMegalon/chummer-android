@@ -886,7 +886,8 @@ internal static partial class AfterRunAuthorityHarness
             Func<IOwnerBoundCharacterCreationCompletionReader,
                 IOwnerBoundCharacterCreationCompletionReader>? completionReaderDecorator = null,
             Func<IOwnerBoundCharacterCreationCompletionService,
-                IOwnerBoundCharacterCreationCompletionService>? completionServiceDecorator = null)
+                IOwnerBoundCharacterCreationCompletionService>? completionServiceDecorator = null,
+            Func<IOwnerBoundCharacterCreationLoadoutService, IOwnerBoundCharacterCreationLoadoutService>? loadoutDecorator = null)
         {
             _priorPreferences = Preferences.Default;
             _setPreferences = typeof(Preferences).GetMethod("SetDefault",
@@ -1026,6 +1027,9 @@ internal static partial class AfterRunAuthorityHarness
                         _provider.GetRequiredService<IOwnerBoundCharacterCreationGearService>())) ?? new CharacterCreationGearInteractionPresenter(
                         _provider.GetRequiredService<ICharacterCreationGearService>(),
                         _provider.GetRequiredService<IOwnerBoundCharacterCreationGearService>()),
+                    creationLoadoutPresenter: new CharacterCreationLoadoutInteractionPresenter(
+                        loadoutDecorator?.Invoke(_provider.GetRequiredService<IOwnerBoundCharacterCreationLoadoutService>())
+                            ?? _provider.GetRequiredService<IOwnerBoundCharacterCreationLoadoutService>()),
                     afterRunSettlementService: governedConsequences ? _provider.GetRequiredService<ICharacterAfterRunSettlementService>() : null,
                     afterRunProposalCatalog: governedConsequences ? _provider.GetRequiredService<Sr5AfterRunManualProposalSource>() : null,
                     afterRunRewardService: new WorkspaceCharacterAfterRunRewardService(store),

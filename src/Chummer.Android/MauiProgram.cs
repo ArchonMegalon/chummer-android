@@ -217,6 +217,7 @@ public static class MauiProgram
             new CharacterCreationGearInteractionPresenter(
                 provider.GetRequiredService<ICharacterCreationGearService>(),
                 provider.GetRequiredService<IOwnerBoundCharacterCreationGearService>()));
+        builder.Services.AddSingleton<ICharacterCreationLoadoutInteractionPresenter, CharacterCreationLoadoutInteractionPresenter>();
         builder.Services.AddSingleton<IWorkspaceOperationCoordinator, WorkspaceOperationCoordinator>();
         builder.Services.AddChummerWorkspaceRecovery();
         builder.Services.AddSingleton<ICharacterOverviewPresenter, CharacterOverviewPresenter>();

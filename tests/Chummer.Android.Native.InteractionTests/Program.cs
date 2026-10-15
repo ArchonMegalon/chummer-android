@@ -65,6 +65,11 @@ internal static class Program
             await AfterRunAuthorityHarness.RunCreationCompletionPageAsync(args[1]);
             return;
         }
+        if (args.Length == 3 && args[0] == "--creation-manual-loadout-content-root")
+        {
+            await AfterRunAuthorityHarness.RunCreationCompletionPageAsync(args[1], args[2]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--creation-completion-optional-karma-content-root")
         {
             await AfterRunAuthorityHarness.RunCreationCompletionPageAsync(args[1], "optional-karma");

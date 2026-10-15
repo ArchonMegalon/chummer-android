@@ -8,7 +8,7 @@ namespace Chummer.Android.Native;
 /// Phone renderer for the typed creation Gear commerce boundary. Catalog facts,
 /// prices, legality, constraints, previews, and persistence remain Core-owned.
 /// </summary>
-public sealed class CreationGearPage : NativePageBase
+public sealed partial class CreationGearPage : NativePageBase
 {
     // Keep native view creation bounded on small phones; the full admitted
     // catalogue remains searchable and reachable through the existing pager.
@@ -46,6 +46,12 @@ public sealed class CreationGearPage : NativePageBase
 
     protected override void OnDisappearing()
     {
+        _loadoutRead?.Cancel();
+        if (!_loadoutSubmitted && _loadoutPrepared is { } prepared)
+        {
+            Coordinator.CancelCreationLoadout(prepared);
+            _loadoutPrepared = null;
+        }
         _catalogRefreshGeneration++;
         _continueLifetime?.Cancel();
         _continueUnavailableState = null;
@@ -84,10 +90,33 @@ public sealed class CreationGearPage : NativePageBase
 
     protected override async Task PrepareForAppearanceRefreshAsync(CancellationToken cancellationToken)
     {
+        if (_loadoutOriginal is { } previous && !Coordinator.CanDisplayCreationPurchase(previous))
+        {
+            if (_loadoutPrepared is { } retired) Coordinator.CancelCreationLoadout(retired);
+            _loadoutPrepared = null;
+            _loadoutReceipt = null;
+            _loadoutGearBaseline = null;
+            _loadoutFeedback = null;
+            _loadoutSubmitted = false;
+            _loadoutNeedsRefresh = false;
+            _newLoadout.Clear();
+        }
+        if (_loadoutSubmitted && _loadoutPrepared is not null && _loadoutOriginal is { } unresolvedOwner
+            && Coordinator.CanDisplayCreationPurchase(unresolvedOwner))
+        {
+            // Re-entry must recover this request before loading another revision
+            // or replacing the unconfirmed Gear basket. Never resubmit Confirm.
+            _loading = false;
+            return;
+        }
+        var priorPurchaseGear = _loadoutReceipt is not null && _loadoutOriginal is { } purchaseOwner
+            && Coordinator.CanDisplayCreationPurchase(purchaseOwner) ? _loadoutGearBaseline : null;
         _continueUnavailableState = null;
         _loaded = null;
         _loadedDisplay = null;
         _ready = false;
+        _loadoutState = null;
+        _sharedPurchaseBudget = null;
         _loading = true;
         Refresh();
         CharacterOverviewState original = Coordinator.State;
@@ -106,6 +135,18 @@ public sealed class CreationGearPage : NativePageBase
             _loadedDisplay = original;
             _loaded = prepared.Load;
             _ready = prepared.Ready;
+            var loadout = await Coordinator.LoadCreationLoadoutForDisplayAsync(original, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            _loadoutState = loadout.Value;
+            _sharedPurchaseBudget = _loadoutState?.Budget;
+            if (_loadoutState is not null
+                && Coordinator.IsCreationCatalogDisplayCurrent(original))
+            {
+                PreserveStagedGearForPurchaseRefresh(priorPurchaseGear, _loaded?.State, _loadoutState, _loadoutReceipt);
+                if (!_loadoutSubmitted) _loadoutGearBaseline = null;
+                if (_loadoutNeedsRefresh) _loadoutFeedback = null;
+                _loadoutNeedsRefresh = false;
+            }
         }
         finally
         {
@@ -116,6 +157,7 @@ public sealed class CreationGearPage : NativePageBase
 
     protected override void Refresh()
     {
+        if (_loadoutBusy && _loadedDisplay is { } purchasing && Coordinator.CanDisplayCreationPurchase(purchasing)) return;
         if (_continueLifetime is not null && _loadedDisplay is { } continuing
             && Coordinator.IsCreationCatalogDisplayCurrent(continuing)) return;
         _catalogRefreshGeneration++;
@@ -128,15 +170,30 @@ public sealed class CreationGearPage : NativePageBase
         _body.Add(NativeTheme.Title(_copy["Gear.Title"]));
         _technicalDetails.Add(NativeTheme.Body(_copy["Gear.Intro"], NativeTheme.Muted));
 
+        if (_loadoutNeedsRefresh && _loadoutOriginal is { } savedOriginal && Coordinator.CanDisplayCreationPurchase(savedOriginal))
+        {
+            _body.Add(NativeTheme.Body(LoadoutCopy("SavedReopen", "Saved. Reopen the character to refresh both baskets."), NativeTheme.Muted));
+            return;
+        }
+
         if (_loading)
         {
             _body.Add(new ActivityIndicator { IsRunning = true, AutomationId = "creation-gear-loading" });
             _body.Add(NativeTheme.Body(CreationFlowStrings.Get("Gear.Loading", "Loading gear…"), NativeTheme.Muted));
             return;
         }
+        if (_loadoutSubmitted && _loadoutPrepared is not null && _loadoutOriginal is { } unresolvedOwner
+            && Coordinator.CanDisplayCreationPurchase(unresolvedOwner))
+        {
+            AddLoadout();
+            return;
+        }
         if (_loaded is not { } load || _loadedDisplay is not { } original
             || !Coordinator.IsCreationCatalogDisplayCurrent(original))
         {
+            if (_loadoutReceipt is not null && _loadoutOriginal is { } savedDisplay
+                && Coordinator.CanDisplayCreationPurchase(savedDisplay))
+                _body.Add(NativeTheme.Body(LoadoutCopy("SavedReopen", "Saved. Reopen the character to refresh both baskets."), NativeTheme.Muted));
             AddBlockers(_copy["Gear.AuthorityUnavailable"],
                 [CharacterCreationGearInteractionBlockers.BindingMismatch], "creation-gear-unavailable");
             return;
@@ -166,6 +223,7 @@ public sealed class CreationGearPage : NativePageBase
             _technicalDetails.Add(CreationResourcesPreviewPage.CreateReceiptDetails(receipt));
         AddBinding(state);
         AddPersistedBudget(state);
+        AddLoadout();
         if (!_ready)
         {
             AddBlockers(
@@ -222,7 +280,9 @@ public sealed class CreationGearPage : NativePageBase
         card.Add(NativeTheme.Eyebrow(_copy["Gear.PersistedDraft"]));
         card.Add(NativeTheme.Metric(_copy["Gear.StartingNuyen"], Nuyen(state.Budget.TotalStartingNuyen)));
         card.Add(NativeTheme.Metric(_copy["Gear.BasketCost"], Nuyen(state.Budget.BasketCost)));
-        card.Add(NativeTheme.Metric(_copy["Common.Remaining"], Nuyen(state.Budget.RemainingNuyen)));
+        if (_sharedPurchaseBudget is { } shared)
+            card.Add(NativeTheme.Metric(_copy["Common.Remaining"], Nuyen(shared.RemainingNuyen)));
+        else card.Add(NativeTheme.Body(LoadoutCopy("BudgetUnavailable", "Preview a purchase to review your remaining funds."), NativeTheme.Muted));
         card.Add(NativeTheme.Metric(_copy["Common.Lines"], (state.PendingDraft?.Lines.Count ?? 0).ToString(_copy.DisplayCulture)));
         card.Add(NativeTheme.Body(
             state.PendingDraft is null
@@ -232,7 +292,8 @@ public sealed class CreationGearPage : NativePageBase
                 : CreationFlowStrings.Get("Gear.SavedBasket", "Your equipment choices are saved."),
             NativeTheme.Muted));
         _technicalDetails.Add(ExactValue("creation-gear-saved-basket-cost", state.Budget.BasketCost));
-        _technicalDetails.Add(ExactValue("creation-gear-saved-remaining-nuyen", state.Budget.RemainingNuyen));
+        if (_sharedPurchaseBudget is { } budget)
+            _technicalDetails.Add(ExactValue("creation-gear-saved-remaining-nuyen", budget.RemainingNuyen));
         if (state.PendingDraft is { } pending)
         {
             _technicalDetails.Add(ExactValue("creation-gear-saved-draft-revision", pending.DraftRevision));
@@ -428,6 +489,7 @@ public sealed class CreationGearPage : NativePageBase
     }
 
     private bool IsCatalogCurrent() => ReferenceEquals(_catalog.Parent, _body)
+        && !_loadoutBusy && !_loadoutSubmitted && !_loadoutNeedsRefresh
         && IsCurrentAppearanceGeneration(CaptureAppearanceGeneration())
         && _loadedDisplay is { } original && Coordinator.IsCreationCatalogDisplayCurrent(original);
 
@@ -536,7 +598,9 @@ public sealed class CreationGearPage : NativePageBase
         int quantity)
     {
         // Retained controls may belong to a departed appearance or account.
-        if (_continueLifetime is not null || !_ready || !ReferenceEquals(state, _loaded?.State)
+        if (_continueLifetime is not null || _loadoutBusy || _loadoutSubmitted || _loadoutNeedsRefresh
+            || !IsCurrentAppearanceGeneration(CaptureAppearanceGeneration())
+            || !_ready || !ReferenceEquals(state, _loaded?.State)
             || _loadedDisplay is not { } original
             || !Coordinator.IsCreationCatalogDisplayCurrent(original)) return;
         if (!CreationGearPhoneBasket.TrySetQuantity(
@@ -579,7 +643,7 @@ public sealed class CreationGearPage : NativePageBase
 
     private async Task OpenPreviewAsync(CharacterCreationGearInteractionState state)
     {
-        if (_continueLifetime is not null) return;
+        if (_continueLifetime is not null || _loadoutBusy || _loadoutSubmitted || _loadoutNeedsRefresh) return;
         if (!CreationGearPhoneBasket.TryCreateSelections(
                 _basket,
                 state.Authority.MaximumBasketLines,
@@ -687,7 +751,7 @@ public sealed class CreationGearPage : NativePageBase
         (target ?? _body).Add(border);
     }
 
-    private string Nuyen(decimal value) => value.ToString("N0", _copy.DisplayCulture) + " ¥";
+    private string Nuyen(decimal value) => value.ToString("#,0.############################", _copy.DisplayCulture) + " ¥";
     private string ShortDigest(string value) =>
         string.IsNullOrWhiteSpace(value) ? _copy["Common.Unavailable"] : value[..Math.Min(19, value.Length)];
     private static string Token(string value) => new string(value.Select(character => char.IsLetterOrDigit(character)
@@ -1017,7 +1081,7 @@ public sealed class CreationGearPreviewPage : NativePageBase
         return details;
     }
 
-    private string Nuyen(decimal value) => value.ToString("N0", _copy.DisplayCulture) + " ¥";
+    private string Nuyen(decimal value) => value.ToString("#,0.############################", _copy.DisplayCulture) + " ¥";
     private static string Token(string value) => new string(value.Select(character => char.IsLetterOrDigit(character)
         ? char.ToLowerInvariant(character)
         : '-').ToArray());
