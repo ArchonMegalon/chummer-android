@@ -1,6 +1,7 @@
 import ast
 import re
 import unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 
@@ -11,6 +12,55 @@ DRIVER = REPO / "tests" / "run_api36_creation_wizard_foundation_e2e.py"
 
 
 class CreationWizardSourceContractTests(unittest.TestCase):
+    def test_prerequisite_missing_choices_reuse_exact_selection_and_grant_readiness(self) -> None:
+        source = (NATIVE / "CreationPrerequisitePage.cs").read_text(encoding="utf-8")
+        self.assertIn("missingRequired: selected is null", source)
+        self.assertIn("missingRequired: selectedHeritage is null", source)
+        missing = source.split("bool missingTalentChoice =", 1)[1].split(";", 1)[0]
+        self.assertIn("selectedTalent is null", missing)
+        self.assertIn("!CreationPrerequisitePhoneAuthority.TalentGrantSelectionsComplete(", missing)
+        self.assertIn("_draft.TalentActiveSkillSelectionIds(state, Coordinator.State)", missing)
+        self.assertIn("_draft.TalentSkillGroupSelectionIds(state, Coordinator.State)", missing)
+        self.assertNotIn(".Quantity", missing)
+        self.assertIn("missingRequired: missingTalentChoice", source)
+
+    def test_dashboard_marks_only_current_required_incomplete_choices(self) -> None:
+        source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
+        missing = source.split("private bool IsMissingRequiredCreationChoice(", 1)[1].split("private ", 1)[0]
+        self.assertIn("stepId == CharacterCreationWizardStepIds.Review", missing)
+        self.assertIn("Outcome: CharacterCreationFinalizationOutcomes.Available", missing)
+        self.assertIn("_creationFinalizationBinding?.Matches(Coordinator.State, snapshot) != true", missing)
+        self.assertIn("!Coordinator.IsCreationFinalizationDisplayCurrent(Coordinator.State)", missing)
+        self.assertNotIn("IsCreationFinalizationStateCurrent", missing)
+        self.assertIn("step.StepId == stepId && step.IsRequired && !step.IsComplete", missing)
+        self.assertNotIn(".Remaining", missing)
+        stages = source.split("private IReadOnlyDictionary<string, CreationBudgetRoute> AddWizardStages(", 1)[1].split("private ", 1)[0]
+        self.assertIn("missingRequired: IsMissingRequiredCreationChoice(stage.StepId)", stages)
+        self.assertIn("enabled: canOpen", stages)
+        wrapper = source.split("private Border CreationNavigationRow(", 1)[1].split("private ", 1)[0]
+        self.assertIn("missingRequired: missingRequired", wrapper)
+        self.assertIn("RunCreationNavigationAsync(selected, pressGeneration)", wrapper)
+
+    def test_missing_required_choice_style_is_readable_and_not_color_only(self) -> None:
+        source = (NATIVE / "NativeTheme.cs").read_text(encoding="utf-8")
+        row = source.split("public static Border NavigationRow(", 1)[1].split("public static ", 1)[0]
+        self.assertIn("bool missingRequired = false", row)
+        self.assertIn("Body(title, missingRequired ? Danger : Text)", row)
+        self.assertIn("if (missingRequired)\n            card.Stroke = Danger", row)
+        self.assertIn("copy.Add(RequiredChoiceNotice(", row)
+        self.assertIn("card.Opacity = enabled || missingRequired ? 1 : 0.55", row)
+        self.assertIn("IsEnabled = enabled", row)
+        self.assertIn("SemanticProperties.SetDescription(interaction, description)", row)
+        self.assertIn('description += ". " + CreationFlowStrings.Get("Common.RequiredChoiceMissing"', row)
+
+    def test_required_choice_notice_has_all_existing_creation_localizations(self) -> None:
+        resources = REPO / "src" / "Chummer.Android" / "Resources" / "Localization"
+        for suffix in ("", ".de", ".es"):
+            root = ET.parse(resources / f"CreationFlowStrings{suffix}.resx").getroot()
+            notices = root.findall("data[@name='Common.RequiredChoiceMissing']/value")
+            self.assertEqual(1, len(notices), suffix)
+            self.assertTrue(notices[0].text and notices[0].text.strip(), suffix)
+
     def test_dashboard_budgets_use_one_flat_card_without_repeated_action_copy(self) -> None:
         source = (NATIVE / "BuildPage.cs").read_text(encoding="utf-8")
         ribbon = source.split("private void AddBudgetRibbon(", 1)[1].split("private ", 1)[0]

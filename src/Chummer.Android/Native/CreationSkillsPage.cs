@@ -170,7 +170,8 @@ public sealed class CreationSkillsPage : CreationAutosavePage
             .Where(item => item.CanBeNativeLanguage).ToArray();
         if (options.Length == 0) return;
         VerticalStackLayout card = new() { Spacing = 8 };
-        card.Add(NativeTheme.Eyebrow(CreationAllocationStrings.Get("Skills.NativeLanguage", "Native language")));
+        Label heading = NativeTheme.Eyebrow(CreationAllocationStrings.Get("Skills.NativeLanguage", "Native language"));
+        card.Add(heading);
         string[] chosen = options.Where(option => _draft.Skills.Any(item =>
                 item.Kind == option.Kind && item.SourceSkillId == option.SourceSkillId && item.IsNativeLanguage))
             .Select(option => SkillCatalogStrings.SkillName(option.Kind, option.SourceSkillId, option.Name)).ToArray();
@@ -180,13 +181,15 @@ public sealed class CreationSkillsPage : CreationAutosavePage
         }
         else
         {
+            heading.TextColor = NativeTheme.Danger;
+            card.Add(NativeTheme.RequiredChoiceNotice("creation-skills-native-language-required"));
             Picker picker = new()
             {
                 Title = CreationAllocationStrings.Get("Skills.ChooseNativeLanguage", "Choose native language"),
                 ItemsSource = options.Select(option => SkillCatalogStrings.SkillName(option.Kind, option.SourceSkillId, option.Name)).ToArray(),
                 SelectedIndex = -1,
                 TextColor = NativeTheme.Text,
-                TitleColor = NativeTheme.Muted,
+                TitleColor = NativeTheme.Danger,
                 BackgroundColor = NativeTheme.Surface,
                 FontSize = 16,
                 AutomationId = "creation-skills-native-language-picker"
@@ -211,6 +214,7 @@ public sealed class CreationSkillsPage : CreationAutosavePage
             card.Add(choose);
         }
         Border border = NativeTheme.Card(card);
+        if (chosen.Length == 0) border.Stroke = new SolidColorBrush(NativeTheme.Danger);
         border.AutomationId = "creation-skills-native-language";
         _body.Add(border);
     }

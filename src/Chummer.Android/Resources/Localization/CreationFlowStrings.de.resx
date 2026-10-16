@@ -1,5 +1,101 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="Completion.OptionalKarmaFunding" xml:space="preserve"><value>Weitere Attributvorschläge waren innerhalb der gewählten Grenzen nicht finanzierbar. Bisherige Entscheidungen und Reserven bleiben erhalten. Prüfe diesen Vorschlag vor dem Übernehmen.</value></data>
+  <data name="Completion.OptionalKarmaGoals" xml:space="preserve"><value>Einige optionale Attributziele bleiben unerreicht. Bisherige Entscheidungen und Reserven bleiben erhalten. Prüfe diesen Vorschlag vor dem Übernehmen.</value></data>
+  <data name="Completion.OptionalKarmaRating" xml:space="preserve"><value>{0}: vorgeschlagen {1}, optionales Ziel {2}</value></data>
+  <data name="Completion.Working" xml:space="preserve"><value>Deine Auswahl wird geprüft…</value></data>
+  <data name="Completion.Loss.Title" xml:space="preserve"><value>Ungenutzte Ressourcen, die verfallen</value></data>
+  <data name="Completion.Loss.Help" xml:space="preserve"><value>Diese Ressourcen werden nicht in die Karriere übernommen. Verteile sie noch oder fahre ausdrücklich fort.</value></data>
+  <data name="Completion.Loss.Continue" xml:space="preserve"><value>Mit diesen Verlusten fortfahren</value></data>
+  <data name="Completion.Loss.Back" xml:space="preserve"><value>Weiter bearbeiten</value></data>
+  <data name="Completion.Loss.NormalAttributes" xml:space="preserve"><value>Normale Attributspunkte</value></data>
+  <data name="Completion.Loss.SpecialAttributes" xml:space="preserve"><value>Spezielle Attributspunkte</value></data>
+  <data name="Completion.Loss.ActiveSkills" xml:space="preserve"><value>Punkte für Aktionsfertigkeiten</value></data>
+  <data name="Completion.Loss.SkillGroups" xml:space="preserve"><value>Fertigkeitsgruppenpunkte</value></data>
+  <data name="Completion.Loss.KnowledgeSkills" xml:space="preserve"><value>Punkte für Wissensfertigkeiten</value></data>
+  <data name="Completion.Loss.Karma" xml:space="preserve"><value>Erschaffungskarma</value></data>
+  <data name="Completion.Loss.Nuyen" xml:space="preserve"><value>Erschaffungsnuyen</value></data>
+  <data name="Completion.Title" xml:space="preserve"><value>Diesen Charakter fertigstellen</value></data>
+  <data name="Completion.Entry" xml:space="preserve"><value>Prüfe Startvorschläge unter Beibehaltung deiner Auswahl. Übernimm sie erst nach der Abschlussprüfung.</value></data>
+  <data name="Completion.Unsupported" xml:space="preserve"><value>Startvorschläge unterstützen derzeit SR5-Priorität und Sum-to-Ten. Nutze für diese Methode die normalen Erstellungsschritte.</value></data>
+  <data name="Completion.Scope" xml:space="preserve"><value>Verteile freie Punkte und erhalte Vorschläge für Kontakte, Lebensstil, Grundausstattung, eine Waffe und Rüstung. Manche Ausrüstungs- und Magieoptionen bleiben zu prüfen. Erst Übernehmen ändert deinen Charakter.</value></data>
+  <data name="Completion.ContactAddition" xml:space="preserve"><value>{0} · Einfluss {1}, Loyalität {2}</value></data>
+  <data name="Completion.NoLoss" xml:space="preserve"><value>Es verfallen keine freien Punkte oder überschüssigen Mittel.</value></data>
+  <data name="Completion.LoadBlocked" xml:space="preserve"><value>Schließe zuerst die Erstellungsmethode ab und öffne die Vorschläge erneut. Deine bisherige Auswahl bleibt unverändert.</value></data>
+  <data name="Completion.Stale" xml:space="preserve"><value>Dein Runner oder Konto hat sich geändert. Kehre zur Erstellung zurück und öffne eine neue Prüfung.</value></data>
+  <data name="Completion.Archetype" xml:space="preserve"><value>Archetyp</value></data>
+  <data name="Completion.Neutral" xml:space="preserve"><value>Noch keine eindeutige Rolle: Ein allgemeiner Startvorschlag ist gewählt. Du kannst ihn ändern.</value></data>
+  <data name="Completion.Prefill" xml:space="preserve"><value>Aus deiner bisherigen Auswahl vorgeschlagen. Du kannst den Archetyp ändern.</value></data>
+  <data name="Completion.NoPack" xml:space="preserve"><value>Für diesen Archetyp gibt es noch keine Startvorschläge. Behalte dein Talent und fahre manuell fort oder wähle einen anderen Vorschlagsstil.</value></data>
+  <data name="Completion.KeepChoices" xml:space="preserve"><value>Deine bisherigen Entscheidungen bleiben unverändert. Vorschläge ergänzen nur noch offene Entscheidungen.</value></data>
+  <data name="Completion.MagicTradition" xml:space="preserve"><value>Tradition</value></data>
+  <data name="Completion.MagicStream" xml:space="preserve"><value>Strömung</value></data>
+  <data name="Completion.MagicChoiceHelp" xml:space="preserve"><value>Die angezeigte Auswahl ist ein Vorschlag. Du kannst sie vor der Vorschau ändern. Gespeicherte Magieentscheidungen bleiben unverändert.</value></data>
+  <data name="Completion.MagicSpell" xml:space="preserve"><value>Zauber</value></data>
+  <data name="Completion.MagicComplexForm" xml:space="preserve"><value>Komplexe Form</value></data>
+  <data name="Completion.MagicChanges" xml:space="preserve"><value>Vorgeschlagene Magieentscheidungen</value></data>
+  <data name="Completion.MagicUnknown" xml:space="preserve"><value>Nicht verfügbare Magieoption</value></data>
+  <data name="Completion.AttributeChoiceIntent" xml:space="preserve"><value>Deine gespeicherte Attributverteilung bleibt unverändert. Der Assistent erkennt nicht, welche Werte du bewusst beibehalten hast. Verteile übrige Attributpunkte selbst in der Erstellung.</value></data>
+  <data name="Completion.Preview" xml:space="preserve"><value>Vorschläge ansehen</value></data>
+  <data name="Completion.Proposal" xml:space="preserve"><value>Vorgeschlagene Werte</value></data>
+  <data name="Completion.Rating" xml:space="preserve"><value>{0}: vorgeschlagen {1}, Ziel {2} · {3}</value></data>
+  <data name="Completion.Met" xml:space="preserve"><value>Ziel erreicht</value></data>
+  <data name="Completion.Locked" xml:space="preserve"><value>unverändert beibehalten</value></data>
+  <data name="Completion.Unavailable" xml:space="preserve"><value>Quelle nicht verfügbar</value></data>
+  <data name="Completion.Unmet" xml:space="preserve"><value>Ziel nicht erreicht</value></data>
+  <data name="Completion.NotEvaluated" xml:space="preserve"><value>nicht geprüft</value></data>
+  <data name="Completion.Remaining" xml:space="preserve"><value>Noch zu prüfen</value></data>
+  <data name="Completion.KarmaBefore" xml:space="preserve"><value>Verbleibendes Erstellungs-Karma</value></data>
+  <data name="Completion.NuyenBefore" xml:space="preserve"><value>Verbleibende Erstellungs-Nuyen</value></data>
+  <data name="Completion.CashUnavailable" xml:space="preserve"><value>Die Startgeldbedingungen sind nicht verfügbar. Prüfe deinen Lebensstil in der Erstellung und öffne diese Vorschläge erneut.</value></data>
+  <data name="Completion.Review" xml:space="preserve"><value>Prüfen und Abschluss kontrollieren</value></data>
+  <data name="Completion.FinalReview" xml:space="preserve"><value>Vor dem Übernehmen prüfen</value></data>
+  <data name="Completion.Change" xml:space="preserve"><value>Charakteränderung</value></data>
+  <data name="Completion.CareerTransition" xml:space="preserve"><value>Erstellung → Karriere</value></data>
+  <data name="Completion.KarmaAfter" xml:space="preserve"><value>Karriere-Karma</value></data>
+  <data name="Completion.NuyenAfter" xml:space="preserve"><value>Karriere-Nuyen</value></data>
+  <data name="Completion.Carryover" xml:space="preserve"><value>Überschüssige Erstellungsmittel verfallen beim Karrierebeginn. Startgeld wird danach hinzugefügt.</value></data>
+  <data name="Completion.ConfirmHelp" xml:space="preserve"><value>Übernehmen speichert alle geprüften Änderungen zusammen und beginnt die Karriere. Abbrechen kehrt ohne Änderungen zur Erstellung zurück.</value></data>
+  <data name="Completion.Apply" xml:space="preserve"><value>Übernehmen und Karriere beginnen</value></data>
+  <data name="Completion.Saving" xml:space="preserve"><value>Speichern und Karriere öffnen…</value></data>
+  <data name="Completion.Unknown" xml:space="preserve"><value>Das Speicherergebnis muss geprüft werden. Reiche keinen weiteren Abschluss ein.</value></data>
+  <data name="Completion.CheckResult" xml:space="preserve"><value>Speicherergebnis prüfen</value></data>
+  <data name="Completion.Rejected" xml:space="preserve"><value>Diese Änderungen wurden nicht übernommen. Kehre zur Erstellung zurück und prüfe deine Auswahl.</value></data>
+  <data name="Completion.Saved" xml:space="preserve"><value>Deine Änderungen sind gespeichert. Fahre mit deinem gespeicherten Karriere-Runner fort.</value></data>
+  <data name="Completion.Continue" xml:space="preserve"><value>Zum gespeicherten Runner</value></data>
+  <data name="Completion.ReceiptAccount" xml:space="preserve"><value>Kehre zum ursprünglichen Konto zurück, um diese Bestätigung zu sehen.</value></data>
+  <data name="Completion.Cancel" xml:space="preserve"><value>Abbrechen / in Erstellung anpassen</value></data>
+  <data name="Completion.BackFailed" xml:space="preserve"><value>Rückkehr zur Erstellung fehlgeschlagen. Versuche erneut Zurück.</value></data>
+  <data name="Completion.Blocked" xml:space="preserve"><value>Einige Entscheidungen konnten nicht geprüft werden. Kehre zur Erstellung zurück, prüfe die Pflichtschritte und erstelle einen neuen Vorschlag.</value></data>
+  <data name="Completion.UnknownSkill" xml:space="preserve"><value>Nicht verfügbare Fertigkeit</value></data>
+  <data name="Completion.SkillGroup" xml:space="preserve"><value>Fertigkeitsgruppe</value></data>
+  <data name="Completion.Loadout" xml:space="preserve"><value>Grundausstattung, eine Waffe und Rüstung ergeben noch keine vollständige Ausrüstung.</value></data>
+  <data name="Completion.LoadoutItems" xml:space="preserve"><value>Vorgeschlagene Waffen und Rüstung (einschließlich beibehaltener Auswahl)</value></data>
+  <data name="Completion.LoadoutLine" xml:space="preserve"><value>{0} × {1}: {2} ¥</value></data>
+  <data name="Completion.AmmoExtras" xml:space="preserve"><value>Lose Munition kann vorgeschlagen werden. Waffenzuordnung, Laden und Modifikationen musst du noch prüfen.</value></data>
+  <data name="Completion.AdvancedGear" xml:space="preserve"><value>Kommlinks, Ausrüstung mit Stufen und mitgeliefertes Zubehör sind in diesen Vorschlägen nicht enthalten.</value></data>
+  <data name="Completion.LoadoutExtras" xml:space="preserve"><value>Prüfe Munition, Modifikationen und Ausrüstung mit Stufen in der Erschaffung; sie sind in den Waffen- und Rüstungsvorschlägen nicht enthalten.</value></data>
+  <data name="Completion.WeaponNeeded" xml:space="preserve"><value>Prüfe deine Waffenauswahl in der Erschaffung.</value></data>
+  <data name="Completion.ArmorNeeded" xml:space="preserve"><value>Prüfe deine Rüstungsauswahl in der Erschaffung.</value></data>
+  <data name="Completion.Identity" xml:space="preserve"><value>Prüfe Namen, Identität und Geschichte selbst.</value></data>
+  <data name="Completion.Targets" xml:space="preserve"><value>Einige Startziele sind gesperrt, nicht verfügbar oder unerreicht. Sie sind Empfehlungen, keine automatische Änderungserlaubnis.</value></data>
+  <data name="Completion.Magic" xml:space="preserve"><value>Prüfe die für dein Talent erforderlichen Magieentscheidungen.</value></data>
+  <data name="Completion.SkillsNeeded" xml:space="preserve"><value>Prüfe Fertigkeiten, Muttersprache und unverteilte Fertigkeitspunkte.</value></data>
+  <data name="Completion.AttributesNeeded" xml:space="preserve"><value>Prüfe deine Attributverteilung.</value></data>
+  <data name="Completion.LifestyleNeeded" xml:space="preserve"><value>Prüfe Lebensstil und Startgeld-Auswahl.</value></data>
+  <data name="Completion.ContactsNeeded" xml:space="preserve"><value>Prüfe deine Kontakte.</value></data>
+  <data name="Completion.ResourcesNeeded" xml:space="preserve"><value>Prüfe deine Erstellungsmittel.</value></data>
+  <data name="Completion.GearNeeded" xml:space="preserve"><value>Prüfe deine Ausrüstungswahl.</value></data>
+  <data name="Completion.QualitiesNeeded" xml:space="preserve"><value>Prüfe deine Vor- und Nachteile.</value></data>
+  <data name="Completion.ManualNeeded" xml:space="preserve"><value>Dieser Teil muss noch manuell in der Erstellung geprüft werden.</value></data>
+  <data name="Completion.Selected" xml:space="preserve"><value>gewählte Option</value></data>
+  <data name="Completion.Archetype.General" xml:space="preserve"><value>Allround-Überlebender</value></data>
+  <data name="Completion.Archetype.Samurai" xml:space="preserve"><value>Straßensamurai</value></data>
+  <data name="Completion.Archetype.Face" xml:space="preserve"><value>Face</value></data>
+  <data name="Completion.Archetype.Mage" xml:space="preserve"><value>Magier</value></data>
+  <data name="Completion.Archetype.Decker" xml:space="preserve"><value>Decker</value></data>
+  <data name="Completion.Archetype.Rigger" xml:space="preserve"><value>Rigger</value></data>
+  <data name="Common.RequiredChoiceMissing" xml:space="preserve"><value>Erforderliche Auswahl fehlt</value></data>
   <data name="Gear.Type.Ammunition" xml:space="preserve"><value>Munition</value></data>
   <data name="Gear.Type.Audio Enhancements" xml:space="preserve"><value>Audioverstärkung</value></data>
   <data name="Gear.Type.Biotech" xml:space="preserve"><value>Biotech</value></data>
@@ -2315,4 +2411,21 @@
   <data name="Lifestyles.OpeningCash" xml:space="preserve"><value>Startgeld wird geöffnet…</value></data>
   <data name="Lifestyles.ShowQualities" xml:space="preserve"><value>Optionale Lebensstil-Vor- und Nachteile</value></data>
   <data name="Lifestyles.HideQualities" xml:space="preserve"><value>Lebensstil-Vor- und Nachteile zuklappen</value></data>
+  <data name="Loadout.Title" xml:space="preserve"><value>Waffen und Rüstung</value></data>
+  <data name="Loadout.CatalogScope" xml:space="preserve"><value>Hier erscheinen nur unterstützte Waffen und Rüstungen aus deinen aktivierten Büchern.</value></data>
+  <data name="Loadout.Unavailable" xml:space="preserve"><value>Waffen und Rüstungen sind nicht verfügbar. Öffne diesen Runner erneut.</value></data>
+  <data name="Loadout.Retained" xml:space="preserve"><value>Gespeichert — bleibt erhalten</value></data>
+  <data name="Loadout.RetainedHelp" xml:space="preserve"><value>Gespeicherte Einträge bleiben beim Fertigstellen erhalten. Hier kannst du nur neue Auswahlen entfernen.</value></data>
+  <data name="Loadout.CheckReceipt" xml:space="preserve"><value>Gespeicherten Kauf prüfen</value></data>
+  <data name="Loadout.Confirm" xml:space="preserve"><value>Waffen und Rüstung bestätigen</value></data>
+  <data name="Loadout.CancelPreview" xml:space="preserve"><value>Zurück zur Auswahl</value></data>
+  <data name="Loadout.Preview" xml:space="preserve"><value>Waffen und Rüstung prüfen</value></data>
+  <data name="Loadout.InsufficientFunds" xml:space="preserve"><value>Nicht genug Geld. Entferne eine neue Auswahl oder wähle etwas Günstigeres.</value></data>
+  <data name="Loadout.Weapons" xml:space="preserve"><value>Waffen</value></data>
+  <data name="Loadout.Armor" xml:space="preserve"><value>Rüstung</value></data>
+  <data name="Loadout.Changed" xml:space="preserve"><value>Diese Auswahl konnte nicht geprüft werden. Öffne diesen Runner erneut.</value></data>
+  <data name="Loadout.SavedReopen" xml:space="preserve"><value>Gespeichert. Öffne den Charakter erneut, um beide Warenkörbe zu aktualisieren.</value></data>
+  <data name="Loadout.Saved" xml:space="preserve"><value>Waffen und Rüstung gespeichert. Du kannst weitere Ausrüstung auswählen.</value></data>
+  <data name="Loadout.Unknown" xml:space="preserve"><value>Der Kauf ist nicht bestätigt. Prüfe den gespeicherten Kauf, bevor du es erneut versuchst.</value></data>
+  <data name="Loadout.BudgetUnavailable" xml:space="preserve"><value>Prüfe einen Kauf in der Vorschau, um dein verbleibendes Guthaben zu sehen.</value></data>
 </root>

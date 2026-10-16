@@ -17,6 +17,16 @@ internal sealed class CreationAttributesPhoneDraft
     private CharacterCreationAttributesPreview? _projection;
     private CharacterCreationAttributesState? _preparedState;
     private CharacterCreationAttributesService.DraftSession? _session;
+    private string[]? _playerChosenAttributeIds;
+
+    // Null means a legacy draft whose individual choices are unknown. Returning
+    // detached values keeps speculative affordances and workers out of UI state.
+    public IReadOnlyList<string>? PlayerChosenAttributeIds => _playerChosenAttributeIds?.ToArray();
+
+    public IReadOnlyList<string>? PlayerChosenIdsForChoice(string attributeId)
+        => _playerChosenAttributeIds is null ? null
+            : _playerChosenAttributeIds.Append(attributeId).Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal).ToArray();
 
     public bool HasPreparedState(CharacterCreationAttributesState state)
         => ReferenceEquals(_preparedState, state) && _session is not null;
@@ -27,17 +37,23 @@ internal sealed class CreationAttributesPhoneDraft
 
     public CharacterCreationFoundationResult<CharacterCreationAttributesPreview> PreviewPrepared(
         CharacterCreationAttributesState state, IReadOnlyList<CharacterCreationAttributeAllocation> allocations)
-        => HasPreparedState(state) ? _session!.Preview(allocations)
+        => PreviewPrepared(state, allocations, PlayerChosenAttributeIds);
+
+    public CharacterCreationFoundationResult<CharacterCreationAttributesPreview> PreviewPrepared(
+        CharacterCreationAttributesState state, IReadOnlyList<CharacterCreationAttributeAllocation> allocations,
+        IReadOnlyList<string>? playerChosenAttributeIds)
+        => HasPreparedState(state) ? _session!.Preview(allocations, playerChosenAttributeIds)
             : new(CharacterCreationFoundationOutcomes.Blocked, null,
                 [CharacterCreationAttributesBlockers.StaleWorkspaceRevision]);
 
     public Func<bool> PrepareSelection(CharacterCreationAttributesState state, CharacterOverviewState overview,
-        IReadOnlyList<CharacterCreationAttributeAllocation> allocations)
+        IReadOnlyList<CharacterCreationAttributeAllocation> allocations, IReadOnlyList<string>? playerChosenAttributeIds)
     {
         var session = HasPreparedState(state) ? _session : null;
         var copied = allocations.ToArray();
+        var copiedIds = playerChosenAttributeIds?.ToArray();
         return () => session is not null && CreationAttributesPhoneAuthority.CanAdoptPreview(
-            state, overview, session.Preview(copied), copied);
+            state, overview, session.Preview(copied, copiedIds), copied, copiedIds);
     }
 
     // Worker preparation owns a copy; it must never enumerate or update the UI draft.
@@ -47,7 +63,8 @@ internal sealed class CreationAttributesPhoneDraft
         {
             _binding = _binding,
             _snapshotDigest = _snapshotDigest,
-            _projection = _projection
+            _projection = _projection,
+            _playerChosenAttributeIds = _playerChosenAttributeIds?.ToArray()
         };
         foreach (var allocation in _allocations)
             copy._allocations.Add(allocation.Key, allocation.Value);
@@ -71,6 +88,7 @@ internal sealed class CreationAttributesPhoneDraft
         _binding = null;
         _snapshotDigest = null;
         _projection = null;
+        _playerChosenAttributeIds = null;
         _allocations.Clear();
         RetireSession();
         if (!CreationAttributesPhoneAuthority.IsReady(state, overview))
@@ -78,6 +96,8 @@ internal sealed class CreationAttributesPhoneDraft
 
         _binding = state.Binding;
         _snapshotDigest = state.SnapshotDigest;
+        _playerChosenAttributeIds = state.PendingDraft is { } pending
+            ? pending.PlayerChosenAttributeIds?.ToArray() : [];
         IEnumerable<CharacterCreationAttributeAllocation> restored =
             state.PendingDraft?.Allocations
             ?? state.Attributes.Select(attribute => new CharacterCreationAttributeAllocation(
@@ -172,13 +192,24 @@ internal sealed class CreationAttributesPhoneDraft
         CharacterOverviewState overview,
         CharacterCreationFoundationResult<CharacterCreationAttributesPreview> result,
         IReadOnlyList<CharacterCreationAttributeAllocation> allocations)
+        => TryAdopt(state, overview, result, allocations, result.Value?.PlayerChosenAttributeIds);
+
+    public bool TryAdopt(
+        CharacterCreationAttributesState state,
+        CharacterOverviewState overview,
+        CharacterCreationFoundationResult<CharacterCreationAttributesPreview> result,
+        IReadOnlyList<CharacterCreationAttributeAllocation> allocations,
+        IReadOnlyList<string>? playerChosenAttributeIds)
     {
         if (!Matches(state, overview)
             || !CreationAttributesPhoneAuthority.CanAdoptPreview(
                 state,
                 overview,
                 result,
-                allocations)
+                allocations,
+                playerChosenAttributeIds)
+            || _playerChosenAttributeIds is { Length: > 0 } retainedIds
+                && (playerChosenAttributeIds is null || retainedIds.Any(id => !playerChosenAttributeIds.Contains(id, StringComparer.Ordinal)))
             || result.Value is not { } preview)
         {
             return false;
@@ -188,6 +219,7 @@ internal sealed class CreationAttributesPhoneDraft
         foreach (CharacterCreationAttributeAllocation allocation in allocations)
             _allocations.Add(allocation.AttributeId, allocation);
         _projection = preview;
+        _playerChosenAttributeIds = playerChosenAttributeIds?.ToArray();
         return true;
     }
 }

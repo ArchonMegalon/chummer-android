@@ -403,8 +403,9 @@ public sealed class CreationAttributesPage : CreationAutosavePage
                 int delta = target - Current().Current;
                 var allocations = _draft.ChangedAllocations(state, attribute.AttributeId, karma ? 0 : delta, karma ? delta : 0);
                 if (allocations is null) return Task.FromResult(false);
-                var result = _draft.PreviewPrepared(state, allocations);
-                bool accepted = _draft.TryAdopt(state, Coordinator.State, result, allocations);
+                var chosenIds = _draft.PlayerChosenIdsForChoice(attribute.AttributeId);
+                var result = _draft.PreviewPrepared(state, allocations, chosenIds);
+                bool accepted = _draft.TryAdopt(state, Coordinator.State, result, allocations, chosenIds);
                 ShowAllocationFeedback(accepted ? null
                     : string.Join("\n", result.Blockers.Select(CreationAllocationStrings.AttributeBlocker)
                         .Distinct(StringComparer.Ordinal)));
@@ -416,7 +417,8 @@ public sealed class CreationAttributesPage : CreationAutosavePage
                 if (target == Current().Current) return () => true;
                 int delta = target - Current().Current;
                 var allocations = _draft.ChangedAllocations(state, attribute.AttributeId, karma ? 0 : delta, karma ? delta : 0);
-                return allocations is not null ? _draft.PrepareSelection(state, Coordinator.State, allocations) : () => false;
+                return allocations is not null ? _draft.PrepareSelection(state, Coordinator.State, allocations,
+                    _draft.PlayerChosenIdsForChoice(attribute.AttributeId)) : () => false;
             });
         slider.DragStarted += (_, _) => BeginAllocationGesture();
         slider.DragCompleted += (_, _) => EndAllocationGesture();
@@ -464,9 +466,10 @@ public sealed class CreationAttributesPage : CreationAutosavePage
             || !_draft.Matches(state, Coordinator.State))
             return new(false, RequiresReopen: true);
         var allocations = _draft.Allocations(state).ToArray();
+        var chosenIds = _draft.PlayerChosenAttributeIds;
         var original = Coordinator.State;
         var result = await Task.Run(() => Coordinator.ReadCreationAuthority(original,
-            () => Coordinator.PreviewCreationAttributes(state.Binding, allocations), CancellationToken.None));
+            () => Coordinator.PreviewCreationAttributes(state.Binding, allocations, chosenIds), CancellationToken.None));
         if (result.Value is not { } preview
             || !Coordinator.CanOfferCreationAttributesConfirmation(preview, allocations))
         {
@@ -645,6 +648,7 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
         CharacterCreationFoundationResult<CharacterCreationAttributesPreview>? Result, bool Enabled);
     private sealed record PreparedAllocation(CharacterCreationAttributesState State,
         IReadOnlyList<CharacterCreationAttributeAllocation> Allocations,
+        IReadOnlyList<string>? PlayerChosenAttributeIds,
         IReadOnlyList<Adjustment> Adjustments);
     private PreparedAllocation? _prepared;
     private CancellationTokenSource? _preparation;
@@ -763,7 +767,9 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
     private bool IsCurrent(PreparedAllocation prepared)
         => Coordinator.IsCreationAttributesStateCurrent(prepared.State)
            && _draft.Matches(prepared.State, Coordinator.State)
-           && _draft.Allocations(prepared.State).SequenceEqual(prepared.Allocations);
+           && _draft.Allocations(prepared.State).SequenceEqual(prepared.Allocations)
+           && CreationAttributesPhoneAuthority.PlayerChosenIdsEqual(_draft.PlayerChosenAttributeIds,
+               prepared.PlayerChosenAttributeIds);
 
     private PreparedAllocation BuildPrepared(CharacterCreationAttributesState state, CreationAttributesPhoneDraft draft)
     {
@@ -784,7 +790,7 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
                     ? draft.SpecialBudget(state) : draft.NormalBudget(state)).Remaining >= 1);
             choices.Add(new(token, allocations, null, enabled));
         }
-        return new(state, draft.Allocations(state), choices);
+        return new(state, draft.Allocations(state), draft.PlayerChosenAttributeIds, choices);
     }
 
     private async Task AdjustAsync(PreparedAllocation prepared, Adjustment choice, Button button, string label)
@@ -795,6 +801,7 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
         _preparation = lifetime;
         var ct = lifetime.Token;
         var original = Coordinator.State;
+        var chosenIds = _draft.PlayerChosenIdsForChoice(_attributeId);
         _loading = true;
         _canRetryPreparation = false;
         _adjustmentBlockers = [];
@@ -805,10 +812,10 @@ public sealed class CreationAttributeAllocationPage : NativePageBase
             // Core Preview already rereads the exact owner's workspace and
             // source binding. No redundant Load and no speculative other +/-s.
             var result = await Task.Run(() => Coordinator.ReadCreationAuthority(original,
-                () => Coordinator.PreviewCreationAttributes(prepared.State.Binding, choice.Allocations), ct), ct);
+                () => Coordinator.PreviewCreationAttributes(prepared.State.Binding, choice.Allocations, chosenIds), ct), ct);
             ct.ThrowIfCancellationRequested();
             if (generation != _preparationGeneration || !IsCurrent(prepared)) return;
-            if (_draft.TryAdopt(prepared.State, Coordinator.State, result, choice.Allocations))
+            if (_draft.TryAdopt(prepared.State, Coordinator.State, result, choice.Allocations, chosenIds))
                 _prepared = BuildPrepared(prepared.State, _draft);
             else
             {

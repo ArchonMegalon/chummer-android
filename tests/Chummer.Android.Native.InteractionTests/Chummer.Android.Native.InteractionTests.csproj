@@ -34,6 +34,10 @@
     <Compile Include="CreationContactsOwnerRuntimeTests.cs" />
     <Compile Include="CreationContactsForwardRuntimeTests.cs" />
     <Compile Include="CreationFinalizationOwnerRuntimeTests.cs" />
+    <Compile Include="CreationCompletionOwnerRuntimeTests.cs" />
+    <Compile Include="CreationCompletionPageRuntimeTests.cs" />
+    <Compile Include="CreationManualLoadoutRuntimeTests.cs" />
+    <Compile Include="CreationCompletionLossRuntimeTests.cs" />
     <Compile Include="CreationFinalizationForwardRuntimeTests.cs" />
     <Compile Include="CreationReloadRuntimeTests.cs" />
     <Compile Include="CreationBasicsRuntimeTests.cs" />

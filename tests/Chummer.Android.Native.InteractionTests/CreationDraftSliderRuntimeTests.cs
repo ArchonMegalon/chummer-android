@@ -45,6 +45,7 @@ internal static partial class AfterRunAuthorityHarness
                 Console.WriteLine("PASS integer slider/scale: rounding, refusal, cached affordances and invalidation");
             });
         await VerifySkillRatingCacheAsync(contentRoot);
+        await VerifySavedAttributeChoiceIntentAsync(contentRoot);
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
         {
@@ -70,13 +71,18 @@ internal static partial class AfterRunAuthorityHarness
                     x.AutomationId == "creation-attributes-slider-" + id.ToLowerInvariant());
                 var body = SliderFor("BOD");
                 var magic = SliderFor("MAG");
+                await Task.WhenAll(MinimalVisible(page).OfType<CreationIntegerSlider>().Select(x => x.ScalePreparation));
+                Require(state.PendingDraft is null && draft.PlayerChosenAttributeIds is { Count: 0 },
+                    "Fresh initialization and speculative slider scales must not mark any player attribute choice.");
                 ((ISliderController)body).SendDragStarted();
                 int reads = probe!.LoadCalls + probe.PreviewCalls;
                 var timing = System.Diagnostics.Stopwatch.StartNew();
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => body.Value = 2.4));
                 await ui.DrainDispatchedAsyncVoidAsync();
-                Require(body.Value == 2 && draft.Attribute(state, "BOD")!.Current == 2,
-                    "Attribute slider did not snap to the accepted integer.");
+                Require(body.Value == 2 && draft.Attribute(state, "BOD")!.Current == 2
+                    && draft.PlayerChosenAttributeIds is { } firstChoices
+                    && firstChoices.SequenceEqual(new[] { "BOD" }, StringComparer.Ordinal),
+                    "Attribute slider must snap to the accepted integer and mark only its real BOD choice.");
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => body.Value = 3));
                 await ui.DrainDispatchedAsyncVoidAsync();
                 Require(!MinimalVisible(page).OfType<Button>().Any(x => x.Text is "+" or "−"),
@@ -100,6 +106,16 @@ internal static partial class AfterRunAuthorityHarness
                 Require(agility.Value < agility.Maximum && attributeFeedback.TextColor == NativeTheme.Danger
                     && !string.IsNullOrWhiteSpace(attributeFeedback.Text),
                     "Rejected attribute allocation lacks a fixed, visible explanation.");
+                Require(draft.PlayerChosenAttributeIds is { } refusedChoices
+                    && refusedChoices.SequenceEqual(new[] { "BOD" }, StringComparer.Ordinal),
+                    "A rejected AGI maximum or speculative scale probe marked an unaccepted attribute choice.");
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => body.Value = body.Minimum));
+                await ui.DrainDispatchedAsyncVoidAsync();
+                Require(body.Value == body.Minimum
+                    && draft.Allocations(state).Single(row => row.AttributeId == "BOD").PriorityPoints == 0
+                    && draft.PlayerChosenAttributeIds is { } returnedChoices
+                    && returnedChoices.SequenceEqual(new[] { "BOD" }, StringComparer.Ordinal),
+                    "Returning BOD to its minimum erased the player's explicit attribute choice.");
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => body.Value = 4));
                 await ui.DrainDispatchedAsyncVoidAsync();
                 Require(attributeFeedback.TextColor != NativeTheme.Danger,
@@ -111,32 +127,181 @@ internal static partial class AfterRunAuthorityHarness
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => magic.Value = startingMagic + 1));
                 await ui.DrainDispatchedAsyncVoidAsync();
                 Require(magic.Value == startingMagic + 1
-                    && draft.SpecialBudget(state).Remaining == state.SpecialPointBudget.Remaining - 1,
-                    "Magic slider did not consume the separate special pool.");
+                    && draft.SpecialBudget(state).Remaining == state.SpecialPointBudget.Remaining - 1
+                    && draft.PlayerChosenAttributeIds is { } acceptedChoices
+                    && acceptedChoices.SequenceEqual(new[] { "BOD", "MAG" }, StringComparer.Ordinal),
+                    "Magic slider must consume its special pool and retain exactly the accepted BOD/MAG choices.");
                 Require(probe.LoadCalls + probe.PreviewCalls == reads && probe.ConfirmCalls == 0,
                     "Attribute editing performed store/source I/O or an implicit save.");
                 RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
                 Console.WriteLine($"PASS {method} normal/special integer sliders: {timing.ElapsedMilliseconds}ms, zero Core I/O");
 
                 var allocations = draft.Allocations(state);
+                var playerChoices = draft.PlayerChosenAttributeIds;
                 var local = draft.PreviewPrepared(state, allocations).Value!;
-                Require(!coordinator.CanOfferCreationAttributesConfirmation(local, allocations),
-                    "A local cached projection acquired confirmation authority.");
-                var fresh = coordinator.PreviewCreationAttributes(state.Binding, allocations).Value!;
-                Require(probe.PreviewCalls > 0 && coordinator.CanOfferCreationAttributesConfirmation(fresh, allocations),
-                    "Review did not retain a fresh Core preview.");
+                Require(local.PlayerChosenAttributeIds is { } localChoices
+                    && localChoices.SequenceEqual(playerChoices!, StringComparer.Ordinal)
+                    && !coordinator.CanOfferCreationAttributesConfirmation(local, allocations),
+                    "A local cached projection lost player intent or acquired confirmation authority.");
+                var fresh = coordinator.PreviewCreationAttributes(state.Binding, allocations, playerChoices).Value!;
+                Require(probe.PreviewCalls > 0 && coordinator.CanOfferCreationAttributesConfirmation(fresh, allocations)
+                    && fresh.PlayerChosenAttributeIds is { } reviewedChoices
+                    && reviewedChoices.SequenceEqual(playerChoices!, StringComparer.Ordinal),
+                    "Review did not retain a fresh Core preview of the exact player-choice snapshot.");
+                var forgedIntent = fresh with { PlayerChosenAttributeIds = new[] { "BOD" } };
+                Require(!CreationAttributesPhoneAuthority.CanonicallyEquals(fresh, forgedIntent)
+                    && !CreationAttributesPhoneAuthority.CanonicallyEquals(fresh,
+                        fresh with { PlayerChosenAttributeIds = null }),
+                    "Equal preview digests must not hide changed or erased player-choice metadata.");
                 var confirmed = await coordinator.ConfirmCreationAttributesAsync(fresh, allocations);
                 Require(confirmed.Receipt is not null && probe.ConfirmCalls == 1,
                     "Fresh save failed after local editing.");
                 var reopened = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
-                Require(reopened.Document.AuxiliaryState.CharacterCreationAttributesDraft!.Attributes
-                    .Single(x => x.AttributeId == "BOD").Current == 4, "Cold store lost accepted attributes.");
+                var savedDraft = reopened.Document.AuxiliaryState.CharacterCreationAttributesDraft!;
+                Require(savedDraft.Attributes.Single(x => x.AttributeId == "BOD").Current == 4
+                    && savedDraft.PlayerChosenAttributeIds is { } savedChoices
+                    && savedChoices.SequenceEqual(playerChoices!, StringComparer.Ordinal),
+                    "Cold store lost accepted attributes or their exact player-choice metadata.");
+                var reloaded = coordinator.LoadCreationAttributes().Value!;
+                var coldDraft = new CreationAttributesPhoneDraft();
+                coldDraft.Bind(reloaded, coordinator.State);
+                Require(coldDraft.PlayerChosenAttributeIds is { } coldChoices
+                    && coldChoices.SequenceEqual(playerChoices!, StringComparer.Ordinal)
+                    && CreationAttributesPhoneAuthority.ReceiptMatches(
+                        confirmed.Receipt!, fresh, allocations, reloaded, coordinator.State)
+                    && !CreationAttributesPhoneAuthority.ReceiptMatches(
+                        confirmed.Receipt!, forgedIntent, allocations, reloaded, coordinator.State),
+                    "Cold binding or receipt admission ignored the persisted player-choice identity.");
                 string retained = JsonSerializer.Serialize(draft.Allocations(state));
+                string retainedChoices = JsonSerializer.Serialize(draft.PlayerChosenAttributeIds);
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => body.Value = 5));
                 await ui.DrainDispatchedAsyncVoidAsync();
-                Require(JsonSerializer.Serialize(draft.Allocations(state)) == retained && body.Value == 4,
-                    "A slider from the old revision was reused after save.");
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => agility.Value = agility.Minimum + 1));
+                await ui.DrainDispatchedAsyncVoidAsync();
+                Require(JsonSerializer.Serialize(draft.Allocations(state)) == retained && body.Value == 4
+                    && JsonSerializer.Serialize(draft.PlayerChosenAttributeIds) == retainedChoices,
+                    "A slider from the old revision changed allocations or newly marked AGI after save.");
+                RequireSameRewardDocument(reopened, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
                 IssuedPageLifecycle(page, "OnDisappearing");
+            }
+        });
+    }
+
+    private static async Task VerifySavedAttributeChoiceIntentAsync(string contentRoot)
+    {
+        using var ui = new IssuedPageUiContext();
+        await ui.RunAsync(async () =>
+        {
+            foreach (bool legacy in new[] { true, false })
+            {
+                Console.WriteLine($"SETUP saved attribute choice intent, legacy={legacy}");
+                var owners = new ControlledLinkedOwner();
+                AttributesCommitProbe? probe = null;
+                await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
+                    creationFinalization: true, creationAttributes: true, productionCreationOverview: true,
+                    attributesDecorator: actual => probe = new(actual));
+                var before = PrepareActualFinalizationReadyContext(runtime,
+                    stopBeforeAttributes: !legacy, stopBeforeSkills: legacy);
+                await HydrateFinalizationOwnerAsync(runtime, owners, before);
+                var coordinator = runtime.Coordinator;
+                var state = coordinator.LoadCreationAttributes().Value!;
+                if (!legacy)
+                {
+                    // Establish a real saved, known-empty baseline through Core,
+                    // not by rewriting historical auxiliary state.
+                    var seed = new CreationAttributesPhoneDraft();
+                    seed.Bind(state, coordinator.State);
+                    var allocations = seed.Allocations(state);
+                    var preview = coordinator.PreviewCreationAttributes(state.Binding, allocations,
+                        Array.Empty<string>()).Value!;
+                    Require(preview.PlayerChosenAttributeIds is { Count: 0 }
+                        && coordinator.CanOfferCreationAttributesConfirmation(preview, allocations),
+                        "SETUP: actual Core did not admit the known-empty attribute baseline.");
+                    var confirmed = await coordinator.ConfirmCreationAttributesAsync(preview, allocations);
+                    Require(confirmed.Receipt is not null, "SETUP: known-empty attribute baseline was not saved.");
+                    before = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+                    state = coordinator.LoadCreationAttributes().Value!;
+                }
+                var originalDraft = before.Document.AuxiliaryState.CharacterCreationAttributesDraft!;
+                Require(state.PendingDraft is not null && (legacy
+                        ? originalDraft.PlayerChosenAttributeIds is null
+                        : originalDraft.PlayerChosenAttributeIds is { Count: 0 }),
+                    "SETUP: saved legacy/known-empty attribute intent is not distinct.");
+                var page = new CreationAttributesPage(coordinator, state);
+                var window = new Window(new NavigationPage(page));
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+                var draft = (CreationAttributesPhoneDraft)typeof(CreationAttributesPage)
+                    .GetField("_draft", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+                Slider BodySlider() => MinimalVisible(page).OfType<Slider>().Single(x =>
+                    x.AutomationId == "creation-attributes-slider-bod");
+                await Task.WhenAll(MinimalVisible(page).OfType<CreationIntegerSlider>().Select(x => x.ScalePreparation));
+                Require(legacy ? draft.PlayerChosenAttributeIds is null
+                        : draft.PlayerChosenAttributeIds is { Count: 0 },
+                    "Binding or preparing saved sliders invented player-choice intent.");
+                var body = BodySlider();
+                Require(body.Value == body.Minimum, "SETUP: saved BOD must start at its minimum.");
+                string originalAllocations = JsonSerializer.Serialize(draft.Allocations(state));
+                int reads = probe!.LoadCalls + probe.PreviewCalls;
+                int confirms = probe.ConfirmCalls;
+                ((ISliderController)body).SendDragStarted();
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => body.Value = body.Minimum + 1));
+                await ui.DrainDispatchedAsyncVoidAsync();
+                Require(body.Value == body.Minimum + 1 && (legacy
+                        ? draft.PlayerChosenAttributeIds is null
+                        : draft.PlayerChosenAttributeIds is { } accepted
+                            && accepted.SequenceEqual(new[] { "BOD" }, StringComparer.Ordinal)),
+                    "Accepted BOD input promoted legacy intent or failed to mark known intent.");
+                if (!legacy)
+                {
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => body.Value = body.Minimum));
+                    await ui.DrainDispatchedAsyncVoidAsync();
+                    Require(JsonSerializer.Serialize(draft.Allocations(state)) == originalAllocations
+                        && draft.PlayerChosenAttributeIds is { } returned
+                        && returned.SequenceEqual(new[] { "BOD" }, StringComparer.Ordinal),
+                        "Returning saved BOD to its minimum erased the metadata-only choice.");
+                }
+                Require(probe.LoadCalls + probe.PreviewCalls == reads && probe.ConfirmCalls == confirms,
+                    "Saved attribute gestures performed Core I/O or wrote before autosave.");
+                RequireSameRewardDocument(before, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+                Require(await page.FlushAutosaveAsync() && probe.ConfirmCalls == confirms + 1,
+                    "Actual page autosave did not confirm exactly one numeric or intent-only change.");
+                var cold = new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+                var saved = cold.Document.AuxiliaryState.CharacterCreationAttributesDraft!;
+                Require(cold.ContentRevision == before.ContentRevision + 1 && (legacy
+                        ? saved.PlayerChosenAttributeIds is null
+                            && saved.Attributes.Single(x => x.AttributeId == "BOD").Current
+                                == originalDraft.Attributes.Single(x => x.AttributeId == "BOD").Current + 1
+                        : saved.PlayerChosenAttributeIds is { } savedChoices
+                            && savedChoices.SequenceEqual(new[] { "BOD" }, StringComparer.Ordinal)
+                            && JsonSerializer.Serialize(saved.Allocations)
+                                == JsonSerializer.Serialize(originalDraft.Allocations)),
+                    "Cold read lost legacy null intent or the known-empty metadata-only revision.");
+                Require(legacy ? draft.PlayerChosenAttributeIds is null
+                        : draft.PlayerChosenAttributeIds is { } rebound
+                            && rebound.SequenceEqual(new[] { "BOD" }, StringComparer.Ordinal),
+                    "Autosave refresh changed the admitted player-choice metadata.");
+                if (!legacy)
+                {
+                    // A second real gesture reaches the same numeric and intent
+                    // state: exercise duplicate review, not only a clean flush.
+                    body = BodySlider();
+                    ((ISliderController)body).SendDragStarted();
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => body.Value = body.Minimum + 1));
+                    await ui.DrainDispatchedAsyncVoidAsync();
+                    Require(body.Value == body.Minimum + 1, "Duplicate-intent gesture was not accepted.");
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => body.Value = body.Minimum));
+                    await ui.DrainDispatchedAsyncVoidAsync();
+                    int previews = probe.PreviewCalls;
+                    Require(await page.FlushAutosaveAsync() && probe.PreviewCalls > previews
+                        && probe.ConfirmCalls == confirms + 1,
+                        "Same allocation and intent failed duplicate review or wrote another revision.");
+                    RequireSameRewardDocument(cold, new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!);
+                }
+                IssuedPageLifecycle(page, "OnDisappearing");
+                await page.FlushAutosaveAsync();
+                await Task.WhenAll(MinimalVisible(page).OfType<CreationIntegerSlider>().Select(x => x.ScalePreparation));
+                await ui.DrainDispatchedAsyncVoidAsync();
+                Console.WriteLine($"PASS saved attribute choice intent: legacy={legacy}, actual autosave and cold persistence");
             }
         });
     }

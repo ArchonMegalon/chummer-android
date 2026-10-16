@@ -4390,7 +4390,7 @@ internal static partial class AfterRunAuthorityHarness
     }
 
     private static async Task HydrateFinalizationOwnerAsync(NativeRewardRuntime runtime,
-        ControlledLinkedOwner owners, WorkspaceStoredDocument expected, bool expectedCreated = false)
+        ControlledLinkedOwner owners, WorkspaceStoredDocument expected, bool expectedCreated = false, bool contentFreeFailure = false)
     {
         // Same real lifecycle order as native owner initialization. A same-ID
         // Switch shortcut can legitimately skip Load after Initialize.
@@ -4403,7 +4403,8 @@ internal static partial class AfterRunAuthorityHarness
             && state.DisplayOwnerContext == owners.Capture() && state.Session.OwnerContext == owners.Capture()
             && runtime.Shell.State.OwnerContext == owners.Capture()
             && state.ContentRevision == expected.ContentRevision && state.SavedRevision == expected.SavedRevision,
-            "Finalization fixture never established exact actual native owner/session/revisions: " + JsonSerializer.Serialize(new
+            contentFreeFailure ? "stage=reopen; owner-session-revisions-or-profile-not-current"
+            : "Finalization fixture never established exact actual native owner/session/revisions: " + JsonSerializer.Serialize(new
             { state.WorkspaceId, state.ContentRevision, state.SavedRevision, state.DisplayOwnerContext, state.Error }));
     }
 
@@ -4416,10 +4417,16 @@ internal static partial class AfterRunAuthorityHarness
         bool stopBeforeAttributes = false, string fixtureAlias = "Finalizer",
         string? attributeTalent = null, string attributeTalentRank = "C", bool stopBeforeGear = false,
         bool stopBeforeResources = false, bool stopBeforeSkills = false, string metatypeName = "Human",
-        bool omitSkillsBeforeGear = false)
+        bool omitSkillsBeforeGear = false, bool completionMagic = false, bool exactPartialManual = false)
     {
+        Require(!exactPartialManual || stopBeforeAttributes && buildMethod == CharacterCreationBuildMethods.Priority
+            && metatypeName == "Human" && attributeTalent is null && !completionMagic,
+            "The exact partial-manual fixture requires unallocated Human/Mundane Priority prerequisites.");
         Require(!omitSkillsBeforeGear || stopBeforeGear,
             "An out-of-order Gear fixture is not a finalization-ready character.");
+        Require(!completionMagic || stopBeforeAttributes && buildMethod == CharacterCreationBuildMethods.Priority
+            && attributeTalent == "Magician" && attributeTalentRank == "B" && metatypeName == "Human",
+            "The completion magic fixture must use actual Human Priority Magician B prerequisites.");
         // Test fixture adapted from Core f750 CharacterCreationFinalizationServiceTests.ReadyContext:
         // canonical Priority or Sum-to-Ten; repeated ranks for Human, distinct ranks for Elf/Ork;
         // actual services issue every draft and receipt.
@@ -4433,7 +4440,8 @@ internal static partial class AfterRunAuthorityHarness
             CharacterCreationBootstrapStages.AwaitingFoundationSelection, "sr5", "Finalization Runner", fixtureAlias,
             buildMethod, profile));
         Require(created.Outcome == CharacterCreationBootstrapOutcomes.Success && created.Value is not null,
-            "Actual Bootstrap failed: " + JsonSerializer.Serialize(created));
+            exactPartialManual ? "stage=bootstrap; outcome=" + created.Outcome
+            : "Actual Bootstrap failed: " + JsonSerializer.Serialize(created));
         runtime.Id = created.Value!.WorkspaceId;
         var prerequisites = services.GetRequiredService<ICharacterCreationPrerequisiteService>();
         var initial = prerequisites.Load(new(runtime.Id)).Value!;
@@ -4461,6 +4469,19 @@ internal static partial class AfterRunAuthorityHarness
             ranks[CharacterCreationPriorityCategoryIds.Skills] = "D";
             ranks[CharacterCreationPriorityCategoryIds.Resources] = "E";
         }
+        if (completionMagic)
+        {
+            ranks[CharacterCreationPriorityCategoryIds.Heritage] = "E";
+            ranks[CharacterCreationPriorityCategoryIds.Skills] = "C";
+            ranks[CharacterCreationPriorityCategoryIds.Resources] = "D";
+        }
+        if (exactPartialManual)
+        {
+            ranks[CharacterCreationPriorityCategoryIds.Heritage] = "D";
+            ranks[CharacterCreationPriorityCategoryIds.Attributes] = "A";
+            ranks[CharacterCreationPriorityCategoryIds.Skills] = "B";
+            ranks[CharacterCreationPriorityCategoryIds.Resources] = "C";
+        }
         var heritage = initial.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Heritage
                 && item.Rank == ranks[CharacterCreationPriorityCategoryIds.Heritage]).HeritageOptions.First(item => item.IsEnabled
                 && item.MetavariantSourceId is null && item.MetavariantName is null && item.MetatypeName == metatypeName);
@@ -4481,9 +4502,14 @@ internal static partial class AfterRunAuthorityHarness
             { HeritageSelectionId = heritage.SelectionId, TalentSelectionId = talentOption.SelectionId,
                 TalentActiveSkillSelectionIds = talentSkills, TalentSkillGroupSelectionIds = talentGroups });
         Require(prerequisiteReceipt.Outcome == CharacterCreationFoundationOutcomes.Success,
-            "Actual prerequisite failed: " + JsonSerializer.Serialize(prerequisiteReceipt));
+            exactPartialManual ? "stage=prerequisite-confirm; outcome=" + prerequisiteReceipt.Outcome
+                + "; blockers=" + string.Join(",", prerequisiteReceipt.Blockers)
+            : "Actual prerequisite failed: " + JsonSerializer.Serialize(prerequisiteReceipt));
         if (stopBeforeAttributes)
+        {
+            if (exactPartialManual) ConfirmActualFinalizationResources(runtime);
             return new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
+        }
         var attributes = services.GetRequiredService<ICharacterCreationAttributesService>();
         var attributePreview = attributes.Preview(new(attributes.Load(new(runtime.Id)).Value!.Binding, [])).Value!;
         var attributeReceipt = attributes.Confirm(new(attributePreview.Binding, [], attributePreview.PreviewDigest, true));
@@ -4514,14 +4540,7 @@ internal static partial class AfterRunAuthorityHarness
             "Actual Qualities failed: " + JsonSerializer.Serialize(qualityReceipt));
         if (stopBeforeResources)
             return new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
-        var resources = services.GetRequiredService<ICharacterCreationResourcesService>();
-        var resourcesState = resources.Load(new(runtime.Id)).Value!;
-        var zero = resourcesState.Options.First(item => item.IsEnabled && item.KarmaInvestment == 0);
-        var resourcePreview = resources.Preview(new(resourcesState.Binding, zero.OptionId)).Value!;
-        var resourceReceipt = resources.Confirm(new(resourcePreview.Binding, zero.OptionId, resourcePreview.PreviewDigest,
-            "native-finalization-resources", true));
-        Require(resourceReceipt.Outcome == CharacterCreationResourcesOutcomes.Applied,
-            "Actual Resources failed: " + JsonSerializer.Serialize(resourceReceipt));
+        ConfirmActualFinalizationResources(runtime);
         if (stopBeforeGear)
             return new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!;
         var gear = services.GetRequiredService<ICharacterCreationGearService>();
@@ -4542,5 +4561,23 @@ internal static partial class AfterRunAuthorityHarness
             && stored.Document.AuxiliaryState.CharacterCreationFinalizationReceipts is null,
             "ReadyContext is not an actual unfinalized canonical checkpoint.");
         return stored;
+    }
+
+    private static void ConfirmActualFinalizationResources(NativeRewardRuntime runtime)
+    {
+        var resources = runtime.Services.GetRequiredService<ICharacterCreationResourcesService>();
+        var loaded = resources.Load(new(runtime.Id));
+        Require(loaded.Value is not null,
+            "stage=resources-load; outcome=" + loaded.Outcome + "; blockers=" + string.Join(",", loaded.Blockers));
+        var resourcesState = loaded.Value!;
+        var zero = resourcesState.Options.First(item => item.IsEnabled && item.KarmaInvestment == 0);
+        var preview = resources.Preview(new(resourcesState.Binding, zero.OptionId));
+        Require(preview.Value is not null,
+            "stage=resources-preview; outcome=" + preview.Outcome + "; blockers=" + string.Join(",", preview.Blockers));
+        var resourcePreview = preview.Value!;
+        var receipt = resources.Confirm(new(resourcePreview.Binding, zero.OptionId, resourcePreview.PreviewDigest,
+            "native-finalization-resources", true));
+        Require(receipt.Outcome == CharacterCreationResourcesOutcomes.Applied,
+            "stage=resources-confirm; outcome=" + receipt.Outcome + "; blockers=" + string.Join(",", receipt.Blockers));
     }
 }

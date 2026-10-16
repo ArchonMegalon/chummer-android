@@ -7,6 +7,20 @@ NATIVE = REPO / "src" / "Chummer.Android" / "Native"
 
 
 class CreationSkillsSourceContractTests(unittest.TestCase):
+    def test_missing_native_language_cue_waits_for_an_accepted_language_choice(self) -> None:
+        page = (NATIVE / "CreationSkillsPage.cs").read_text(encoding="utf-8")
+        native = page.split("private void AddNativeLanguage(", 1)[1].split("private void AddBinding(", 1)[0]
+        self.assertIn("item.IsNativeLanguage", native)
+        chosen, missing = native.split("if (chosen.Length > 0)", 1)[1].split("else", 1)
+        self.assertNotIn("RequiredChoiceNotice", chosen)
+        self.assertIn('RequiredChoiceNotice("creation-skills-native-language-required")', missing)
+        self.assertIn("TitleColor = NativeTheme.Danger", missing)
+        self.assertIn("if (chosen.Length == 0) border.Stroke", missing)
+        # Selecting an item alone must not clear a required choice before Core preview accepts it.
+        selection = missing.split("picker.SelectedIndexChanged +=", 1)[1].split("long renderGeneration", 1)[0]
+        self.assertNotIn("IsVisible", selection)
+        self.assertNotIn("Stroke", selection)
+
     def test_skills_ledgers_share_one_card_without_hiding_any_budget(self) -> None:
         page = (NATIVE / "CreationSkillsPage.cs").read_text(encoding="utf-8")
         self.assertIn('summary.AutomationId = "creation-skills-budgets"', page)

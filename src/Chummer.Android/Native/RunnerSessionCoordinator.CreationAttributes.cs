@@ -21,7 +21,7 @@ public sealed partial class RunnerSessionCoordinator
 
     private sealed record AttributesLoad(CharacterOverviewState Display, CharacterCreationAttributesState State);
     private sealed record AttributesPreview(AttributesLoad Load, CharacterCreationAttributeAllocation[] Allocations,
-        CharacterCreationFoundationResult<CharacterCreationAttributesPreview> Result)
+        string[]? PlayerChosenAttributeIds, CharacterCreationFoundationResult<CharacterCreationAttributesPreview> Result)
     {
         public bool ConfirmationStarted { get; set; }
     }
@@ -92,7 +92,8 @@ public sealed partial class RunnerSessionCoordinator
     }
 
     internal CharacterCreationFoundationResult<CharacterCreationAttributesPreview> PreviewCreationAttributes(
-        CharacterCreationAttributesBinding binding, IReadOnlyList<CharacterCreationAttributeAllocation> allocations)
+        CharacterCreationAttributesBinding binding, IReadOnlyList<CharacterCreationAttributeAllocation> allocations,
+        IReadOnlyList<string>? playerChosenAttributeIds = null)
     {
         ArgumentNullException.ThrowIfNull(binding);
         ArgumentNullException.ThrowIfNull(allocations);
@@ -101,18 +102,19 @@ public sealed partial class RunnerSessionCoordinator
             || issued.Display.DisplayOwnerContext is not { } owner || _ownerBoundAttributesService is not { } service)
             return AttributesUnavailable<CharacterCreationAttributesPreview>();
         var copied = allocations.ToArray();
+        var copiedIds = playerChosenAttributeIds?.ToArray();
         // Core Preview already reads the current workspace under the exact owner
         // lease, rebuilds its source-bound state and checks the complete binding.
         // A separate Load here repeats that expensive work for every +/- option.
         // Keep the issued-display guards; confirmation still reloads/reprojects.
-        var result = service.Preview(owner, new(binding, copied));
+        var result = service.Preview(owner, new(binding, copied) { PlayerChosenAttributeIds = copiedIds });
         if (!IsCreationAttributesStateCurrent(issued.State)) return AttributesUnavailable<CharacterCreationAttributesPreview>();
         // Core can also issue the exact saved projection as a blocked duplicate.
         // Admit it for read-only review through the existing strict local-undo
         // checks, never by removing its blocker or making it confirmable.
         if (result.Value is { } preview
-            && CreationAttributesPhoneAuthority.CanAdoptPreview(issued.State, State, result, copied))
-            _attributePreviews.GetValue(preview, _ => new(issued, copied, result));
+            && CreationAttributesPhoneAuthority.CanAdoptPreview(issued.State, State, result, copied, copiedIds))
+            _attributePreviews.GetValue(preview, _ => new(issued, copied, copiedIds?.ToArray(), result));
         return result;
     }
 
@@ -125,7 +127,9 @@ public sealed partial class RunnerSessionCoordinator
         => _attributePreviews.TryGetValue(preview, out var issued)
            && IsCreationAttributesPreviewCurrent(preview)
            && allocations.SequenceEqual(issued.Allocations)
-           && CreationAttributesPhoneAuthority.CanAdoptPreview(issued.Load.State, State, issued.Result, allocations);
+           && CreationAttributesPhoneAuthority.PlayerChosenIdsEqual(preview.PlayerChosenAttributeIds, issued.PlayerChosenAttributeIds)
+           && CreationAttributesPhoneAuthority.CanAdoptPreview(issued.Load.State, State, issued.Result, allocations,
+               issued.PlayerChosenAttributeIds);
 
     internal bool IsSavedCreationAttributesReview(CharacterCreationAttributesPreview preview,
         IReadOnlyList<CharacterCreationAttributeAllocation> allocations)
@@ -139,7 +143,9 @@ public sealed partial class RunnerSessionCoordinator
         => _attributePreviews.TryGetValue(preview, out var issued)
            && IsCreationAttributesPreviewCurrent(preview)
            && allocations.SequenceEqual(issued.Allocations)
-           && CreationAttributesPhoneAuthority.CanConfirmPreview(issued.Load.State, State, preview, allocations);
+           && CreationAttributesPhoneAuthority.PlayerChosenIdsEqual(preview.PlayerChosenAttributeIds, issued.PlayerChosenAttributeIds)
+           && CreationAttributesPhoneAuthority.CanConfirmPreview(issued.Load.State, State, preview, allocations,
+               issued.PlayerChosenAttributeIds);
 
     internal bool CanDisplayCreationAttributesPreview(CharacterCreationAttributesPreview preview)
         => _attributePreviews.TryGetValue(preview, out var issued)
@@ -180,11 +186,14 @@ public sealed partial class RunnerSessionCoordinator
         var original = issued.Load.Display;
         var live = await Task.Run(() => service.Load(owner, new(preview.Binding.WorkspaceId)), ct);
         if (!IsCreationAttributesPreviewCurrent(preview) || live.Value is not { } state
-            || !CreationAttributesPhoneAuthority.CanConfirmPreview(state, original, preview, allocations))
+            || !CreationAttributesPhoneAuthority.CanConfirmPreview(state, original, preview, allocations,
+                issued.PlayerChosenAttributeIds))
             return RejectedAttributes(CharacterCreationAttributesBlockers.PreviewDigestMismatch);
-        var reprojection = await Task.Run(() => service.Preview(owner, new(preview.Binding, allocations)), ct);
+        var reprojection = await Task.Run(() => service.Preview(owner, new(preview.Binding, allocations)
+            { PlayerChosenAttributeIds = issued.PlayerChosenAttributeIds?.ToArray() }), ct);
         if (!IsCreationAttributesPreviewCurrent(preview)
-            || !CreationAttributesPhoneAuthority.CanAdoptPreview(state, original, reprojection, allocations)
+            || !CreationAttributesPhoneAuthority.CanAdoptPreview(state, original, reprojection, allocations,
+                issued.PlayerChosenAttributeIds)
             || reprojection.Value is not { } canonical || !CreationAttributesPhoneAuthority.CanonicallyEquals(preview, canonical))
             return RejectedAttributes(CharacterCreationAttributesBlockers.PreviewDigestMismatch);
 
@@ -199,7 +208,8 @@ public sealed partial class RunnerSessionCoordinator
             result = await Task.Run(() =>
             {
                 Interlocked.Exchange(ref entered, 1);
-                return service.Confirm(owner, new(canonical.Binding, allocations, canonical.PreviewDigest, true));
+                return service.Confirm(owner, new(canonical.Binding, allocations, canonical.PreviewDigest, true)
+                    { PlayerChosenAttributeIds = issued.PlayerChosenAttributeIds?.ToArray() });
             }, ct);
         }
         catch (OperationCanceledException) when (Volatile.Read(ref entered) == 0)

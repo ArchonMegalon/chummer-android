@@ -1,5 +1,101 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
+  <data name="Completion.OptionalKarmaFunding" xml:space="preserve"><value>More attribute recommendations could not be funded within the requested limits. Existing choices and reserves are preserved. Review this proposal before choosing Apply.</value></data>
+  <data name="Completion.OptionalKarmaGoals" xml:space="preserve"><value>Some optional attribute goals remain unmet. Existing choices and reserves are preserved. Review this proposal before choosing Apply.</value></data>
+  <data name="Completion.OptionalKarmaRating" xml:space="preserve"><value>{0}: proposed {1}, optional goal {2}</value></data>
+  <data name="Completion.Title" xml:space="preserve"><value>Finish this character</value></data>
+  <data name="Completion.Entry" xml:space="preserve"><value>Review starter suggestions while keeping your choices. Apply only after the final check.</value></data>
+  <data name="Completion.Unsupported" xml:space="preserve"><value>Starter suggestions currently support SR5 Priority and Sum-to-Ten. Continue with this build method’s normal creation steps.</value></data>
+  <data name="Completion.Scope" xml:space="preserve"><value>Fill unused points and suggest contacts, a lifestyle, basic supplies, a weapon and armor. Some equipment and magic choices still need review. Nothing changes until Apply.</value></data>
+  <data name="Completion.ContactAddition" xml:space="preserve"><value>{0} · Connection {1}, Loyalty {2}</value></data>
+  <data name="Completion.NoLoss" xml:space="preserve"><value>No unused points or excess funds will be lost.</value></data>
+  <data name="Completion.LoadBlocked" xml:space="preserve"><value>Complete Build method first, then reopen these suggestions. Your existing choices are unchanged.</value></data>
+  <data name="Completion.Stale" xml:space="preserve"><value>Your runner or account changed. Return to creation and open a fresh review.</value></data>
+  <data name="Completion.Archetype" xml:space="preserve"><value>Archetype</value></data>
+  <data name="Completion.Neutral" xml:space="preserve"><value>No clear role yet: a general starter is selected. You can change it.</value></data>
+  <data name="Completion.Prefill" xml:space="preserve"><value>Suggested from your current choices. You can change the archetype.</value></data>
+  <data name="Completion.NoPack" xml:space="preserve"><value>This archetype has no starter suggestions yet. Keep your talent and continue manually, or choose another suggestion style.</value></data>
+  <data name="Completion.KeepChoices" xml:space="preserve"><value>Your existing choices stay unchanged. Suggestions only fill choices you have not made yet.</value></data>
+  <data name="Completion.MagicTradition" xml:space="preserve"><value>Tradition</value></data>
+  <data name="Completion.MagicStream" xml:space="preserve"><value>Stream</value></data>
+  <data name="Completion.MagicChoiceHelp" xml:space="preserve"><value>This visible selection is a suggestion. You can change it before previewing. Saved magic choices stay unchanged.</value></data>
+  <data name="Completion.MagicSpell" xml:space="preserve"><value>Spell</value></data>
+  <data name="Completion.MagicComplexForm" xml:space="preserve"><value>Complex form</value></data>
+  <data name="Completion.MagicChanges" xml:space="preserve"><value>Proposed magic choices</value></data>
+  <data name="Completion.MagicUnknown" xml:space="preserve"><value>Unavailable magic choice</value></data>
+  <data name="Completion.AttributeChoiceIntent" xml:space="preserve"><value>Your saved attribute allocation stays unchanged. The assistant cannot tell which values you deliberately kept, so finish any remaining attribute points in creation.</value></data>
+  <data name="Completion.Preview" xml:space="preserve"><value>Preview suggestions</value></data>
+  <data name="Completion.Working" xml:space="preserve"><value>Checking your choices…</value></data>
+  <data name="Completion.Loss.Title" xml:space="preserve"><value>Unused resources that will be lost</value></data>
+  <data name="Completion.Loss.Help" xml:space="preserve"><value>These resources will not carry into Career. Keep editing to use them, or explicitly continue.</value></data>
+  <data name="Completion.Loss.Continue" xml:space="preserve"><value>Continue with these losses</value></data>
+  <data name="Completion.Loss.Back" xml:space="preserve"><value>Keep editing</value></data>
+  <data name="Completion.Loss.NormalAttributes" xml:space="preserve"><value>Normal attribute points</value></data>
+  <data name="Completion.Loss.SpecialAttributes" xml:space="preserve"><value>Special attribute points</value></data>
+  <data name="Completion.Loss.ActiveSkills" xml:space="preserve"><value>Active skill points</value></data>
+  <data name="Completion.Loss.SkillGroups" xml:space="preserve"><value>Skill group points</value></data>
+  <data name="Completion.Loss.KnowledgeSkills" xml:space="preserve"><value>Knowledge skill points</value></data>
+  <data name="Completion.Loss.Karma" xml:space="preserve"><value>Creation Karma</value></data>
+  <data name="Completion.Loss.Nuyen" xml:space="preserve"><value>Creation nuyen</value></data>
+  <data name="Completion.Proposal" xml:space="preserve"><value>Proposed ratings</value></data>
+  <data name="Completion.Rating" xml:space="preserve"><value>{0}: proposed {1}, target {2} · {3}</value></data>
+  <data name="Completion.Met" xml:space="preserve"><value>target met</value></data>
+  <data name="Completion.Locked" xml:space="preserve"><value>kept unchanged</value></data>
+  <data name="Completion.Unavailable" xml:space="preserve"><value>source unavailable</value></data>
+  <data name="Completion.Unmet" xml:space="preserve"><value>target not reached</value></data>
+  <data name="Completion.NotEvaluated" xml:space="preserve"><value>not evaluated</value></data>
+  <data name="Completion.Remaining" xml:space="preserve"><value>Still needs attention</value></data>
+  <data name="Completion.KarmaBefore" xml:space="preserve"><value>Creation Karma remaining</value></data>
+  <data name="Completion.NuyenBefore" xml:space="preserve"><value>Creation nuyen remaining</value></data>
+  <data name="Completion.CashUnavailable" xml:space="preserve"><value>Starting-cash terms are unavailable. Review your lifestyle in creation, then reopen these suggestions.</value></data>
+  <data name="Completion.Review" xml:space="preserve"><value>Review and check completion</value></data>
+  <data name="Completion.FinalReview" xml:space="preserve"><value>Review before Apply</value></data>
+  <data name="Completion.Change" xml:space="preserve"><value>Character change</value></data>
+  <data name="Completion.CareerTransition" xml:space="preserve"><value>Creation → Career</value></data>
+  <data name="Completion.KarmaAfter" xml:space="preserve"><value>Career Karma</value></data>
+  <data name="Completion.NuyenAfter" xml:space="preserve"><value>Career nuyen</value></data>
+  <data name="Completion.Carryover" xml:space="preserve"><value>Excess creation funds are lost at the Career boundary. Starting cash is added afterward.</value></data>
+  <data name="Completion.ConfirmHelp" xml:space="preserve"><value>Apply saves these reviewed changes together and enters Career. Cancel returns to creation without changing your runner.</value></data>
+  <data name="Completion.Apply" xml:space="preserve"><value>Apply and enter Career</value></data>
+  <data name="Completion.Saving" xml:space="preserve"><value>Saving and opening Career…</value></data>
+  <data name="Completion.Unknown" xml:space="preserve"><value>The save result needs checking. Do not submit another completion.</value></data>
+  <data name="Completion.CheckResult" xml:space="preserve"><value>Check saved result</value></data>
+  <data name="Completion.Rejected" xml:space="preserve"><value>These changes were not applied. Return to creation and review your choices.</value></data>
+  <data name="Completion.Saved" xml:space="preserve"><value>Your changes are saved. Continue to your saved Career runner.</value></data>
+  <data name="Completion.Continue" xml:space="preserve"><value>Continue to saved runner</value></data>
+  <data name="Completion.ReceiptAccount" xml:space="preserve"><value>Return to the original account to view this confirmation.</value></data>
+  <data name="Completion.Cancel" xml:space="preserve"><value>Cancel / fine-tune in creation</value></data>
+  <data name="Completion.BackFailed" xml:space="preserve"><value>Could not return to creation. Please try Back again.</value></data>
+  <data name="Completion.Blocked" xml:space="preserve"><value>Some choices could not be verified. Return to creation, review the required steps, then try a fresh proposal.</value></data>
+  <data name="Completion.UnknownSkill" xml:space="preserve"><value>Unavailable skill</value></data>
+  <data name="Completion.SkillGroup" xml:space="preserve"><value>Skill group</value></data>
+  <data name="Completion.Loadout" xml:space="preserve"><value>Basic supplies, a weapon and armor do not make a complete loadout.</value></data>
+  <data name="Completion.LoadoutItems" xml:space="preserve"><value>Proposed weapons and armor (including retained choices)</value></data>
+  <data name="Completion.LoadoutLine" xml:space="preserve"><value>{0} × {1}: {2} ¥</value></data>
+  <data name="Completion.AmmoExtras" xml:space="preserve"><value>Loose ammunition may be proposed. Weapon assignment, loading and modifications still need review.</value></data>
+  <data name="Completion.AdvancedGear" xml:space="preserve"><value>Commlinks, rated gear and bundled accessories are not included in these suggestions.</value></data>
+  <data name="Completion.LoadoutExtras" xml:space="preserve"><value>Review ammunition, modifications and rated gear in creation; these are not included in the weapon and armor suggestions.</value></data>
+  <data name="Completion.WeaponNeeded" xml:space="preserve"><value>Review your weapon choices in creation.</value></data>
+  <data name="Completion.ArmorNeeded" xml:space="preserve"><value>Review your armor choices in creation.</value></data>
+  <data name="Completion.Identity" xml:space="preserve"><value>Review your name, identity and story yourself.</value></data>
+  <data name="Completion.Targets" xml:space="preserve"><value>Some starter targets are locked, unavailable or unmet. They are advice, not automatic permission to change your choices.</value></data>
+  <data name="Completion.Magic" xml:space="preserve"><value>Review the magic choices required by your talent.</value></data>
+  <data name="Completion.SkillsNeeded" xml:space="preserve"><value>Review skills, native language and any unallocated skill points.</value></data>
+  <data name="Completion.AttributesNeeded" xml:space="preserve"><value>Review your attribute allocations.</value></data>
+  <data name="Completion.LifestyleNeeded" xml:space="preserve"><value>Review your lifestyle and starting-cash selection.</value></data>
+  <data name="Completion.ContactsNeeded" xml:space="preserve"><value>Review your contacts.</value></data>
+  <data name="Completion.ResourcesNeeded" xml:space="preserve"><value>Review your creation funding.</value></data>
+  <data name="Completion.GearNeeded" xml:space="preserve"><value>Review your equipment choices.</value></data>
+  <data name="Completion.QualitiesNeeded" xml:space="preserve"><value>Review your qualities.</value></data>
+  <data name="Completion.ManualNeeded" xml:space="preserve"><value>This part still needs manual review in creation.</value></data>
+  <data name="Completion.Selected" xml:space="preserve"><value>selected choice</value></data>
+  <data name="Completion.Archetype.General" xml:space="preserve"><value>General survivor</value></data>
+  <data name="Completion.Archetype.Samurai" xml:space="preserve"><value>Street samurai</value></data>
+  <data name="Completion.Archetype.Face" xml:space="preserve"><value>Face</value></data>
+  <data name="Completion.Archetype.Mage" xml:space="preserve"><value>Mage</value></data>
+  <data name="Completion.Archetype.Decker" xml:space="preserve"><value>Decker</value></data>
+  <data name="Completion.Archetype.Rigger" xml:space="preserve"><value>Rigger</value></data>
+  <data name="Common.RequiredChoiceMissing" xml:space="preserve"><value>Required choice missing</value></data>
   <data name="Qualities.Filter.Type" xml:space="preserve"><value>Type</value></data>
   <data name="Qualities.Filter.All" xml:space="preserve"><value>All (+ / −)</value></data>
   <data name="Qualities.Filter.Positive" xml:space="preserve"><value>+ Advantages</value></data>
@@ -3539,4 +3635,21 @@
   <data name="Lifestyles.OpeningCash" xml:space="preserve"><value>Opening starting cash…</value></data>
   <data name="Lifestyles.ShowQualities" xml:space="preserve"><value>Optional lifestyle qualities</value></data>
   <data name="Lifestyles.HideQualities" xml:space="preserve"><value>Hide optional lifestyle qualities</value></data>
+  <data name="Loadout.Title" xml:space="preserve"><value>Weapons and armor</value></data>
+  <data name="Loadout.CatalogScope" xml:space="preserve"><value>Only supported weapons and armor from your enabled books are offered here.</value></data>
+  <data name="Loadout.Unavailable" xml:space="preserve"><value>Weapon and armor choices are unavailable. Reopen this runner to refresh.</value></data>
+  <data name="Loadout.Retained" xml:space="preserve"><value>Saved — retained</value></data>
+  <data name="Loadout.RetainedHelp" xml:space="preserve"><value>Saved entries will be kept when you finish this character. Only new selections can be removed here.</value></data>
+  <data name="Loadout.CheckReceipt" xml:space="preserve"><value>Check saved purchase</value></data>
+  <data name="Loadout.Confirm" xml:space="preserve"><value>Confirm weapons and armor</value></data>
+  <data name="Loadout.CancelPreview" xml:space="preserve"><value>Back to selections</value></data>
+  <data name="Loadout.Preview" xml:space="preserve"><value>Preview weapons and armor</value></data>
+  <data name="Loadout.InsufficientFunds" xml:space="preserve"><value>Not enough funds. Remove a new selection or choose something cheaper.</value></data>
+  <data name="Loadout.Weapons" xml:space="preserve"><value>Weapons</value></data>
+  <data name="Loadout.Armor" xml:space="preserve"><value>Armor</value></data>
+  <data name="Loadout.Changed" xml:space="preserve"><value>These choices could not be reviewed. Reopen this runner to refresh.</value></data>
+  <data name="Loadout.SavedReopen" xml:space="preserve"><value>Saved. Reopen the character to refresh both baskets.</value></data>
+  <data name="Loadout.Saved" xml:space="preserve"><value>Weapons and armor saved. You can continue choosing equipment.</value></data>
+  <data name="Loadout.Unknown" xml:space="preserve"><value>The purchase is not verified. Check the saved purchase before trying again.</value></data>
+  <data name="Loadout.BudgetUnavailable" xml:space="preserve"><value>Preview a purchase to review your remaining funds.</value></data>
 </root>
