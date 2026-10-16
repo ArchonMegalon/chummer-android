@@ -2428,4 +2428,51 @@
   <data name="Loadout.Saved" xml:space="preserve"><value>Waffen und Rüstung gespeichert. Du kannst weitere Ausrüstung auswählen.</value></data>
   <data name="Loadout.Unknown" xml:space="preserve"><value>Der Kauf ist nicht bestätigt. Prüfe den gespeicherten Kauf, bevor du es erneut versuchst.</value></data>
   <data name="Loadout.BudgetUnavailable" xml:space="preserve"><value>Prüfe einen Kauf in der Vorschau, um dein verbleibendes Guthaben zu sehen.</value></data>
+  <data name="Completion.Review.ShowRetained" xml:space="preserve"><value>Beibehaltene Auswahl und Karriere-Vorbereitung anzeigen</value></data>
+  <data name="Completion.Review.HideRetained" xml:space="preserve"><value>Beibehaltene Auswahl und Karriere-Vorbereitung ausblenden</value></data>
+  <data name="Completion.Review.Other" xml:space="preserve"><value>Weitere geprüfte Angaben</value></data>
+  <data name="Completion.Review.Unknown" xml:space="preserve"><value>Details zur Auswahl nicht verfügbar</value></data>
+  <data name="Completion.Review.Build" xml:space="preserve"><value>Grundentscheidungen</value></data>
+  <data name="Completion.Review.QualityKarma" xml:space="preserve"><value>Karma für Vor- und Nachteile nach Begrenzungen und Ermäßigungen</value></data>
+  <data name="Completion.Review.Metatype" xml:space="preserve"><value>Metatyp</value></data>
+  <data name="Completion.Review.Attributes" xml:space="preserve"><value>Attribute</value></data>
+  <data name="Completion.Review.Skills" xml:space="preserve"><value>Fertigkeiten und Sprachen</value></data>
+  <data name="Completion.Review.Qualities" xml:space="preserve"><value>Vor- und Nachteile</value></data>
+  <data name="Completion.Review.Equipment" xml:space="preserve"><value>Ausrüstung</value></data>
+  <data name="Completion.Review.Contacts" xml:space="preserve"><value>Kontakte und Lebensstil</value></data>
+  <data name="Completion.Review.Contact" xml:space="preserve"><value>Kontakt</value></data>
+  <data name="Completion.Review.Magic" xml:space="preserve"><value>Magie und Resonanz</value></data>
+  <data name="Completion.Review.MagicEnabled" xml:space="preserve"><value>Magieattribut aktiv</value></data>
+  <data name="Completion.Review.ResonanceEnabled" xml:space="preserve"><value>Resonanzattribut aktiv</value></data>
+  <data name="Completion.Review.DepthEnabled" xml:space="preserve"><value>Tiefenattribut aktiv</value></data>
+  <data name="Completion.Review.Adept" xml:space="preserve"><value>Adeptenbegabung</value></data>
+  <data name="Completion.Review.Magician" xml:space="preserve"><value>Zaubererbegabung</value></data>
+  <data name="Completion.Review.Technomancer" xml:space="preserve"><value>Technomancerbegabung</value></data>
+  <data name="Completion.Review.Ai" xml:space="preserve"><value>KI-Begabung</value></data>
+  <data name="Completion.Review.Enabled" xml:space="preserve"><value>Aktiv</value></data>
+  <data name="Completion.Review.PowerPoints" xml:space="preserve"><value>Gekaufte Kraftpunkte</value></data>
+  <data name="Completion.Review.Resources" xml:space="preserve"><value>Ressourcen und Übernahme</value></data>
+  <data name="Completion.Review.Funding" xml:space="preserve"><value>Geldmittel bei der Erschaffung</value></data>
+  <data name="Completion.Review.KarmaCarryover" xml:space="preserve"><value>In die Karriere übernommenes Karma</value></data>
+  <data name="Completion.Review.NuyenCarryover" xml:space="preserve"><value>In die Karriere übernommene Nuyen</value></data>
+  <data name="Completion.Review.CashLifestyle" xml:space="preserve"><value>Lebensstil für das Startgeld</value></data>
+  <data name="Completion.Review.CashDice" xml:space="preserve"><value>Würfelsumme für das Startgeld</value></data>
+  <data name="Completion.Review.CashAdded" xml:space="preserve"><value>Nuyen einschließlich Startgeld</value></data>
+  <data name="Completion.Review.Career" xml:space="preserve"><value>Karriere</value></data>
+  <data name="Completion.Review.Mode" xml:space="preserve"><value>Modus</value></data>
+  <data name="Completion.Review.Setup" xml:space="preserve"><value>Karriere-Vorbereitung</value></data>
+  <data name="Completion.Review.StreetCred" xml:space="preserve"><value>Straßenruf</value></data>
+  <data name="Completion.Review.Notoriety" xml:space="preserve"><value>Schlechter Ruf</value></data>
+  <data name="Completion.Review.PublicAwareness" xml:space="preserve"><value>Prominenz</value></data>
+  <data name="Completion.Review.BurntStreetCred" xml:space="preserve"><value>Verbrauchter Straßenruf</value></data>
+  <data name="Completion.Review.Expenses" xml:space="preserve"><value>Ausgabenverlauf</value></data>
+  <data name="Completion.Review.Effects" xml:space="preserve"><value>Effekte</value></data>
+  <data name="Completion.Review.ContactList" xml:space="preserve"><value>Kontaktliste</value></data>
+  <data name="Completion.Review.Priority" xml:space="preserve"><value>Priorität {0}</value></data>
+  <data name="Completion.Review.SumToTen" xml:space="preserve"><value>{0} ({1} Punkte bei Summe bis Zehn)</value></data>
+  <data name="Completion.Review.Quantity" xml:space="preserve"><value>{0} · Anzahl</value></data>
+  <data name="Completion.Review.Increments" xml:space="preserve"><value>{0} · Zeiträume</value></data>
+  <data name="Completion.Review.Retained" xml:space="preserve"><value>{0} · beibehalten</value></data>
+  <data name="Completion.Review.BeforeAfter" xml:space="preserve"><value>vorher {0} → nachher {1}</value></data>
+  <data name="Completion.Review.Cost" xml:space="preserve"><value>geprüfte Gesamtkosten: {0} Karma, {1} ¥</value></data>
 </root>

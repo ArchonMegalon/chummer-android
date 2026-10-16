@@ -709,16 +709,42 @@ public sealed class CreationCompletionPage : NativePageBase
         var projection = _review!.Projection;
         _body.Add(NativeTheme.Eyebrow(Copy("FinalReview", "Review before Apply")));
         RenderOptionalAttributeKarmaGoals();
-        foreach (var delta in projection.OrderedDeltas.OrderBy(row => row.Order))
+        var rows = FinalReviewRows(projection.OrderedDeltas, _inputs!, _proposal!.Evaluation.Value!);
+        AddReviewGroups(_body, rows.Where(row => !row.Retained && !row.Setup));
+        var details = new VerticalStackLayout { Spacing = 8, IsVisible = false,
+            AutomationId = "creation-completion-retained-details" };
+        AddReviewGroups(details, rows.Where(row => row.Retained || row.Setup));
+        if (details.Children.Count > 0)
         {
-            string label = !string.IsNullOrWhiteSpace(delta.TargetName) ? delta.TargetName
-                : delta.Kind == CharacterCreationFinalizationDeltaKinds.Attribute
-                    ? CreationAllocationStrings.AttributeName(delta.TargetId)
-                    : Copy("Change", "Character change");
-            string change = delta.Kind == CharacterCreationFinalizationDeltaKinds.Lifecycle
-                ? Copy("CareerTransition", "Creation → Career")
-                : $"{DeltaValue(delta.BeforeValue)} → {DeltaValue(delta.AfterValue)}";
-            _body.Add(NativeTheme.Body(label + ": " + change));
+            Button toggle = NativeTheme.PrimaryButton(Copy("Review.ShowRetained", "Show retained choices and Career setup"));
+            toggle.AutomationId = "creation-completion-retained-toggle";
+            // This display-only gesture must not use RunAsync: its final Refresh
+            // replaces these controls with a newly collapsed details group.
+            toggle.Clicked += (_, _) =>
+            {
+                if (!Current(appearance, render) || _busy || _applyStarted || _leaving
+                    || !ReferenceEquals(toggle.Parent, _body) || !ReferenceEquals(details.Parent, _body)
+                    || !toggle.IsEnabled) return;
+                details.IsVisible = !details.IsVisible;
+                toggle.Text = details.IsVisible ? Copy("Review.HideRetained", "Hide retained choices and Career setup")
+                    : Copy("Review.ShowRetained", "Show retained choices and Career setup");
+            };
+            toggle.HeightRequest = -1;
+            toggle.MinimumHeightRequest = 50;
+            toggle.LineBreakMode = LineBreakMode.WordWrap;
+            toggle.BackgroundColor = Colors.Transparent;
+            toggle.TextColor = NativeTheme.Ink;
+            toggle.BorderColor = NativeTheme.Line;
+            toggle.BorderWidth = 1;
+            _body.Add(toggle);
+            _body.Add(details);
+        }
+        var remaining = _proposal.RemainingTasks.Where(key => key != "completion.remaining.finalization-review")
+            .Select(RemainingTask).Distinct().ToArray();
+        if (remaining.Length > 0)
+        {
+            _body.Add(NativeTheme.Eyebrow(Copy("Remaining", "Still needs attention")));
+            foreach (string task in remaining) _body.Add(NativeTheme.Body(task, NativeTheme.Muted));
         }
         _body.Add(NativeTheme.Metric(Copy("KarmaAfter", "Career Karma"), Number(projection.KarmaRemaining)));
         _body.Add(NativeTheme.Metric(Copy("NuyenAfter", "Career nuyen"), Number(projection.NuyenRemaining)));
@@ -1021,9 +1047,277 @@ public sealed class CreationCompletionPage : NativePageBase
         _ => MagicCatalogStrings.TalentName(id)
     };
 
-    private static string DeltaValue(string? value) => value is null ? "—"
-        : value == "native" ? CreationKarmaCopy.NativeLanguage
-        : Guid.TryParse(value, out _) ? Copy("Selected", "selected choice") : value;
+    internal sealed record FinalReviewRow(string Area, string Label, string Value, bool Retained = false, bool Setup = false);
+
+    private static void AddReviewGroups(VerticalStackLayout parent, IEnumerable<FinalReviewRow> rows)
+    {
+        foreach (var group in rows.GroupBy(row => row.Area))
+        {
+            parent.Add(NativeTheme.Eyebrow(group.Key));
+            foreach (var row in group)
+                parent.Add(NativeTheme.Body(row.Label + ": " + row.Value));
+        }
+    }
+
+    // Core deltas describe the complete projected graph, including baseline assignments.
+    // This is display only: compare admitted original rows, never alter the review or its digest.
+    internal static IReadOnlyList<FinalReviewRow> FinalReviewRows(
+        IEnumerable<CharacterCreationFinalizationDelta> deltas, CharacterCreationCompletionReviewInputs inputs,
+        CharacterCreationCompletionPlan plan)
+    {
+        List<FinalReviewRow> rows = [];
+        foreach (var delta in deltas.OrderBy(row => row.Order))
+        {
+            string area = Copy("Review.Other", "Other reviewed details");
+            string label = Copy("Review.Unknown", "Choice details unavailable");
+            string? before = delta.BeforeValue, after = delta.AfterValue;
+            bool retained = false, setup = false;
+            bool names = false;
+            switch (delta.Kind)
+            {
+                case CharacterCreationFinalizationDeltaKinds.Build:
+                    area = Copy("Review.Build", "Build choices");
+                    var assignment = inputs.Skills.PrerequisiteDraft.Assignments.FirstOrDefault(row =>
+                        delta.DeltaId == "priority:" + row.CategoryId && delta.TargetId == row.CategoryId
+                        && delta.AfterValue == string.Create(CultureInfo.InvariantCulture, $"{row.Rank},{row.SumToTenValue}"));
+                    if (assignment is not null && assignment.Rank is "A" or "B" or "C" or "D" or "E")
+                    {
+                        label = WizardStrings.PriorityCategory(assignment.CategoryId, label);
+                        after = inputs.Skills.PrerequisiteDraft.BuildMethod switch
+                        {
+                            CharacterCreationBuildMethods.Priority => CreationFlowStrings.Format("Completion.Review.Priority", "Priority {0}", assignment.Rank),
+                            CharacterCreationBuildMethods.SumToTen => CreationFlowStrings.Format("Completion.Review.SumToTen", "{0} ({1} Sum-to-Ten points)", assignment.Rank, assignment.SumToTenValue),
+                            _ => Copy("Review.Unknown", "Choice details unavailable")
+                        };
+                        before = after;
+                        retained = names = true;
+                    }
+                    else if (delta.DeltaId == "qualities:karma-adjustment")
+                        label = Copy("Review.QualityKarma", "Quality Karma after limits and rebates");
+                    break;
+                case CharacterCreationFinalizationDeltaKinds.Metatype:
+                    area = Copy("Review.Build", "Build choices");
+                    label = Copy("Review.Metatype", "Metatype");
+                    var heritage = inputs.Skills.PrerequisiteDraft.HeritageSelection;
+                    retained = heritage is not null && heritage.MetatypeSourceId == delta.TargetId && heritage.MetatypeName == after;
+                    if (retained) before = after;
+                    before = before is null ? null : MagicCatalogStrings.MetatypeName(before);
+                    after = after is null ? null : MagicCatalogStrings.MetatypeName(after);
+                    names = true;
+                    break;
+                case CharacterCreationFinalizationDeltaKinds.Attribute:
+                    area = Copy("Review.Attributes", "Attributes");
+                    label = CreationAllocationStrings.AttributeName(delta.TargetId);
+                    if (label == delta.TargetId) label = Copy("Review.Unknown", "Choice details unavailable");
+                    if (inputs.Skills.Attributes.Attributes.FirstOrDefault(row => row.AttributeId == delta.TargetId) is { } attribute)
+                        before = attribute.Current.ToString(CultureInfo.InvariantCulture);
+                    retained = before == after;
+                    break;
+                case CharacterCreationFinalizationDeltaKinds.Skill:
+                    area = Copy("Review.Skills", "Skills and languages");
+                    var skill = plan.Review.Skills?.Skills.FirstOrDefault(row =>
+                        delta.DeltaId == $"skill:{row.Kind}:{row.SourceSkillId}");
+                    if (skill is not null)
+                    {
+                        label = SkillCatalogStrings.SkillName(skill.Kind, skill.SourceSkillId, skill.Name);
+                        var original = inputs.Skills.SavedSkillsState?.Skills.FirstOrDefault(row => row.Kind == skill.Kind && row.SourceSkillId == skill.SourceSkillId);
+                        var allocation = inputs.Skills.Allocations.FirstOrDefault(row => row.Kind == skill.Kind && row.SourceSkillId == skill.SourceSkillId);
+                        before = original is not null ? SkillValue(original.IsNativeLanguage, original.EffectiveRating)
+                            : allocation is not null ? SkillValue(allocation.IsNativeLanguage, allocation.Rating) : null;
+                        after = SkillValue(skill.IsNativeLanguage, skill.EffectiveRating);
+                        // Specializations are part of a skill choice, even when its rating is unchanged.
+                        string? oldSpecialization = original?.SpecializationName
+                            ?? inputs.Skills.Authority.ActiveSkills.Concat(inputs.Skills.Authority.KnowledgeSkills)
+                                .FirstOrDefault(row => row.Kind == skill.Kind && row.SourceSkillId == skill.SourceSkillId)
+                                ?.Specializations.FirstOrDefault(row => row.OptionId == allocation?.SpecializationOptionId)?.Name;
+                        if (oldSpecialization is not null) before += " (" + SafeReviewName(SkillCatalogStrings.SpecializationName(skill.Kind, skill.SourceSkillId, skill.Name, oldSpecialization)) + ")";
+                        if (skill.SpecializationName is { } specialization) after += " (" + SafeReviewName(SkillCatalogStrings.SpecializationName(skill.Kind, skill.SourceSkillId, skill.Name, specialization)) + ")";
+                        retained = before == after;
+                        names = true;
+                    }
+                    break;
+                case CharacterCreationFinalizationDeltaKinds.SkillGroup:
+                    area = Copy("Review.Skills", "Skills and languages");
+                    if (inputs.Skills.Authority.SkillGroups.FirstOrDefault(row => row.GroupId == delta.TargetId) is { } group)
+                    {
+                        label = SkillCatalogStrings.GroupName(group.Name);
+                        before = (inputs.Skills.SavedSkillsState?.SkillGroups.FirstOrDefault(row => row.GroupId == group.GroupId)?.Rating
+                            ?? inputs.Skills.GroupAllocations.FirstOrDefault(row => row.GroupId == group.GroupId)?.Rating)?.ToString(CultureInfo.InvariantCulture);
+                        retained = before == after;
+                    }
+                    break;
+                case CharacterCreationFinalizationDeltaKinds.Quality:
+                    area = Copy("Review.Qualities", "Qualities");
+                    if (Guid.TryParse(delta.TargetId, out var qualityId) && delta.TargetName is { } qualityName)
+                        label = QualityCatalogStrings.Name(qualityId, qualityName);
+                    retained = inputs.Lifestyles.Qualities.SelectedOptionIds.Any(id => delta.DeltaId == "quality:" + id)
+                        || delta.DeltaId.StartsWith("talent-quality:", StringComparison.Ordinal)
+                        || delta.DeltaId.StartsWith("racial-quality:", StringComparison.Ordinal);
+                    if (retained) before = after;
+                    names = after == delta.TargetName;
+                    if (names) { after = label; if (retained) before = after; }
+                    break;
+                case CharacterCreationFinalizationDeltaKinds.Gear:
+                case "weapon":
+                case "armor":
+                    area = Copy("Review.Equipment", "Equipment");
+                    label = delta.TargetName ?? label;
+                    if (delta.Kind == CharacterCreationFinalizationDeltaKinds.Gear)
+                        before = inputs.Lifestyles.Gear.State.PendingDraft?.Lines.FirstOrDefault(row => delta.DeltaId == "gear:" + row.OptionId)?.Quantity.ToString(CultureInfo.InvariantCulture);
+                    else if (delta.Kind == "weapon")
+                        before = inputs.Loadout?.OriginalSelections.Weapons.FirstOrDefault(row => row.OptionId == delta.TargetId)?.Quantity.ToString(CultureInfo.InvariantCulture);
+                    else
+                        before = inputs.Loadout?.OriginalSelections.Armor.FirstOrDefault(row => row.OptionId == delta.TargetId)?.Quantity.ToString(CultureInfo.InvariantCulture);
+                    retained = before == after;
+                    if (delta.DeltaId.StartsWith("talent-gear:", StringComparison.Ordinal))
+                    { before = after; retained = names = true; }
+                    else label = CreationFlowStrings.Format("Completion.Review.Quantity", "{0} · quantity", SafeReviewName(label));
+                    break;
+                case "contact":
+                    area = Copy("Review.Contacts", "Contacts and lifestyle");
+                    var contact = plan.Selections.Contacts.FirstOrDefault(row => row.ContactId.ToString("D") == delta.TargetId);
+                    var oldContact = inputs.Contacts.Contacts.FirstOrDefault(row => row.ContactId.ToString("D") == delta.TargetId);
+                    label = Copy("Review.Contact", "Contact");
+                    before = oldContact is null ? null : ContactValue(oldContact);
+                    after = contact is null ? delta.AfterValue : ContactValue(contact);
+                    retained = oldContact is not null && oldContact == contact;
+                    names = true;
+                    break;
+                case "lifestyle":
+                    area = Copy("Review.Contacts", "Contacts and lifestyle");
+                    var home = plan.Review.Lifestyles?.Lifestyles.FirstOrDefault(row => row.Configuration.LifestyleId.ToString("D") == delta.TargetId);
+                    var oldHome = inputs.Lifestyles.Lifestyles.FirstOrDefault(row => row.LifestyleId.ToString("D") == delta.TargetId);
+                    // Only the admitted configuration supplies a home name; raw delta keys are not labels.
+                    if (home is not null)
+                    {
+                        label = SafeReviewName(home.Configuration.Name);
+                        if (!string.Equals(home.Configuration.Name, home.BaseLifestyleName, StringComparison.Ordinal))
+                            label += " (" + SafeReviewName(home.BaseLifestyleName) + ")";
+                    }
+                    before = oldHome?.Increments.ToString(CultureInfo.InvariantCulture);
+                    retained = home is not null && oldHome is not null
+                        && CharacterCreationFinalizationDigest.Compute(oldHome) == CharacterCreationFinalizationDigest.Compute(home.Configuration);
+                    label = CreationFlowStrings.Format("Completion.Review.Increments", "{0} · periods", SafeReviewName(label));
+                    break;
+                case CharacterCreationFinalizationDeltaKinds.MagicResonance:
+                    area = Copy("Review.Magic", "Magic and resonance");
+                    var catalog = inputs.Magic.Authority;
+                    var option = catalog.Traditions.Concat(catalog.Streams).Concat(catalog.Spells).Concat(catalog.ComplexForms).Concat(catalog.AdeptPowers)
+                        .FirstOrDefault(row => delta.DeltaId == row.Identity.Kind + ":" + row.Identity.SourceId);
+                    if (option is not null)
+                    {
+                        string optionName = MagicCatalogStrings.OptionName(option.Identity.Kind, option.Identity.SourceId, option.Name);
+                        label = option.Identity.Kind switch
+                        {
+                            CharacterCreationMagicResonanceKinds.Tradition => Copy("MagicTradition", "Tradition"),
+                            CharacterCreationMagicResonanceKinds.Stream => Copy("MagicStream", "Stream"),
+                            CharacterCreationMagicResonanceKinds.Spell => Copy("MagicSpell", "Spell"),
+                            CharacterCreationMagicResonanceKinds.ComplexForm => Copy("MagicComplexForm", "Complex form"),
+                            _ => optionName
+                        };
+                        var original = inputs.Magic.Selections;
+                        retained = original.Tradition == option.Identity || original.Stream == option.Identity
+                            || original.Spells.Contains(option.Identity) || original.ComplexForms.Contains(option.Identity);
+                        after = optionName;
+                        before = retained ? after : null;
+                        if (option.Identity.Kind == CharacterCreationMagicResonanceKinds.AdeptPower)
+                        {
+                            label = optionName;
+                            before = original.AdeptPowers.FirstOrDefault(row => row.Identity == option.Identity)?.Levels.ToString(CultureInfo.InvariantCulture);
+                            after = plan.Selections.MagicSelections.AdeptPowers.FirstOrDefault(row => row.Identity == option.Identity)?.Levels.ToString(CultureInfo.InvariantCulture);
+                            retained = before == after && before is not null;
+                        }
+                        names = true;
+                    }
+                    else if (delta.DeltaId == "talent-flag:" + delta.TargetId && after == "True"
+                        && delta.TargetId is "magenabled" or "resenabled" or "depenabled" or "adept" or "magician" or "technomancer" or "ai")
+                    {
+                        label = delta.TargetId switch
+                        {
+                            "magenabled" => Copy("Review.MagicEnabled", "Magic attribute enabled"),
+                            "resenabled" => Copy("Review.ResonanceEnabled", "Resonance attribute enabled"),
+                            "depenabled" => Copy("Review.DepthEnabled", "Depth attribute enabled"),
+                            "adept" => Copy("Review.Adept", "Adept talent"),
+                            "magician" => Copy("Review.Magician", "Magician talent"),
+                            "technomancer" => Copy("Review.Technomancer", "Technomancer talent"),
+                            "ai" => Copy("Review.Ai", "AI talent"),
+                            _ => label
+                        };
+                        // These are effects of the unchanged, admitted talent, not new talent choices.
+                        before = after = Copy("Review.Enabled", "Enabled");
+                        retained = names = true;
+                    }
+                    else if (delta.DeltaId == "mystic-adept:power-points")
+                    {
+                        label = Copy("Review.PowerPoints", "Purchased power points");
+                        before = inputs.Magic.Selections.MysticAdeptPowerPoints.ToString(CultureInfo.InvariantCulture);
+                        retained = before == after;
+                    }
+                    break;
+                case CharacterCreationFinalizationDeltaKinds.Resources:
+                    area = Copy("Review.Resources", "Resources and carryover");
+                    label = delta.DeltaId switch
+                    {
+                        "resources:starting-nuyen" => Copy("Review.Funding", "Creation funds"),
+                        "resources:remaining-nuyen" => Copy("NuyenBefore", "Creation nuyen remaining"),
+                        "carryover:karma" => Copy("Review.KarmaCarryover", "Karma carried into Career"),
+                        "carryover:nuyen" => Copy("Review.NuyenCarryover", "Nuyen carried into Career"),
+                        "starting-cash:lifestyle" => Copy("Review.CashLifestyle", "Starting-cash lifestyle"),
+                        "starting-cash:dice" => Copy("Review.CashDice", "Starting-cash dice total"),
+                        "starting-cash:nuyen" => Copy("Review.CashAdded", "Nuyen after starting cash"),
+                        _ => label
+                    };
+                    names = delta.DeltaId == "starting-cash:lifestyle";
+                    break;
+                case CharacterCreationFinalizationDeltaKinds.Lifecycle:
+                    area = Copy("Review.Career", "Career");
+                    if (delta.TargetId == "created" && before == "False" && after == "True")
+                    {
+                        rows.Add(new(area, Copy("Review.Mode", "Mode"), Copy("CareerTransition", "Creation → Career")));
+                        continue;
+                    }
+                    if (delta.DeltaId == "career-initialization:" + delta.TargetId)
+                    {
+                        setup = true;
+                        area = Copy("Review.Setup", "Career setup");
+                        label = delta.TargetId switch
+                        {
+                            "streetcred" => Copy("Review.StreetCred", "Street Cred"),
+                            "notoriety" => Copy("Review.Notoriety", "Notoriety"),
+                            "publicawareness" => Copy("Review.PublicAwareness", "Public Awareness"),
+                            "burntstreetcred" => Copy("Review.BurntStreetCred", "Spent Street Cred"),
+                            "expenses" => Copy("Review.Expenses", "Expense history"),
+                            "improvements" => Copy("Review.Effects", "Effects"),
+                            "contacts" => Copy("Review.ContactList", "Contact list"),
+                            _ => label
+                        };
+                    }
+                    break;
+            }
+            string value = retained ? CreationFlowStrings.Format("Completion.Review.Retained", "{0} · retained", ReviewValue(after, names))
+                : before is null ? ReviewValue(after, names)
+                : CreationFlowStrings.Format("Completion.Review.BeforeAfter", "before {0} → after {1}", ReviewValue(before, names), ReviewValue(after, names));
+            if (delta.KarmaCost != 0 || delta.NuyenCost != 0)
+                value += " · " + CreationFlowStrings.Format("Completion.Review.Cost", "reviewed total: {0} Karma, {1} ¥", Number(delta.KarmaCost), Number(delta.NuyenCost));
+            rows.Add(new(area, SafeReviewName(label), value, retained, setup));
+        }
+        return rows;
+    }
+
+    private static string? SkillValue(bool native, int? rating) => native ? CreationKarmaCopy.NativeLanguage : rating?.ToString(CultureInfo.InvariantCulture);
+    private static string ContactValue(CharacterCreationKarmaContactSelection contact) => CreationFlowStrings.Format(
+        "Completion.ContactAddition", "{0} · Connection {1}, Loyalty {2}", SafeReviewName(contact.Identity.Name), contact.Connection, contact.Loyalty);
+    private static string ReviewValue(string? value, bool name) => string.IsNullOrEmpty(value) ? "—"
+        : name ? SafeReviewName(value)
+        : decimal.TryParse(value, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var number)
+            ? Number(number) : Copy("Review.Unknown", "Choice details unavailable");
+
+    // Punctuation belongs in real names (for example, Dr.-Singer-Schule).
+    // Unknown delta semantics are handled by their typed branches, not guessed from punctuation.
+    private static string SafeReviewName(string? value) => string.IsNullOrWhiteSpace(value)
+        || System.Text.RegularExpressions.Regex.IsMatch(value,
+            @"(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|\b[0-9a-f]{32,}\b|\binternal[._:/][a-z0-9_.:/-]+\b")
+        ? Copy("Review.Unknown", "Choice details unavailable") : value;
     private Guid? SelectedLifestyleId(CharacterCreationCompletionReviewInputs inputs)
     {
         var source = _cashSources.FirstOrDefault(row => row.AuthorityDigest == _cashDigest);
