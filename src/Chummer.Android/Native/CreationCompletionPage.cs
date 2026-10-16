@@ -26,6 +26,14 @@ public sealed class CreationCompletionPage : NativePageBase
     private bool _busy, _visible, _applyStarted, _outcomeLookupAllowed, _leaving;
     private long _render, _inputVersion;
 
+    // Local harness observation only: no character/source text, exception messages,
+    // stacks, persistence, telemetry or UI diagnostics. Each appearance owns its list.
+    internal sealed record LoadObservation(string Stage, string? Outcome, IReadOnlyList<string> Blockers,
+        string? ExceptionType, bool AppearanceCurrent, bool DisplayCurrent, bool? InputsCurrent);
+    internal IReadOnlyList<LoadObservation> LoadObservations { get; private set; } = [];
+    internal sealed record PreviewObservation(string Stage, long ElapsedMilliseconds, string? Outcome);
+    internal IReadOnlyList<PreviewObservation> PreviewObservations { get; private set; } = [];
+
     public CreationCompletionPage(RunnerSessionCoordinator coordinator) : base(coordinator)
     {
         Title = Copy("Title", "Finish this character");
@@ -71,6 +79,11 @@ public sealed class CreationCompletionPage : NativePageBase
         if (_applyStarted) return;
         long appearance = CaptureAppearanceGeneration();
         var original = Coordinator.State;
+        var display = original;
+        var observations = new List<LoadObservation>();
+        LoadObservations = observations;
+        string stage = "completion-inputs";
+        CharacterCreationCompletionReviewInputs? observedInputs = null;
         _display = original;
         _inputs = null;
         _missingPrerequisite = null;
@@ -83,7 +96,24 @@ public sealed class CreationCompletionPage : NativePageBase
         Refresh();
         try
         {
+            Observe();
             var loaded = await Coordinator.LoadCreationCompletionInputsAsync(cancellationToken);
+            observedInputs = loaded.Value;
+            Observe(loaded.Outcome, loaded.Blockers);
+            var replacement = Coordinator.State;
+            if (!CurrentLoad() && CanRetryInitialRead(replacement, loaded))
+            {
+                // A same-saved-state hydration retires profile-bound authority.
+                // Acquire fresh inputs once; never rebind the discarded inputs.
+                display = replacement;
+                _display = display;
+                observedInputs = null;
+                stage = "completion-inputs-retry";
+                Observe();
+                loaded = await Coordinator.LoadCreationCompletionInputsAsync(cancellationToken);
+                observedInputs = loaded.Value;
+                Observe(loaded.Outcome, loaded.Blockers);
+            }
             if (!CurrentLoad()) return;
             _blockers = loaded.Blockers;
             if (loaded is not { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } inputs })
@@ -91,7 +121,10 @@ public sealed class CreationCompletionPage : NativePageBase
                 // A downstream input (for example Skills) can be absent because
                 // the real priority prerequisite has not been confirmed yet.
                 // Only a current, owner-bound Core read may choose that guidance.
+                stage = "prerequisite-fallback";
+                Observe();
                 var prerequisite = await Coordinator.LoadCreationPrerequisiteAsync(cancellationToken);
+                Observe(prerequisite.Outcome, prerequisite.Blockers);
                 if (!CurrentLoad()) return;
                 if (prerequisite is { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { CanEnterAttributes: false } required }
                     && Coordinator.IsCreationPrerequisiteStateCurrent(required))
@@ -99,11 +132,17 @@ public sealed class CreationCompletionPage : NativePageBase
                 return;
             }
             if (!Coordinator.IsCreationCompletionInputsCurrent(inputs)) return;
+            stage = "archetype";
+            Observe();
             var suggestion = await Task.Run(() => CompletionRecommendationBuilder.SuggestArchetype(
                 inputs, cancellationToken: cancellationToken), cancellationToken);
+            Observe(suggestion.Outcome, suggestion.Blockers);
             if (!CurrentLoad() || !Coordinator.IsCreationCompletionInputsCurrent(inputs)) return;
+            stage = "finalization-cash";
+            Observe();
             var cash = await Task.Run(() => Coordinator.LoadCreationFinalizationInBackground(
-                original, cancellationToken), cancellationToken);
+                display, cancellationToken), cancellationToken);
+            Observe(cash.Outcome, cash.Blockers);
             if (!CurrentLoad() || !Coordinator.IsCreationCompletionInputsCurrent(inputs)) return;
             _inputs = inputs;
             _archetype = suggestion.Value;
@@ -120,18 +159,55 @@ public sealed class CreationCompletionPage : NativePageBase
             _preferredTradition = null;
             _preferredStream = null;
             _inputVersion++;
+            stage = "choices-ready";
+            Observe();
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (OperationCanceledException error) when (cancellationToken.IsCancellationRequested) { Observe(error: error); }
         catch (Exception error) when (error is not OutOfMemoryException)
         {
+            Observe(error: error);
             if (CurrentLoad()) _blockers = ["completion-ui-load-failed"];
         }
         finally
         {
             if (IsCurrentAppearanceGeneration(appearance)) _busy = false;
         }
-        bool CurrentLoad() => IsCurrentAppearanceGeneration(appearance)
-            && Coordinator.IsCreationFinalizationDisplayCurrent(original);
+        bool PageLoadCurrent() => IsCurrentPage(appearance) && ReferenceEquals(Shell.Current?.CurrentPage, this)
+            && !_leaving && !_applyStarted
+            && !cancellationToken.IsCancellationRequested && !ReadToken.IsCancellationRequested;
+        bool CurrentLoad() => PageLoadCurrent() && !Coordinator.State.IsBusy
+            && Coordinator.State.ConflictState is null
+            && Coordinator.State.Session.ActiveWorkspaceId == original.Session.ActiveWorkspaceId
+            && Supports(Coordinator.State)
+            && Coordinator.State.CreationWizard?.BuildMethod == original.CreationWizard?.BuildMethod
+            && Coordinator.IsCreationFinalizationDisplayCurrent(display);
+        bool CanRetryInitialRead(CharacterOverviewState candidate,
+            CharacterCreationFoundationResult<CharacterCreationCompletionReviewInputs> result)
+            => PageLoadCurrent() && _inputs is null
+               && original.Error is null && !original.IsBusy && original.ConflictState is null
+               && original.DisplayOwnerContext is { IsValid: true }
+               && candidate.DisplayOwnerContext == original.DisplayOwnerContext
+               && candidate.Session.OwnerContext == original.Session.OwnerContext
+               && candidate.WorkspaceId is not null && candidate.WorkspaceId == original.WorkspaceId
+               && candidate.Session.ActiveWorkspaceId == original.Session.ActiveWorkspaceId
+               && candidate.Session.ActiveWorkspaceId == original.WorkspaceId
+               && candidate.ContentRevision == original.ContentRevision && candidate.SavedRevision == original.SavedRevision
+               && candidate.ActiveTabId == original.ActiveTabId && candidate.ActiveActionId == original.ActiveActionId
+               && candidate.ActiveSectionId == original.ActiveSectionId
+               && Supports(candidate) && candidate.CreationWizard?.BuildMethod == original.CreationWizard?.BuildMethod
+               && candidate.Error is null && !candidate.IsBusy && candidate.ConflictState is null
+               && !ReferenceEquals(candidate.Profile, original.Profile)
+               // This also checks the live owner transition stamp, including ABA.
+               && Coordinator.IsCreationFinalizationDisplayCurrent(candidate)
+               && (result is { Outcome: CharacterCreationFoundationOutcomes.Success, Value: not null }
+                   || result is { Outcome: CharacterCreationFoundationOutcomes.Blocked, Value: null }
+                      && result.Blockers.Count == 1
+                      && result.Blockers[0] == CharacterCreationFinalizationBlockers.StaleWorkspaceRevision);
+
+        void Observe(string? outcome = null, IReadOnlyList<string>? blockers = null, Exception? error = null)
+            => observations.Add(new(stage, outcome, blockers?.ToArray() ?? [], error?.GetType().FullName,
+                IsCurrentAppearanceGeneration(appearance), Coordinator.IsCreationFinalizationDisplayCurrent(display),
+                observedInputs is null ? null : Coordinator.IsCreationCompletionInputsCurrent(observedInputs)));
     }
 
     protected override void Refresh()
@@ -352,9 +428,14 @@ public sealed class CreationCompletionPage : NativePageBase
         };
         _busy = true;
         Refresh();
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var observations = new List<PreviewObservation>();
+        PreviewObservations = observations;
         try
         {
+            Observe("proposal-start");
             var result = await Coordinator.BuildCreationCompletionProposalAsync(inputs, intent, ReadToken);
+            Observe("proposal-returned", result.Outcome);
             if (!CurrentInput(appearance, version)) return;
             _proposal = result.Value;
             _blockers = RequiredProposalBlockers(_proposal, result.Blockers);
@@ -369,7 +450,9 @@ public sealed class CreationCompletionPage : NativePageBase
                 // A suggested home is not saved yet. Read its genuine source
                 // terms through the admitted proposal, never use the original
                 // Street fallback or construct an authority from display values.
+                Observe("cash-start");
                 var cash = await Coordinator.LoadCreationCompletionStartingCashAsync(proposal, ReadToken);
+                Observe("cash-returned", cash.Outcome);
                 if (!CurrentInput(appearance, version) || !ReferenceEquals(_proposal, proposal)) return;
                 if (cash is { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } source, Blockers.Count: 0 })
                 {
@@ -386,9 +469,10 @@ public sealed class CreationCompletionPage : NativePageBase
                 }
             }
         }
-        catch (OperationCanceledException) { }
+        catch (OperationCanceledException) { Observe("canceled"); }
         catch (Exception error) when (error is not OutOfMemoryException)
         {
+            Observe("failed", error.GetType().FullName);
             if (CurrentInput(appearance, version)) _blockers = ["completion-ui-load-failed"];
         }
         finally
@@ -398,7 +482,10 @@ public sealed class CreationCompletionPage : NativePageBase
                 _busy = false;
                 if (CurrentInput(appearance, version)) Refresh();
             }
+            Observe("callback-finished");
         }
+        void Observe(string stage, string? outcome = null)
+            => observations.Add(new(stage, clock.ElapsedMilliseconds, outcome));
     }
 
     private void RenderProposal()

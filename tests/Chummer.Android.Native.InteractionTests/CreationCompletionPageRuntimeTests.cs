@@ -1,8 +1,10 @@
 using System.Globalization;
 using System.Reflection;
+using System.Text.Json;
 using Chummer.Android.Native;
 using Chummer.Application.Characters;
 using Chummer.Application.Owners;
+using Chummer.Application.Workspaces;
 using Chummer.Contracts.Characters;
 using Chummer.Contracts.Workspaces;
 using Chummer.Infrastructure.Workspaces;
@@ -13,6 +15,17 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    // Explicit filter only; keep the ordinary unfiltered scenario set unchanged.
+    private const string InitialCompletionRefreshScenario = "initial-load-refresh-preview239";
+    private const string InitialCompletionDepartureScenario = "initial-load-refresh-departure";
+    private const string InitialCompletionCancelScenario = "initial-load-refresh-cancel";
+    private const string InitialCompletionOwnerAbaScenario = "initial-load-refresh-owner-aba";
+    private const string InitialCompletionRetryBoundScenario = "initial-load-refresh-retry-bound";
+
+    private static bool IsInitialCompletionRefreshScenario(string scenario)
+        => scenario is InitialCompletionRefreshScenario or InitialCompletionDepartureScenario
+            or InitialCompletionCancelScenario or InitialCompletionOwnerAbaScenario or InitialCompletionRetryBoundScenario;
+
     internal static async Task RunCreationCompletionPageAsync(string contentRoot, string? scenarioFilter = null)
     {
         using var ui = new IssuedPageUiContext();
@@ -26,7 +39,7 @@ internal static partial class AfterRunAuthorityHarness
             try
             {
                 foreach (string scenario in scenarioFilter is null
-                    ? new[] { "prerequisite", "cash-read-throws", "busy-cancel", "cancel", "magic-choice-cancel", "loss-decline", "loss-owner-aba", "loss-departure", "apply", "lost-reply", "unknown", "optional-karma", "manual-weapon", "manual-armor", "manual-both", "manual-lost-reply", "manual-refresh-fault", "manual-cancel" }
+                    ? new[] { "prerequisite", "cash-read-throws", "busy-cancel", "cancel", "magic-choice-cancel", "loss-decline", "loss-owner-aba", "loss-departure", "apply", "lost-reply", "unknown", "optional-karma", "manual-weapon", "manual-armor", "manual-both", "manual-lost-reply", "manual-refresh-fault", "manual-cancel", ExactPartialManualScenario }
                     : new[] { scenarioFilter })
                 {
                     CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(scenario switch
@@ -38,11 +51,17 @@ internal static partial class AfterRunAuthorityHarness
                     var owners = new ControlledLinkedOwner();
                     using var reviewPause = scenario == "busy-cancel" ? new CompletionReviewPause() : null;
                     CompletionServiceProbe? service = null;
+                    CompletionReadProbe? completionReader = null;
+                    FinalizationThreadProbe? finalizationReader = null;
                     ThrowingCompletionCashService? throwingCash = null;
                     ManualLoadoutServiceProbe? loadoutService = null;
                     await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
                         creationCompletion: true, creationFinalization: true, creationPrerequisite: true,
                         productionCreationOverview: true,
+                        completionReaderDecorator: IsInitialCompletionRefreshScenario(scenario)
+                            ? actual => completionReader = new(actual, ui) : null,
+                        finalizationDecorator: scenario == InitialCompletionRetryBoundScenario
+                            ? actual => finalizationReader = new(actual, ui) : null,
                         loadoutDecorator: actual => loadoutService = new(actual, ui)
                         { LoseReply = scenario == "manual-lost-reply", FailRefresh = scenario == "manual-refresh-fault" },
                         completionServiceDecorator: actual =>
@@ -55,17 +74,24 @@ internal static partial class AfterRunAuthorityHarness
                             if (scenario == "cash-read-throws") return throwingCash = new(service);
                             return reviewPause is null ? service : new PausedCompletionReviewService(service, reviewPause);
                         });
+                    if (scenario == CapturedPartialManualScenario)
+                    {
+                        await RunCapturedPartialManualCompletionAsync(ui, runtime, owners, window, service!, loadoutService!);
+                        continue;
+                    }
                     await runtime.Coordinator.InitializeAsync();
                     await AccountStartupTask(runtime.Coordinator).WaitAsync(TimeSpan.FromSeconds(10));
                     var before = scenario == "prerequisite"
                         ? PreparePrerequisiteOwnerFixture(runtime, CharacterCreationBuildMethods.Priority)
+                        : scenario == ExactPartialManualScenario
+                            ? PrepareActualFinalizationReadyContext(runtime, stopBeforeAttributes: true, exactPartialManual: true)
                         : scenario.StartsWith("manual-", StringComparison.Ordinal)
                             ? PrepareActualFinalizationReadyContext(runtime, stopBeforeGear: true, omitSkillsBeforeGear: true)
                         : scenario == "magic-choice-cancel"
                             ? PrepareActualFinalizationReadyContext(runtime, stopBeforeAttributes: true,
                                 attributeTalent: "Magician", attributeTalentRank: "B", completionMagic: true)
                         : PrepareActualFinalizationReadyContext(runtime, stopBeforeAttributes: scenario != "cancel");
-                    await HydrateFinalizationOwnerAsync(runtime, owners, before);
+                    await HydrateFinalizationOwnerAsync(runtime, owners, before, contentFreeFailure: scenario == ExactPartialManualScenario);
                     if (scenario == "prerequisite")
                     {
                         var prerequisite = await runtime.Coordinator.LoadCreationPrerequisiteAsync();
@@ -101,6 +127,17 @@ internal static partial class AfterRunAuthorityHarness
                         before = await PurchaseManualLoadoutThroughGearAsync(ui, runtime, owners, root, before, scenario, loadoutService!);
                         manualLoadout = before.Document.AuxiliaryState.CharacterCreationLoadoutDraft!;
                         files = CompletionFiles(runtime);
+                    }
+                    if (scenario == ExactPartialManualScenario)
+                    {
+                        await RunExactPartialManualCompletionAsync(ui, runtime, owners, root, window, before, files, service!);
+                        continue;
+                    }
+                    if (IsInitialCompletionRefreshScenario(scenario))
+                    {
+                        await RunInitialCompletionRefreshAsync(ui, runtime, owners, root, window, before, files,
+                            completionReader!, service!, loadoutService!, scenario, finalizationReader);
+                        continue;
                     }
                     Button open = CompletionPageControl<Button>(root, "creation-completion-open");
                     Require(open.IsEnabled, "SETUP: the unfinished Priority runner has no completion entry.");
@@ -539,6 +576,468 @@ internal static partial class AfterRunAuthorityHarness
                 CultureInfo.CurrentUICulture = previousCulture;
             }
         });
+    }
+
+    private static async Task RunInitialCompletionRefreshAsync(IssuedPageUiContext ui, NativeRewardRuntime runtime,
+        ControlledLinkedOwner owners, BuildPage root, Window window, WorkspaceStoredDocument saved,
+        IReadOnlyDictionary<string, string> files, CompletionReadProbe reader, CompletionServiceProbe service,
+        ManualLoadoutServiceProbe purchases, string scenario, FinalizationThreadProbe? finalizationReader)
+    {
+        var coordinator = runtime.Coordinator;
+        var timeout = TimeSpan.FromSeconds(30);
+        var retryCashStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var releaseRetryCash = new ManualResetEventSlim(false);
+        bool retryCashArmed = false;
+        var initialNavigation = root.Navigation.NavigationStack.ToArray();
+        var open = CompletionPageControl<Button>(root, "creation-completion-open");
+        Require(open.IsEnabled, "stage=initial-refresh-entry; unfinished Priority entry-disabled");
+        await ClickCompletionControlAsync(ui, open);
+        Require(root.Navigation.NavigationStack.Last() is CreationCompletionPage,
+            "stage=initial-refresh-entry; real completion page-missing");
+        var page = (CreationCompletionPage)root.Navigation.NavigationStack.Last();
+        IssuedPageLifecycle(root, "OnDisappearing");
+        await ui.DrainDispatchedAsyncVoidAsync().WaitAsync(timeout);
+        using var alerts = new IssuedPageAlerts(page, window);
+        var original = coordinator.State;
+        var originalOwner = owners.Capture();
+        var expectedOwner = originalOwner;
+        long appearanceGeneration = 0;
+        int refreshChanges = 0;
+        EventHandler changed = (_, _) => Interlocked.Increment(ref refreshChanges);
+        try
+        {
+            var setup = new
+            {
+                Unfinished = original.Profile?.Created == false,
+                Priority = original.CreationWizard?.BuildMethod == CharacterCreationBuildMethods.Priority,
+                WorkspaceMatches = original.WorkspaceId == saved.Id,
+                DisplayOwnerMatches = original.DisplayOwnerContext == originalOwner,
+                SessionOwnerMatches = original.Session.OwnerContext == originalOwner,
+                ContentRevisionMatches = original.ContentRevision == saved.ContentRevision,
+                SavedRevisionMatches = original.SavedRevision == saved.SavedRevision,
+                DisplayUntouched = PageField<CharacterOverviewState?>("_display") is null,
+                LoadUntouched = page.LoadObservations.Count == 0,
+                NavigationAppearanceStarted = IssuedPageField<long>(page, "_appearanceGeneration") > 0,
+                Visible = PageField<bool>("_visible"),
+                Busy = PageField<bool>("_busy")
+            };
+            string setupTrace = JsonSerializer.Serialize(setup);
+            Console.WriteLine("TRACE " + scenario + "; stage=initial-refresh-setup; checks=" + setupTrace);
+            Require(setup.Unfinished && setup.Priority && setup.WorkspaceMatches && setup.DisplayOwnerMatches
+                && setup.SessionOwnerMatches && setup.ContentRevisionMatches && setup.SavedRevisionMatches,
+                "stage=initial-refresh-setup; real unfinished Priority authority mismatch; checks=" + setupTrace);
+
+            // PushAsync may already have delivered a real appearance. Join it above,
+            // then pair its departure before controlling the next appearance's first read.
+            // Never reset page fields or pretend that the navigation load did not happen.
+            if (setup.NavigationAppearanceStarted)
+            {
+                Require(!setup.DisplayUntouched && !setup.LoadUntouched && setup.Visible && !setup.Busy
+                    && IssuedPageField<int>(page, "_subscribed") != 0,
+                    "stage=initial-refresh-setup; navigation appearance did not settle; checks=" + setupTrace);
+                IssuedPageLifecycle(page, "OnDisappearing");
+                await ui.DrainDispatchedAsyncVoidAsync().WaitAsync(timeout);
+                Require(!PageField<bool>("_visible") && IssuedPageField<int>(page, "_subscribed") == 0,
+                    "stage=initial-refresh-setup; navigation appearance did not depart");
+            }
+            else
+            {
+                Require(setup.DisplayUntouched && setup.LoadUntouched && !setup.Visible && !setup.Busy,
+                    "stage=initial-refresh-setup; unappeared page was not untouched; checks=" + setupTrace);
+            }
+
+            // Retain real issued inputs/proposal without Review, Apply or purchases.
+            var loaded = await coordinator.LoadCreationCompletionInputsAsync().WaitAsync(timeout);
+            string inputsTrace = JsonSerializer.Serialize(new { loaded.Outcome, loaded.Blockers });
+            Console.WriteLine("TRACE " + scenario + "; stage=initial-refresh-inputs; checks=" + inputsTrace);
+            Require(loaded is { Outcome: CharacterCreationFoundationOutcomes.Success, Value: not null },
+                "stage=initial-refresh-setup; real original inputs unavailable; checks=" + inputsTrace);
+            var originalInputs = loaded.Value!;
+            var built = await coordinator.BuildCreationCompletionProposalAsync(originalInputs,
+                CompletionIntent(originalOwner, originalInputs)).WaitAsync(timeout);
+            var authority = new
+            {
+                built.Outcome,
+                built.Blockers,
+                DisplayCurrent = coordinator.IsCreationFinalizationDisplayCurrent(original),
+                InputsCurrent = coordinator.IsCreationCompletionInputsCurrent(originalInputs),
+                ProposalPresent = built.Value is not null,
+                ProposalCurrent = built.Value is { } proposal && coordinator.IsCreationCompletionProposalCurrent(proposal),
+                CanReview = built.Value?.CanReview,
+                ProfileReferenceChanged = !ReferenceEquals(original.Profile, coordinator.State.Profile)
+            };
+            string authorityTrace = JsonSerializer.Serialize(authority);
+            Console.WriteLine("TRACE " + scenario + "; stage=initial-refresh-authority; checks=" + authorityTrace);
+            // CompletionIntent authorizes no additional purchases. Core may still
+            // require choices; this read-recovery test needs issued/current proposal
+            // authority, not a successful plan or permission to Review/Apply.
+            Require(authority.ProposalPresent && authority.DisplayCurrent && authority.InputsCurrent && authority.ProposalCurrent,
+                "stage=initial-refresh-setup; original authority was not genuinely issued/current; checks=" + authorityTrace);
+            var originalProposal = built.Value!;
+            int originalReads = reader.Calls;
+            AssertCompletionFilesUnchanged(runtime, files);
+
+            var gate = (SemaphoreSlim)typeof(RunnerSessionCoordinator).GetField("_workspaceActivationGate",
+                BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(coordinator)!;
+            Require(await gate.WaitAsync(timeout), "stage=initial-refresh-gate; acquisition timed out");
+            Task? appearance = null;
+            Task? hydration = null;
+            coordinator.Changed += changed;
+            try
+            {
+                appearance = ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing"));
+                appearanceGeneration = IssuedPageField<long>(page, "_appearanceGeneration");
+                Require(!appearance.IsCompleted && reader.Calls == originalReads
+                    && ReferenceEquals(PageField<CharacterOverviewState?>("_display"), original)
+                    && PageField<CharacterCreationCompletionReviewInputs?>("_inputs") is null
+                    && PageField<bool>("_busy") && PageField<bool>("_visible")
+                    && page.LoadObservations.Count == 1
+                    && page.LoadObservations[0] is { Stage: "completion-inputs", Outcome: null,
+                        AppearanceCurrent: true, DisplayCurrent: true, InputsCurrent: null },
+                    "stage=initial-refresh-gate; initial display/read did not wait at the real activation gate");
+
+                // Hydration calls the real Shell/Presenter directly, not the coordinator's
+                // gated activation API. Their StateChanged events publish the replacement.
+                hydration = HydrateFinalizationOwnerAsync(runtime, owners, saved, contentFreeFailure: true);
+                await hydration.WaitAsync(timeout);
+                RequireSameSavedAuthority();
+                Console.WriteLine("TRACE " + scenario + "; stage=initial-refresh-hydration; checks="
+                    + JsonSerializer.Serialize(new
+                    {
+                        ProfileReferenceChanged = !ReferenceEquals(original.Profile, coordinator.State.Profile),
+                        DisplayCurrent = coordinator.IsCreationFinalizationDisplayCurrent(original),
+                        InputsCurrent = coordinator.IsCreationCompletionInputsCurrent(originalInputs),
+                        ProposalCurrent = coordinator.IsCreationCompletionProposalCurrent(originalProposal)
+                    }));
+                Require(Volatile.Read(ref refreshChanges) > 0 && !appearance.IsCompleted
+                    && reader.Calls == originalReads
+                    && !ReferenceEquals(original.Profile, coordinator.State.Profile)
+                    && !coordinator.IsCreationFinalizationDisplayCurrent(original)
+                    && !coordinator.IsCreationCompletionInputsCurrent(originalInputs)
+                    && !coordinator.IsCreationCompletionProposalCurrent(originalProposal),
+                    "stage=initial-refresh-hydration; real refresh failed to retire original display/authority while read waited");
+                AssertCompletionFilesUnchanged(runtime, files);
+                if (scenario == InitialCompletionOwnerAbaScenario)
+                {
+                    owners.Set(ContactsOwnerB);
+                    owners.Set(originalOwner.Owner);
+                    expectedOwner = owners.Capture();
+                    Require(expectedOwner.Owner == originalOwner.Owner && expectedOwner != originalOwner,
+                        "stage=initial-refresh-aba; real owner transition did not advance its stamp");
+                    hydration = HydrateFinalizationOwnerAsync(runtime, owners, saved, contentFreeFailure: true);
+                    await hydration.WaitAsync(timeout);
+                    RequireSameSavedAuthority();
+                }
+                else if (scenario == InitialCompletionDepartureScenario)
+                    IssuedPageLifecycle(page, "OnDisappearing");
+                else if (scenario == InitialCompletionCancelScenario)
+                {
+                    var cancel = CompletionPageControl<Button>(page, "creation-completion-cancel");
+                    Require(cancel.IsEnabled && !appearance.IsCompleted && reader.Calls == originalReads,
+                        "stage=initial-refresh-cancel; Cancel must enter while the initial input read is gated");
+                    // Keep the pending appearance as the UI completion owner. Its operation
+                    // count joins both actual callbacks, including any navigation appearance.
+                    int starts = ui.AsyncVoidStarts;
+                    ((IButtonController)cancel).SendClicked();
+                    Require(ui.AsyncVoidStarts > starts,
+                        "stage=initial-refresh-cancel; actual async-void Cancel handler did not start");
+                }
+                else if (scenario == InitialCompletionRetryBoundScenario)
+                {
+                    retryCashArmed = true;
+                    finalizationReader!.AfterLoad = () =>
+                    {
+                        // Pause the real retried preparation before inputs are published.
+                        // Disarm first so hydration's own reads are never gated here.
+                        finalizationReader.AfterLoad = null;
+                        retryCashStarted.TrySetResult(true);
+                        Require(releaseRetryCash.Wait(timeout), "stage=initial-refresh-bound; cash gate timed out");
+                    };
+                }
+            }
+            finally
+            {
+                gate.Release();
+                try
+                {
+                    if (retryCashArmed)
+                    {
+                        try
+                        {
+                            await retryCashStarted.Task.WaitAsync(timeout);
+                            var retryDisplay = coordinator.State;
+                            Require(reader.Calls == originalReads + 1
+                                && ReferenceEquals(PageField<CharacterOverviewState?>("_display")?.Profile, retryDisplay.Profile)
+                                && PageField<CharacterCreationCompletionReviewInputs?>("_inputs") is null,
+                                "stage=initial-refresh-bound; fresh retry did not reach pre-publication cash read");
+                            hydration = HydrateFinalizationOwnerAsync(runtime, owners, saved, contentFreeFailure: true);
+                            await hydration.WaitAsync(timeout);
+                            RequireSameSavedAuthority();
+                            Require(!ReferenceEquals(retryDisplay.Profile, coordinator.State.Profile)
+                                && !coordinator.IsCreationFinalizationDisplayCurrent(retryDisplay),
+                                "stage=initial-refresh-bound; second real hydration did not retire retry display");
+                        }
+                        finally
+                        {
+                            finalizationReader!.AfterLoad = null;
+                            releaseRetryCash.Set();
+                        }
+                    }
+                    if (appearance is not null) await JoinIssuedPageAsync(appearance);
+                    if (hydration is not null) await hydration.WaitAsync(timeout);
+                    await ui.DrainDispatchedAsyncVoidAsync().WaitAsync(timeout);
+                }
+                finally
+                {
+                    Console.WriteLine("TRACE " + scenario + "; native-load="
+                        + JsonSerializer.Serialize(page.LoadObservations));
+                }
+            }
+
+            string trace = JsonSerializer.Serialize(page.LoadObservations);
+            RequireSameSavedAuthority();
+            AssertCompletionFilesUnchanged(runtime, files);
+            RequireNoMutations();
+            Require(!coordinator.IsCreationFinalizationDisplayCurrent(original)
+                && !coordinator.IsCreationCompletionInputsCurrent(originalInputs)
+                && !coordinator.IsCreationCompletionProposalCurrent(originalProposal),
+                "stage=initial-refresh-stale; original authority became current again");
+            var staleBuild = await coordinator.BuildCreationCompletionProposalAsync(originalInputs,
+                originalProposal.Intent).WaitAsync(timeout);
+            var staleCash = await coordinator.LoadCreationCompletionStartingCashAsync(originalProposal).WaitAsync(timeout);
+            Require(staleBuild.Value is null && staleBuild.Outcome != CharacterCreationFoundationOutcomes.Success
+                && staleCash.Value is null && staleCash.Outcome != CharacterCreationFoundationOutcomes.Success
+                && coordinator.LoadCreationFinalization(original).Value is null,
+                "stage=initial-refresh-stale; original issued actions borrowed replacement display authority");
+            AssertCompletionFilesUnchanged(runtime, files);
+            RequireNoMutations();
+            Require(owners.ActiveLeases == 0 && alerts.Titles.Count == 0,
+                "stage=initial-refresh-read-only; leaked owner lease or hidden callback error");
+            Console.WriteLine("TRACE " + scenario
+                + "; stage=initial-refresh-checks; saved-revisions-unchanged=true; files-unchanged=true"
+                + "; original-authority-retired=true; stale-actions-rejected=true"
+                + "; review-apply-purchase-free=true; leases-clear=true; alerts-clear=true");
+
+            var inputs = PageField<CharacterCreationCompletionReviewInputs?>("_inputs");
+            var display = PageField<CharacterOverviewState?>("_display");
+            var visible = MinimalVisible(page).ToArray();
+            if (scenario != InitialCompletionRefreshScenario)
+            {
+                int expectedRetries = scenario == InitialCompletionRetryBoundScenario ? 1 : 0;
+                Require(inputs is null && reader.Calls == originalReads + expectedRetries
+                    && page.LoadObservations.Count(row => row.Stage == "completion-inputs-retry" && row.Outcome is null) == expectedRetries
+                    && page.LoadObservations.All(row => row.Stage != "choices-ready")
+                    && !visible.Any(x => x.AutomationId is "creation-completion-archetype" or "creation-completion-preview"),
+                    "stage=initial-refresh-refused; invalidated appearance/authority published inputs or exceeded retry bound; native-load=" + trace);
+                if (scenario == InitialCompletionDepartureScenario)
+                    Require(!PageField<bool>("_visible")
+                        && IssuedPageField<long>(page, "_appearanceGeneration") != appearanceGeneration,
+                        "stage=initial-refresh-departure; departed appearance remained current");
+                if (scenario == InitialCompletionCancelScenario)
+                    Require(root.Navigation.NavigationStack.Count == initialNavigation.Length
+                        && root.Navigation.NavigationStack.Zip(initialNavigation).All(pair => ReferenceEquals(pair.First, pair.Second))
+                        && ReferenceEquals(Shell.Current?.CurrentPage, root)
+                        && !root.Navigation.NavigationStack.Any(entry => ReferenceEquals(entry, page)),
+                        "stage=initial-refresh-cancel; actual cancel did not leave the completion page");
+                ui.AssertHealthy();
+                Console.WriteLine("PASS actual Core/MAUI completion page: " + scenario);
+                return;
+            }
+            Require(reader.Calls == originalReads + 1
+                && page.LoadObservations.Count(row => row.Stage == "completion-inputs" && row.Outcome is null) == 1
+                && page.LoadObservations.Count(row => row.Stage == "completion-inputs-retry" && row.Outcome is null) == 1,
+                "stage=initial-refresh-bound; expected one rejected initial attempt and exactly one fresh read; native-load=" + trace);
+            var archetype = visible.OfType<Picker>().SingleOrDefault(x => x.AutomationId == "creation-completion-archetype");
+            var preview = visible.OfType<Button>().SingleOrDefault(x => x.AutomationId == "creation-completion-preview");
+            string genericFailure = CreationFlowStrings.FinalizationBlocker("completion-ui-load-failed");
+            if (genericFailure == "completion-ui-load-failed")
+                genericFailure = CreationCompletionPage.Copy("Blocked",
+                    "Some choices could not be verified. Return to creation, review the required steps, then try a fresh proposal.");
+            Require(inputs is not null && coordinator.IsCreationCompletionInputsCurrent(inputs)
+                && display is not null && !ReferenceEquals(display.Profile, original.Profile)
+                && coordinator.IsCreationFinalizationDisplayCurrent(display)
+                && PageField<bool>("_visible") && !PageField<bool>("_busy")
+                && IssuedPageField<long>(page, "_appearanceGeneration") == appearanceGeneration
+                && ReferenceEquals(root.Navigation.NavigationStack.Last(), page)
+                && archetype is { IsEnabled: true, SelectedIndex: >= 0 } && archetype.ItemsSource.Count > 1
+                && preview is { IsEnabled: true }
+                && !visible.OfType<Label>().Any(label => label.Text == genericFailure)
+                && !visible.Any(x => x.AutomationId is "creation-completion-read-busy" or "creation-completion-read-progress")
+                && page.LoadObservations.LastOrDefault() is { Stage: "choices-ready", AppearanceCurrent: true,
+                    DisplayCurrent: true, InputsCurrent: true },
+                "stage=initial-refresh-choices; same appearance did not recover fresh inputs/selectable choices; native-load=" + trace);
+
+            long version = PageField<long>("_inputVersion");
+            archetype!.SelectedIndex = (archetype.SelectedIndex + 1) % archetype.ItemsSource.Count;
+            Require(PageField<long>("_inputVersion") > version
+                && coordinator.IsCreationCompletionInputsCurrent(inputs!),
+                "stage=initial-refresh-choices; recovered picker did not accept an actual selection");
+            await ui.DrainDispatchedAsyncVoidAsync().WaitAsync(timeout);
+            RequireSameSavedAuthority();
+            AssertCompletionFilesUnchanged(runtime, files);
+            RequireNoMutations();
+            Require(owners.ActiveLeases == 0 && alerts.Titles.Count == 0,
+                "stage=initial-refresh-cleanup; leaked owner lease or hidden callback error");
+            ui.AssertHealthy();
+            Console.WriteLine("PASS actual Core/MAUI completion page: " + scenario);
+        }
+        finally
+        {
+            coordinator.Changed -= changed;
+            IssuedPageLifecycle(page, "OnDisappearing");
+        }
+
+        T PageField<T>(string name) => (T)typeof(CreationCompletionPage)
+            .GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+
+        void RequireSameSavedAuthority()
+        {
+            var current = coordinator.State;
+            Require(owners.Capture() == expectedOwner && current.DisplayOwnerContext == expectedOwner
+                && current.Session.OwnerContext == expectedOwner
+                && runtime.Shell.State.OwnerContext == expectedOwner
+                && current.WorkspaceId == original.WorkspaceId && current.Session.ActiveWorkspaceId == saved.Id
+                && current.ContentRevision == original.ContentRevision && current.SavedRevision == original.SavedRevision
+                && current.ActiveTabId == original.ActiveTabId && current.ActiveActionId == original.ActiveActionId
+                && current.ActiveSectionId == original.ActiveSectionId
+                && current.Profile?.Created == false && current.Error is null && !current.IsBusy && current.ConflictState is null,
+                "stage=initial-refresh-invariants; hydration changed owner/workspace/revisions/selection or failed to settle");
+        }
+
+        void RequireNoMutations() => Require(service.ReviewCalls == 0 && service.ApplyCalls == 0
+            && purchases.ConfirmCalls == 0 && PageField<CharacterCreationCompletionApplyReview?>("_review") is null
+            && !MinimalVisible(page).Any(x => x.AutomationId is "creation-completion-review" or "creation-completion-apply"),
+            "stage=initial-refresh-read-only; Review/Apply/purchase authority was invoked or exposed");
+    }
+
+    private static async Task RunExactPartialManualCompletionAsync(IssuedPageUiContext ui, NativeRewardRuntime runtime,
+        ControlledLinkedOwner owners, BuildPage root, Window window, WorkspaceStoredDocument saved,
+        IReadOnlyDictionary<string, string> files, CompletionServiceProbe service,
+        string scenario = ExactPartialManualScenario)
+    {
+        var coordinator = runtime.Coordinator;
+        var open = ExactPartialManualControl<Button>(root, "creation-completion-open", "finish-entry");
+        Require(open.IsEnabled, "stage=finish-entry; entry-disabled");
+        await ClickCompletionControlAsync(ui, open);
+        Require(root.Navigation.NavigationStack.Last() is CreationCompletionPage, "stage=finish-entry; page-missing");
+        var page = (CreationCompletionPage)root.Navigation.NavigationStack.Last();
+        IssuedPageLifecycle(root, "OnDisappearing");
+        using var alerts = new IssuedPageAlerts(page, window);
+        await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(page, "OnAppearing")));
+        // Even a failed pre-choice read must leave the exact saved checkpoint alone.
+        AssertCompletionFilesUnchanged(runtime, files);
+        string trace = JsonSerializer.Serialize(page.LoadObservations);
+        if (scenario == CapturedPartialManualScenario)
+            Console.WriteLine("TRACE " + scenario + "; stage=finish-pre-choice; native-load=" + trace);
+        var inputs = (CharacterCreationCompletionReviewInputs?)typeof(CreationCompletionPage)
+            .GetField("_inputs", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)
+            ?? throw new InvalidOperationException("stage=finish-pre-choice; inputs-missing; native-load=" + trace);
+        Require(coordinator.IsCreationCompletionInputsCurrent(inputs)
+            && page.LoadObservations.Any(row => row.Stage == "completion-inputs" && row.Outcome == CharacterCreationFoundationOutcomes.Success)
+            && page.LoadObservations.Any(row => row.Stage == "archetype" && row.Outcome is not null)
+            && page.LoadObservations.Any(row => row.Stage == "finalization-cash" && row.Outcome is not null)
+            && page.LoadObservations.LastOrDefault() is { Stage: "choices-ready", DisplayCurrent: true, InputsCurrent: true }
+            && page.LoadObservations.All(row => row.ExceptionType is null),
+            "stage=finish-pre-choice; native-load=" + trace);
+        var manual = saved.Document.AuxiliaryState.CharacterCreationLoadoutDraft!;
+        var receipt = saved.Document.AuxiliaryState.CharacterCreationLoadoutReceipts!.Single();
+        Require(inputs.Skills.Attributes.PendingDraft is null && inputs.Skills.Allocations.Count == 0
+            && inputs.Skills.GroupAllocations.Count == 0 && inputs.Loadout is { } loadout
+            && loadout.Binding.ContentRevision == 4 && loadout.Binding.SavedRevision == 4
+            && JsonSerializer.Serialize(loadout.PendingDraft) == JsonSerializer.Serialize(manual)
+            && loadout.Receipts?.Count == 1 && JsonSerializer.Serialize(loadout.Receipts.Single()) == JsonSerializer.Serialize(receipt),
+            "stage=finish-inputs; exact-partial-manual-authority-not-retained; native-load=" + trace);
+        string inputsDigest = CharacterCreationCompletionReviewRules.ComputeInputsDigest(inputs);
+        AssertCompletionHasNoAllocationSettings(page);
+        Require(!MinimalVisible(page).Any(row => row.AutomationId is "creation-completion-review" or "creation-completion-apply"),
+            "stage=finish-choices; unpreviewed-mutation-controls");
+        var archetype = ExactPartialManualControl<Picker>(page, "creation-completion-archetype", "finish-choices");
+        archetype.SelectedIndex = archetype.ItemsSource.Cast<string>().ToList()
+            .IndexOf(CreationCompletionPage.Copy("Archetype.General", "General survivor"));
+        Require(archetype.SelectedIndex >= 0, "stage=finish-choices; general-archetype-missing");
+        var language = ExactPartialManualControl<Picker>(page, "creation-completion-native-language", "finish-choices");
+        Require(language.ItemsSource.Count > 0, "stage=finish-choices; native-language-authority-missing");
+        language.SelectedIndex = 0;
+        var preview = ExactPartialManualControl<Button>(page, "creation-completion-preview", "proposal-preview");
+        Require(preview.IsEnabled, "stage=proposal-preview; preview-disabled; native-load=" + trace);
+        await ClickCompletionControlAsync(ui, preview);
+        AssertCompletionFilesUnchanged(runtime, files);
+        var builtProposal = (CompletionAssistantProposal?)typeof(CreationCompletionPage)
+            .GetField("_proposal", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page);
+        var blockers = (IReadOnlyList<string>)typeof(CreationCompletionPage)
+            .GetField("_blockers", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+        Require(builtProposal?.Evaluation.Value is not null,
+            "stage=proposal-preview; outcome=" + builtProposal?.Evaluation.Outcome + "; blockers=" + string.Join(",", blockers)
+            + "; evaluation-blockers=" + string.Join(",", builtProposal?.Evaluation.Blockers ?? []) + "; native-load=" + trace);
+        var proposal = builtProposal!;
+        Require(proposal.AllocationPolicy == CompletionAllocationPolicy.MissingOnly
+            && proposal.Intent.Permissions.AttributeIds.Count == 0 && proposal.Intent.Permissions.SkillTargets.Count == 0
+            && proposal.Intent.InputsSnapshotDigest == inputs.SnapshotDigest
+            && CharacterCreationCompletionReviewRules.ComputeInputsDigest(inputs) == inputsDigest,
+            "stage=proposal-preview; original-inputs-or-missing-only-policy-changed");
+        AssertManualLoadoutProposal(inputs, proposal, manual);
+        Require(proposal.Loadout!.Selections.Weapons.SequenceEqual(manual.Selections.Weapons)
+            && proposal.Loadout.Selections.Armor.SequenceEqual(manual.Selections.Armor)
+            && JsonSerializer.Serialize(proposal.Loadout.RetainedInstances) == JsonSerializer.Serialize(manual.Instances),
+            "stage=proposal-preview; exact-manual-quantities-identities-or-instances-changed");
+        // The actual Preview handler must also resolve proposed-home cash terms.
+        // No roll, Review, Apply or invented cash authority is supplied by this case.
+        var cashSources = (CharacterCreationStartingNuyenSource[])typeof(CreationCompletionPage)
+            .GetField("_cashSources", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+        var cashDigest = (string?)typeof(CreationCompletionPage)
+            .GetField("_cashDigest", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page);
+        Require(cashDigest is not null && cashSources.Count(row => row.AuthorityDigest == cashDigest) == 1
+            && string.IsNullOrEmpty(ExactPartialManualControl<Entry>(page, "creation-completion-cash-roll", "proposal-cash").Text)
+            && !ExactPartialManualControl<Button>(page, "creation-completion-review", "proposal-cash").IsEnabled
+            && service.ReviewCalls == 0 && service.ApplyCalls == 0,
+            "stage=proposal-cash; real-cash-authority-or-explicit-review-gate-missing; blockers=" + string.Join(",", blockers));
+        AssertCompletionFilesUnchanged(runtime, files);
+        AssertExactPartialManualCheckpoint(new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!, purchased: true);
+        if (scenario == CapturedPartialManualScenario)
+            Console.WriteLine("TRACE " + scenario + "; stage=cancel-before-click; native-preview="
+                + JsonSerializer.Serialize(page.PreviewObservations));
+        var cancelTimer = System.Diagnostics.Stopwatch.StartNew();
+        long previousCancelElapsedMilliseconds = 0;
+        TraceCancelPhase("cancel-before-click");
+        await ClickCompletionControlAsync(ui, ExactPartialManualControl<Button>(page, "creation-completion-cancel", "cancel"));
+        TraceCancelPhase("cancel-click-joined");
+        await JoinIssuedPageAsync(ui.DrainDispatchedAsyncVoidAsync());
+        TraceCancelPhase("cancel-navigation-drained");
+        Require(root.Navigation.NavigationStack.Count == 1 && ReferenceEquals(Shell.Current?.CurrentPage, root)
+            && coordinator.State.Profile?.Created == false && service.ReviewCalls == 0 && service.ApplyCalls == 0
+            && owners.ActiveLeases == 0 && alerts.Titles.Count == 0,
+            "stage=cancel; unexpected-navigation-mutation-lease-or-alert; checks=" + CancelChecks());
+        AssertCompletionFilesUnchanged(runtime, files);
+        IssuedPageLifecycle(page, "OnDisappearing");
+        ui.AssertHealthy();
+        if (scenario != CapturedPartialManualScenario)
+            Console.WriteLine("PASS actual Core/MAUI completion page: " + scenario);
+
+        string CancelChecks() => JsonSerializer.Serialize(new
+        {
+            SinglePage = root.Navigation.NavigationStack.Count == 1,
+            RootCurrent = ReferenceEquals(Shell.Current?.CurrentPage, root),
+            Unfinished = coordinator.State.Profile?.Created == false,
+            NoReview = service.ReviewCalls == 0,
+            NoApply = service.ApplyCalls == 0,
+            LeasesClear = owners.ActiveLeases == 0,
+            AlertsClear = alerts.Titles.Count == 0,
+            NavigationCount = root.Navigation.NavigationStack.Count,
+            service.ReviewCalls,
+            service.ApplyCalls,
+            owners.ActiveLeases,
+            AlertCount = alerts.Titles.Count
+        });
+
+        void TraceCancelPhase(string stage)
+        {
+            if (scenario != CapturedPartialManualScenario) return;
+            long elapsed = cancelTimer.ElapsedMilliseconds;
+            Console.WriteLine("TRACE " + scenario + "; stage=" + stage
+                + "; elapsed-ms=" + elapsed + "; phase-ms=" + (elapsed - previousCancelElapsedMilliseconds)
+                + "; checks=" + CancelChecks());
+            previousCancelElapsedMilliseconds = elapsed;
+        }
     }
 
     private static void AssertOptionalAttributeKarmaDisclosure(CreationCompletionPage page, CompletionAssistantProposal proposal)
