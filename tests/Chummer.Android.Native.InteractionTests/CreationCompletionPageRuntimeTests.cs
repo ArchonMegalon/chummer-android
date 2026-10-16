@@ -188,7 +188,7 @@ internal static partial class AfterRunAuthorityHarness
             try
             {
                 foreach (string scenario in scenarioFilter is null
-                    ? new[] { "prerequisite", "cash-read-throws", "busy-cancel", "cancel", "magic-choice-cancel", "loss-decline", "loss-owner-aba", "loss-departure", "apply", "lost-reply", "unknown", "optional-karma", "manual-weapon", "manual-armor", "manual-both", "manual-lost-reply", "manual-refresh-fault", "manual-cancel", ExactPartialManualScenario }
+                    ? new[] { "prerequisite", "cash-read-throws", "busy-cancel", "cancel", "magic-choice-cancel", "talent-style-mystic-adept", "talent-style-adept", "talent-style-technomancer", "loss-decline", "loss-owner-aba", "loss-departure", "apply", "lost-reply", "unknown", "optional-karma", "manual-weapon", "manual-armor", "manual-both", "manual-lost-reply", "manual-refresh-fault", "manual-cancel", ExactPartialManualScenario }
                     : new[] { scenarioFilter })
                 {
                     CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(scenario switch
@@ -198,6 +198,13 @@ internal static partial class AfterRunAuthorityHarness
                         _ => "en-GB"
                     });
                     var owners = new ControlledLinkedOwner();
+                    string? distinctTalent = scenario switch
+                    {
+                        "talent-style-mystic-adept" => CharacterCreationMagicResonanceKinds.MysticAdept,
+                        "talent-style-adept" => CharacterCreationMagicResonanceKinds.Adept,
+                        "talent-style-technomancer" => CharacterCreationMagicResonanceKinds.Technomancer,
+                        _ => null
+                    };
                     using var reviewPause = scenario == "busy-cancel" ? new CompletionReviewPause() : null;
                     CompletionServiceProbe? service = null;
                     CompletionReadProbe? completionReader = null;
@@ -238,6 +245,10 @@ internal static partial class AfterRunAuthorityHarness
                         : scenario == "magic-choice-cancel"
                             ? PrepareActualFinalizationReadyContext(runtime, stopBeforeAttributes: true,
                                 attributeTalent: "Magician", attributeTalentRank: "B", completionMagic: true)
+                        : distinctTalent is not null
+                            ? PrepareActualFinalizationReadyContext(runtime, stopBeforeAttributes: true,
+                                attributeTalent: distinctTalent == CharacterCreationMagicResonanceKinds.MysticAdept
+                                    ? "Mystic Adept" : distinctTalent, attributeTalentRank: "C")
                         : PrepareActualFinalizationReadyContext(runtime, stopBeforeAttributes: scenario != "cancel");
                     await HydrateFinalizationOwnerAsync(runtime, owners, before, contentFreeFailure: scenario == ExactPartialManualScenario);
                     if (scenario == "prerequisite")
@@ -357,6 +368,20 @@ internal static partial class AfterRunAuthorityHarness
                         .GetField("_inputs", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)
                         ?? throw new InvalidOperationException("SETUP: the actual completion input read is missing.");
                     string inputsDigest = CharacterCreationCompletionReviewRules.ComputeInputsDigest(inputs);
+                    if (distinctTalent is not null)
+                    {
+                        await AssertCompletionDistinctTalentPickerAsync(ui, runtime, page, inputs, files, distinctTalent);
+                        await ClickCompletionControlAsync(ui, CompletionPageControl<Button>(page, "creation-completion-cancel"));
+                        Require(navigation.NavigationStack.Count == 1 && ReferenceEquals(Shell.Current?.CurrentPage, root)
+                            && coordinator.State.Profile?.Created == false && service!.ReviewCalls == 0 && service.ApplyCalls == 0
+                            && owners.ActiveLeases == 0 && alerts.Titles.Count == 0,
+                            "Cancel after changing suggestion styles must return to unchanged creation without review or Apply.");
+                        AssertCompletionFilesUnchanged(runtime, files);
+                        IssuedPageLifecycle(page, "OnDisappearing");
+                        ui.AssertHealthy();
+                        Console.WriteLine("PASS actual Core/MAUI completion page: " + scenario);
+                        continue;
+                    }
                     if (scenario == "magic-choice-cancel")
                     {
                         var choices = CompletionRecommendationBuilder.GetMagicIdentityChoices(
@@ -739,6 +764,137 @@ internal static partial class AfterRunAuthorityHarness
                 CultureInfo.CurrentUICulture = previousCulture;
             }
         });
+    }
+
+    private static async Task AssertCompletionDistinctTalentPickerAsync(IssuedPageUiContext ui, NativeRewardRuntime runtime,
+        CreationCompletionPage page, CharacterCreationCompletionReviewInputs inputs,
+        IReadOnlyDictionary<string, string> files, string talentKind)
+    {
+        var inferred = Field<CompletionArchetypeSuggestion>("_archetype");
+        string digest = CharacterCreationCompletionReviewRules.ComputeInputsDigest(inputs);
+        Require(inputs.Magic.SelectedTalent.Kind == talentKind && inferred.ArchetypeId == talentKind,
+            "SETUP: the actual Core talent must be the page's original distinct suggestion.");
+        foreach (var (locale, mystic, adept, technomancer, artificialIntelligence, unknown) in new[]
+        {
+            ("en-GB", "Mystic adept", "Adept", "Technomancer", "Artificial intelligence", "Other suggestion style"),
+            ("de-AT", "Mystischer Adept", "Adept", "Technomancer", "Künstliche Intelligenz", "Anderer Vorschlagsstil"),
+            ("es-ES", "Adepto místico", "Adepto", "Tecnomante", "Inteligencia artificial", "Otro estilo de sugerencias")
+        })
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(locale);
+            RefreshPage();
+            string talentName = talentKind switch
+            {
+                CharacterCreationMagicResonanceKinds.MysticAdept => mystic,
+                CharacterCreationMagicResonanceKinds.Adept => adept,
+                _ => technomancer
+            };
+            string general = CreationCompletionPage.Copy("Archetype.General", "missing-general");
+            string mage = CreationCompletionPage.Copy("Archetype.Mage", "missing-mage");
+            Picker original = AssertPicker(talentName, talentName);
+            bool hasPack = CompletionRecommendationBuilder.GetRecommendationPack(talentKind) is not null;
+            Require(CompletionPageControl<Button>(page, "creation-completion-preview").IsEnabled == hasPack
+                && MinimalVisible(page).OfType<Label>().Any(row => row.Text == CreationCompletionPage.Copy("NoPack", "missing-no-pack")) == !hasPack,
+                "A talent without a starter pack must retain manual guidance and disable Preview.");
+            Require(DisplayLabel(CharacterCreationMagicResonanceKinds.ArtificialIntelligence) == artificialIntelligence
+                && new[] { "internal.talent.unavailable", "future-talent", "d452a39b-7060-4e67-b03f-9b0b63b2f0fa" }
+                    .All(id => DisplayLabel(id) == unknown),
+                "Known distinct talents need localized names; unknown identifiers must never become visible labels.");
+
+            original.SelectedIndex = Index(original, general);
+            Picker changed = AssertPicker(general, talentName);
+            Require(Field<string>("_archetypeId") == CompletionAssistantRules.GeneralSurvivor
+                && ReferenceEquals(Field<CompletionArchetypeSuggestion>("_archetype"), inferred),
+                "The player's suggestion style must change without replacing the original inference.");
+            long version = Field<long>("_inputVersion");
+            original.SelectedIndex = Index(original, mage);
+            Require(ReferenceEquals(changed, CompletionPageControl<Picker>(page, "creation-completion-archetype"))
+                && Field<long>("_inputVersion") == version && Field<string>("_archetypeId") == CompletionAssistantRules.GeneralSurvivor,
+                "A retired picker event must not change the current style or invalidate current controls.");
+
+            var body = Field<VerticalStackLayout>("_body");
+            int position = body.Children.IndexOf(changed);
+            body.Remove(changed);
+            try
+            {
+                changed.SelectedIndex = Index(changed, mage);
+                Require(Field<long>("_inputVersion") == version && Field<string>("_archetypeId") == CompletionAssistantRules.GeneralSurvivor,
+                    "A detached picker must not accept a choice even within its original render.");
+            }
+            finally { body.Insert(position, changed); }
+            RefreshPage();
+            changed = AssertPicker(general, talentName);
+            changed.SelectedIndex = Index(changed, talentName);
+            AssertPicker(talentName, talentName);
+            Require(Field<string>("_archetypeId") == talentKind,
+                "The original distinct talent must remain selectable after changing suggestion styles.");
+            if (talentKind == CharacterCreationMagicResonanceKinds.MysticAdept)
+                Require(CompletionPageControl<Label>(page, "creation-completion-mystic-foundation").Text
+                    == CreationAllocationStrings.Get("Completion.MysticFoundation", "missing-mystic-boundary"),
+                    "Mystic advice must disclose its bounded foundation and manual adept-power choices.");
+            RequireOriginalInputs();
+            AssertCompletionFilesUnchanged(runtime, files);
+        }
+
+        // Exercise the actual Preview handler with the player's supported style,
+        // then retire that proposal by returning to the original talent.
+        Picker style = CompletionPageControl<Picker>(page, "creation-completion-archetype");
+        style.SelectedIndex = Index(style, CreationCompletionPage.Copy("Archetype.General", "missing-general"));
+        var language = MinimalVisible(page).OfType<Picker>()
+            .SingleOrDefault(row => row.AutomationId == "creation-completion-native-language");
+        if (language is not null)
+        {
+            Require(language.ItemsSource.Count > 0, "SETUP: an admitted native language is required for Preview.");
+            language.SelectedIndex = 0;
+        }
+        Button retiredPreview = CompletionPageControl<Button>(page, "creation-completion-preview");
+        await ClickCompletionControlAsync(ui, retiredPreview);
+        var proposal = Field<CompletionAssistantProposal?>("_proposal");
+        Require(proposal is not null && proposal.Intent.ArchetypeId == CompletionAssistantRules.GeneralSurvivor
+            && proposal.Intent.InputsSnapshotDigest == inputs.SnapshotDigest,
+            "Preview must retain the player's explicit suggestion style and original input authority.");
+        var retiredReview = MinimalVisible(page).OfType<Button>()
+            .SingleOrDefault(row => row.AutomationId == "creation-completion-review");
+        style = CompletionPageControl<Picker>(page, "creation-completion-archetype");
+        style.SelectedIndex = Index(style, DisplayLabel(talentKind));
+        Require(Field<CompletionAssistantProposal?>("_proposal") is null
+            && Field<CharacterCreationCompletionApplyReview?>("_review") is null && Field<string>("_roll") == string.Empty
+            && !MinimalVisible(page).Any(row => row.AutomationId is "creation-completion-review" or "creation-completion-apply"),
+            "Returning to the original talent must invalidate the proposal, review, and cash input.");
+        ((IButtonController)retiredPreview).SendClicked();
+        if (retiredReview is not null) ((IButtonController)retiredReview).SendClicked();
+        await ui.DrainDispatchedAsyncVoidAsync();
+        Require(Field<CompletionAssistantProposal?>("_proposal") is null && Field<string>("_archetypeId") == talentKind,
+            "Retired action controls must not restore a proposal for a previous style.");
+        RequireOriginalInputs();
+        AssertCompletionFilesUnchanged(runtime, files);
+
+        T Field<T>(string name) => (T)typeof(CreationCompletionPage)
+            .GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+        void RefreshPage() => typeof(CreationCompletionPage)
+            .GetMethod("Refresh", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page, null);
+        static string DisplayLabel(string id) => (string)typeof(CreationCompletionPage)
+            .GetMethod("ArchetypeLabel", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, [id])!;
+        static int Index(Picker picker, string label)
+        {
+            int index = picker.ItemsSource.Cast<string>().ToList().IndexOf(label);
+            Require(index >= 0, "The actual suggestion-style picker lost a localized choice: " + label);
+            return index;
+        }
+        Picker AssertPicker(string selected, string retained)
+        {
+            Picker picker = CompletionPageControl<Picker>(page, "creation-completion-archetype");
+            var labels = picker.ItemsSource.Cast<string>().ToArray();
+            Require(labels.Length == 7 && labels.Distinct(StringComparer.Ordinal).Count() == labels.Length
+                && labels.Contains(retained, StringComparer.Ordinal) && picker.SelectedItem is string actual && actual == selected,
+                "The rendered picker must retain one localized talent choice alongside the six distinct ordinary styles.");
+            return picker;
+        }
+        void RequireOriginalInputs() => Require(ReferenceEquals(Field<CharacterCreationCompletionReviewInputs>("_inputs"), inputs)
+            && inputs.Magic.SelectedTalent.Kind == talentKind
+            && CharacterCreationCompletionReviewRules.ComputeInputsDigest(inputs) == digest
+            && runtime.Coordinator.IsCreationCompletionInputsCurrent(inputs),
+            "Suggestion-style display and handlers must not change the current saved talent or input authority.");
     }
 
     private static async Task RunInitialCompletionRefreshAsync(IssuedPageUiContext ui, NativeRewardRuntime runtime,

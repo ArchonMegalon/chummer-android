@@ -1011,4 +1011,10 @@ Verbleibendes Karma: {1}</value></data>
   <data name="QualitiesReReview.Keep" xml:space="preserve"><value>Beibehalten und weiter</value></data>
   <data name="QualitiesReReview.Cancel" xml:space="preserve"><value>Abbrechen</value></data>
   <data name="QualitiesReReview.Reopen" xml:space="preserve"><value>Öffne den Runner erneut und prüfe die gespeicherten Vor-/Nachteile, bevor du weitermachst.</value></data>
+  <data name="Completion.Archetype.Adept" xml:space="preserve"><value>Adept</value></data>
+  <data name="Completion.Archetype.MysticAdept" xml:space="preserve"><value>Mystischer Adept</value></data>
+  <data name="Completion.Archetype.Technomancer" xml:space="preserve"><value>Technomancer</value></data>
+  <data name="Completion.Archetype.ArtificialIntelligence" xml:space="preserve"><value>Künstliche Intelligenz</value></data>
+  <data name="Completion.Archetype.Unknown" xml:space="preserve"><value>Anderer Vorschlagsstil</value></data>
+  <data name="Completion.MysticFoundation" xml:space="preserve"><value>Vorschläge sind nur eine Grundlage. Prüfe Tradition und Zauber und wähle Adeptenkräfte selbst; dies ist kein vollständiger Mystischer Adept.</value></data>
 </root>

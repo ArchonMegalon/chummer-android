@@ -1008,4 +1008,10 @@ Karma restante: {1}</value></data>
   <data name="QualitiesReReview.Keep" xml:space="preserve"><value>Conservar y continuar</value></data>
   <data name="QualitiesReReview.Cancel" xml:space="preserve"><value>Cancelar</value></data>
   <data name="QualitiesReReview.Reopen" xml:space="preserve"><value>Vuelve a abrir el personaje y comprueba las cualidades guardadas antes de continuar.</value></data>
+  <data name="Completion.Archetype.Adept" xml:space="preserve"><value>Adepto</value></data>
+  <data name="Completion.Archetype.MysticAdept" xml:space="preserve"><value>Adepto místico</value></data>
+  <data name="Completion.Archetype.Technomancer" xml:space="preserve"><value>Tecnomante</value></data>
+  <data name="Completion.Archetype.ArtificialIntelligence" xml:space="preserve"><value>Inteligencia artificial</value></data>
+  <data name="Completion.Archetype.Unknown" xml:space="preserve"><value>Otro estilo de sugerencias</value></data>
+  <data name="Completion.MysticFoundation" xml:space="preserve"><value>Las sugerencias son solo una base. Revisa la tradición y los hechizos y elige los poderes de adepto manualmente; no es un adepto místico completo.</value></data>
 </root>

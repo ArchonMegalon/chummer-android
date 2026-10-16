@@ -1011,4 +1011,10 @@ Karma remaining: {1}</value></data>
   <data name="QualitiesReReview.Keep" xml:space="preserve"><value>Keep and continue</value></data>
   <data name="QualitiesReReview.Cancel" xml:space="preserve"><value>Cancel</value></data>
   <data name="QualitiesReReview.Reopen" xml:space="preserve"><value>Reopen the runner to check the saved qualities before continuing.</value></data>
+  <data name="Completion.Archetype.Adept" xml:space="preserve"><value>Adept</value></data>
+  <data name="Completion.Archetype.MysticAdept" xml:space="preserve"><value>Mystic adept</value></data>
+  <data name="Completion.Archetype.Technomancer" xml:space="preserve"><value>Technomancer</value></data>
+  <data name="Completion.Archetype.ArtificialIntelligence" xml:space="preserve"><value>Artificial intelligence</value></data>
+  <data name="Completion.Archetype.Unknown" xml:space="preserve"><value>Other suggestion style</value></data>
+  <data name="Completion.MysticFoundation" xml:space="preserve"><value>Suggestions are only a foundation. Review tradition and spells, and choose adept powers manually; this is not a complete Mystic Adept build.</value></data>
 </root>

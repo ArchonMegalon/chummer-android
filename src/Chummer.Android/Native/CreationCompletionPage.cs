@@ -262,6 +262,13 @@ public sealed class CreationCompletionPage : NativePageBase
             return;
         }
         _body.Add(NativeTheme.Body(Copy("Scope", "Fill unused points and suggest contacts, a lifestyle, basic supplies, a weapon and armor. Some equipment and magic choices still need review. Nothing changes until Apply."), NativeTheme.Muted));
+        if (_inputs.Magic.SelectedTalent.Kind == CharacterCreationMagicResonanceKinds.MysticAdept)
+        {
+            Label boundary = NativeTheme.Body(CreationAllocationStrings.Get("Completion.MysticFoundation",
+                "Suggestions are only a foundation. Review tradition and spells, and choose adept powers manually; this is not a complete Mystic Adept build."), NativeTheme.Muted);
+            boundary.AutomationId = "creation-completion-mystic-foundation";
+            _body.Add(boundary);
+        }
         if (_review is not null)
         {
             RenderFinalReview(appearance, render);
@@ -304,7 +311,9 @@ public sealed class CreationCompletionPage : NativePageBase
 
     private void RenderChoices(long appearance, long render)
     {
-        string[] archetypes = new[] { _archetypeId, CompletionAssistantRules.GeneralSurvivor,
+        // The inferred identity belongs to the original inputs, not the current
+        // suggestion style. Keep it available after the player tries another style.
+        string[] archetypes = new[] { _archetypeId, _archetype?.ArchetypeId ?? _archetypeId, CompletionAssistantRules.GeneralSurvivor,
             CompletionAssistantRules.StreetSamurai, CompletionAssistantRules.Face, CompletionAssistantRules.Mage,
             CompletionAssistantRules.Decker, CompletionAssistantRules.Rigger }.Distinct(StringComparer.Ordinal).ToArray();
         Picker picker = new()
@@ -315,7 +324,8 @@ public sealed class CreationCompletionPage : NativePageBase
         };
         picker.SelectedIndexChanged += (_, _) =>
         {
-            if (!Current(appearance, render) || _busy || picker.SelectedIndex < 0) return;
+            if (!Current(appearance, render) || _busy || !ReferenceEquals(picker.Parent, _body) || picker.SelectedIndex < 0
+                || picker.SelectedIndex >= archetypes.Length) return;
             _archetypeId = archetypes[picker.SelectedIndex];
             InvalidateProposal();
         };
@@ -1044,7 +1054,11 @@ public sealed class CreationCompletionPage : NativePageBase
         CompletionAssistantRules.Mage => Copy("Archetype.Mage", "Mage"),
         CompletionAssistantRules.Decker => Copy("Archetype.Decker", "Decker"),
         CompletionAssistantRules.Rigger => Copy("Archetype.Rigger", "Rigger"),
-        _ => MagicCatalogStrings.TalentName(id)
+        CharacterCreationMagicResonanceKinds.Adept => CreationAllocationStrings.Get("Completion.Archetype.Adept", "Adept"),
+        CharacterCreationMagicResonanceKinds.MysticAdept => CreationAllocationStrings.Get("Completion.Archetype.MysticAdept", "Mystic adept"),
+        CharacterCreationMagicResonanceKinds.Technomancer => CreationAllocationStrings.Get("Completion.Archetype.Technomancer", "Technomancer"),
+        CharacterCreationMagicResonanceKinds.ArtificialIntelligence => CreationAllocationStrings.Get("Completion.Archetype.ArtificialIntelligence", "Artificial intelligence"),
+        _ => CreationAllocationStrings.Get("Completion.Archetype.Unknown", "Other suggestion style")
     };
 
     internal sealed record FinalReviewRow(string Area, string Label, string Value, bool Retained = false, bool Setup = false);
