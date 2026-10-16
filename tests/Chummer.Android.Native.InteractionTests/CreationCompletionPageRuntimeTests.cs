@@ -609,8 +609,8 @@ internal static partial class AfterRunAuthorityHarness
                     if (scenario == "apply") AssertCompletionRichProposal(page, inputs, proposal, cashSource);
                     if (scenario == "optional-karma")
                     {
-                        AssertOptionalAttributeKarmaDisclosure(page, proposal);
-                        await AssertOptionalAttributeKarmaRejectionsAsync(page, runtime, owners, ui, inputs, proposal, cashSource);
+                        AssertBoundedKarmaProposal(page, proposal);
+                        await AssertExplicitOptionalAttributeKarmaAsync(runtime, owners, ui, inputs, proposal);
                     }
                     AssertCompletionFilesUnchanged(runtime, files);
                     cash.Text = (cashSource.Dice * 3).ToString(CultureInfo.InvariantCulture);
@@ -691,7 +691,7 @@ internal static partial class AfterRunAuthorityHarness
                     // The helper deliberately renders again to retire old controls.
                     apply = CompletionPageControl<Button>(page, "creation-completion-apply");
                     AssertCompletionFilesUnchanged(runtime, files);
-                    if (scenario == "optional-karma") AssertOptionalAttributeKarmaDisclosure(page, proposal);
+                    if (scenario == "optional-karma") AssertBoundedKarmaProposal(page, proposal);
                     int expectedLossConfirmations = CreationCompletionPage.LossItems(reviewed.Projection).Count > 0 ? 1 : 0;
 
                     if (scenario is "cancel" or "manual-cancel")
@@ -1392,20 +1392,152 @@ internal static partial class AfterRunAuthorityHarness
         }
     }
 
+    private static void AssertBoundedKarmaProposal(CreationCompletionPage page, CompletionAssistantProposal proposal)
+    {
+        string diagnostics = OptionalKarmaDiagnostics(proposal.Request, proposal.Evaluation);
+        // The recommendation may retain unspent special points. That is an
+        // honest partial plan, not a failed final review or an unmet Karma goal.
+        // Keep every other planner finding disqualifying in this fixture.
+        Require(proposal.Evaluation.Value is { Review.Blockers.Count: 0 } plan
+            && (proposal.Evaluation.Outcome == CharacterCreationFoundationOutcomes.Success
+                    && proposal.Evaluation.Blockers.Count == 0 && plan.Blockers.Count == 0
+                || proposal.Evaluation.Outcome == CharacterCreationFoundationOutcomes.Blocked
+                    && proposal.Evaluation.Blockers.Count > 0
+                    && proposal.Evaluation.Blockers.All(code =>
+                        code == CharacterCreationAttributeCompletionBlockers.SpecialPointsUnallocated)
+                    && plan.Blockers.SequenceEqual(proposal.Evaluation.Blockers)),
+            "Bounded Karma suggestions must keep a legal whole review, with only unspent special points permitted. " + diagnostics);
+        var attributes = proposal.Evaluation.Value!.Review.Skills!.Attributes.Attributes;
+        Require(proposal.Request.Attributes.KarmaTargets?.All(goal => attributes.Single(row =>
+                row.AttributeId == goal.AttributeId).UnaugmentedCurrent >= goal.TargetUnaugmentedRating) != false
+            && CreationCompletionPage.OptionalAttributeKarmaShortfalls(proposal).Count == 0
+            && !MinimalVisible(page).Any(element => element.AutomationId?.StartsWith(
+                "creation-completion-optional-karma", StringComparison.Ordinal) == true),
+            "Reached bounded Karma goals must not render an optional shortfall before or after review. " + diagnostics);
+    }
+
+    private static string OptionalKarmaDiagnostics(CharacterCreationCompletionPlanRequest request,
+        CharacterCreationFoundationResult<CharacterCreationCompletionPlan> evaluated)
+    {
+        // Synthetic fixture only: report rule codes and numeric budgets/ratings,
+        // never serialize the proposal, owner, bindings or runner document.
+        var plan = evaluated.Value;
+        var attributes = plan?.Review.Skills?.Attributes;
+        var balances = plan?.Review.Balances;
+        return "optional-karma=" + JsonSerializer.Serialize(new
+        {
+            evaluated.Outcome,
+            RequestResultBlockers = evaluated.Blockers,
+            PlanBlockers = plan?.Blockers,
+            ReviewBlockers = plan?.Review.Blockers,
+            AttributePlanBlockers = plan?.Attributes?.Blockers,
+            AttributeReviewBlockers = attributes?.Blockers,
+            SkillPlanBlockers = plan?.Skills?.Blockers,
+            MagicPlanBlockers = plan?.Magic?.Blockers,
+            PurchasePlanBlockers = plan?.Purchases?.Blockers,
+            request.AllocateRemainingAttributeKarma,
+            Karma = new
+            {
+                Retained = balances?.RemainingCreationKarma,
+                Reserved = request.KarmaToReserve,
+                MagicReserved = request.Magic.KarmaToReserve,
+                request.Attributes.MaximumAdditionalKarmaSpend,
+                Total = balances?.CreationKarmaTotal,
+                AfterAttributesAndQualities = balances?.KarmaAfterAttributesAndQualities,
+                SkillsCost = balances?.SkillsKarmaCost,
+                PowerPointsCost = balances?.MysticAdeptPowerPointKarmaCost,
+                ResourcesInvestment = balances?.ResourcesKarmaInvestment,
+                ContactsCost = balances?.ContactsKarmaCost,
+                Overspend = balances?.KarmaOverspend
+            },
+            NormalPointsRemaining = attributes?.NormalPointBudget.Remaining,
+            SpecialPointsRemaining = attributes?.SpecialPointBudget.Remaining,
+            request.Attributes.NormalPointsToReserve,
+            request.Attributes.SpecialPointsToReserve,
+            Targets = request.Attributes.KarmaTargets?.Select(goal => new
+            {
+                goal.AttributeId,
+                Target = goal.TargetUnaugmentedRating,
+                Actual = attributes?.Attributes.FirstOrDefault(row => row.AttributeId == goal.AttributeId)?.UnaugmentedCurrent,
+                RetainedKarmaLevels = plan?.Selections.AttributeAllocations
+                    .FirstOrDefault(row => row.AttributeId == goal.AttributeId)?.KarmaLevels
+            }).ToArray()
+        });
+    }
+
+    private static async Task AssertExplicitOptionalAttributeKarmaAsync(NativeRewardRuntime runtime,
+        ControlledLinkedOwner owners, IssuedPageUiContext ui, CharacterCreationCompletionReviewInputs inputs,
+        CompletionAssistantProposal issuedProposal)
+    {
+        // Exercise partial-plan disclosure with explicit goals independently of
+        // the issued recommendation. Keep the existing saved-quality selection;
+        // the assertions below must establish legality and an actual shortfall.
+        var request = issuedProposal.Request with
+        {
+            QualityOptionIds = inputs.Lifestyles.Qualities.SelectedOptionIds,
+            AllocateRemainingAttributeKarma = true,
+            Attributes = issuedProposal.Request.Attributes with
+            {
+                KarmaTargets = [new("BOD", 5), new("REA", 5)],
+                MaximumAdditionalKarmaSpend = int.MaxValue
+            }
+        };
+        var evaluated = await Task.Run(() => CharacterCreationCompletionPlanner.Plan(inputs, request));
+        string diagnostics = OptionalKarmaDiagnostics(request, evaluated);
+        Require(evaluated.Value is not null,
+            "SETUP: explicit optional goals need a real Core plan. " + diagnostics);
+        var proposal = issuedProposal with { Request = request, Evaluation = evaluated, ProposalDigest = string.Empty };
+        proposal = proposal with { ProposalDigest = CompletionAssistantRules.ComputeProposalDigest(proposal) };
+
+        var actual = runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationCompletionService>();
+        var reviewRequest = new CharacterCreationCompletionReviewRequest(inputs.SnapshotDigest, evaluated.Value!.Selections);
+        var cash = await Task.Run(() => actual.LoadStartingCash(owners.Capture(), runtime.Id, reviewRequest));
+        Require(cash is { Outcome: CharacterCreationFoundationOutcomes.Success, Value: not null, Blockers.Count: 0 },
+            "SETUP: the partial plan must resolve its own real starting-cash authority. cashOutcome=" + cash.Outcome
+            + "; cashRequestBlockers=[" + string.Join(",", cash.Blockers) + "]; " + diagnostics);
+        var reviewed = await Task.Run(() => actual.Review(owners.Capture(), runtime.Id, reviewRequest,
+            new(cash.Value!.AuthorityDigest, cash.Value.Dice * 3)));
+        Require(reviewed is { Outcome: CharacterCreationFoundationOutcomes.Success, Value: not null, Blockers.Count: 0 },
+            "Unmet optional goals must retain selections accepted by the actual owner-bound final review. reviewOutcome="
+            + reviewed.Outcome + "; ownerReviewBlockers=[" + string.Join(",", reviewed.Blockers) + "]; " + diagnostics);
+
+        CultureInfo previousCulture = CultureInfo.CurrentUICulture;
+        try
+        {
+            foreach (string locale in new[] { "en-GB", "de-AT" })
+            {
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(locale);
+                // Exercise the native disclosure renderer without forging the
+                // coordinator's issued-proposal admission or replacing its live
+                // page. The original preview continues through Review and Apply.
+                var disclosure = new CreationCompletionPage(runtime.Coordinator);
+                typeof(CreationCompletionPage).GetField("_proposal", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .SetValue(disclosure, proposal);
+                typeof(CreationCompletionPage).GetMethod("RenderOptionalAttributeKarmaGoals",
+                    BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(disclosure, null);
+                AssertOptionalAttributeKarmaDisclosure(disclosure, proposal);
+                if (locale == "en-GB")
+                    await AssertOptionalAttributeKarmaRejectionsAsync(disclosure, runtime, owners, ui, inputs, proposal, cash.Value!);
+            }
+        }
+        finally { CultureInfo.CurrentUICulture = previousCulture; }
+    }
+
     private static void AssertOptionalAttributeKarmaDisclosure(CreationCompletionPage page, CompletionAssistantProposal proposal)
     {
+        string diagnostics = OptionalKarmaDiagnostics(proposal.Request, proposal.Evaluation);
         var plan = proposal.Evaluation.Value!;
         Require(proposal.Request.AllocateRemainingAttributeKarma
             && proposal.Evaluation.Outcome == CharacterCreationFoundationOutcomes.Blocked
             && plan.Review.Blockers.Count == 0
             && plan.Blockers.Contains(CharacterCreationAttributeCompletionBlockers.KarmaTargetsUnfulfilled),
-            "SETUP: this scenario needs an actual blocked plan with a legal complete review and unmet Karma goals.");
+            "SETUP: this scenario needs an actual blocked plan with a legal complete review and unmet Karma goals. " + diagnostics);
         var expected = proposal.Request.Attributes.KarmaTargets!
             .Select(goal => (Goal: goal, Actual: plan.Review.Skills!.Attributes.Attributes
                 .Single(row => row.AttributeId == goal.AttributeId).UnaugmentedCurrent))
             .Where(row => row.Actual < row.Goal.TargetUnaugmentedRating).ToArray();
         Require(expected.Length > 0 && plan.Selections.AttributeAllocations.Any(row => row.KarmaLevels > 0),
-            "SETUP: the real proposal must retain an affordable Karma increase and leave optional goals unmet.");
+            "SETUP: the real proposal must retain an affordable Karma increase and leave optional goals unmet. " + diagnostics);
         Require(!CreationCompletionPage.RequiredProposalBlockers(proposal, plan.Blockers)
                 .Contains(CharacterCreationAttributeCompletionBlockers.KarmaTargetsUnfulfilled),
             "A legal optional-goal shortfall still produces generic failure copy.");
