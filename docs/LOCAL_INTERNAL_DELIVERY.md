@@ -132,7 +132,35 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 239 is the latest [observed Internal availability](../play/evidence/preview239-internal-observation.json).
+Preview 240 is the latest [observed Internal availability](../play/evidence/preview240-internal-observation.json),
+recorded on 16 October at 22:07 Europe/Vienna. The local ARM64 AAB was built from
+protected merge `dd315b2c`, signed separately with the existing upload key,
+independently verified without keys and uploaded/confirmed once under the standing
+approval. Signed SHA-256:
+`b3bdbfa0b0558aba6a11e911d8407c82e237b08c9d948ce3be85494738f6b412`.
+Presentation `8f088d0b`, Core recipe `09e2cf6e` and runtime `8d2b72eb` form the
+exact locked package closure with pinned Presentation source and Core content.
+The diagnostic contract still requires its retained local package feed.
+
+This increment provides real Finish Character analysis stages, named talent
+styles, positive-quality suggestions and explicit remaining-resource/manual-choice
+notices. Confirmed Priorities lead to Attributes; Back after autosave reaches
+Create instead of a stale Priorities page. The exact-tree local API36 x64
+Release/Internal smoke completed one Human Mystic Adept proposal, review,
+confirmed Apply to Career and verified new-process reopen. Manual Body3/Magic4
+and Priority skill grants were retained; one finalization receipt and identical
+saved/restarted files were verified. Cancel/review preserved all files, and all
+22 preexisting runners remained unchanged. This is emulator source-graph evidence,
+not execution of the signed AAB or a physical Play-installed build.
+
+Slow startup and proposal/review latency remain open. Five Karma, complete gear
+and adept-power choices still require manual work; the next skill-Karma follow-up
+is not in this artifact. Physical240 installation, full Creation/Career/Origin,
+tablet and Rook completion are not claimed. Play reported 8756 supported phones,
+zero newly unsupported phones and the existing mapping/native-symbol warnings.
+Version240 is consumed; retain the exact packet and do not rebuild or replay it.
+
+Preview 239 was previously [observed on Internal](../play/evidence/preview239-internal-observation.json).
 Play Console showed it available to Internal testers on 16 October at 11:02
 Europe/Vienna, with its displayed update time 11:01. The exact local ARM64 AAB
 was built from merged Android `c47a96c3`, signed with the original upload key,
