@@ -132,7 +132,32 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 238 is the latest [observed Internal availability](../play/evidence/preview238-internal-observation.json).
+Preview 239 is the latest [observed Internal availability](../play/evidence/preview239-internal-observation.json).
+Play Console showed it available to Internal testers on 16 October at 11:02
+Europe/Vienna, with its displayed update time 11:01. The exact local ARM64 AAB
+was built from merged Android `c47a96c3`, signed with the original upload key,
+independently verified without keys and uploaded/confirmed once under the standing
+approval. Its signed SHA-256 is `c6baa367fb5256631c6d9545bd3e98d6e299372bc746ca72f4246e969ea3a485`.
+It consumes exact Presentation `e1d3484`, Core recipe `505bc12e` and runtime
+`fa951b99`, as a locked package closure with pinned Presentation source and Core
+content, not a source-free package-only artifact.
+
+This experimental Finish Character increment includes initial-read recovery and
+cancellation plus a clearer review: named choices, grouped equipment, before/after
+values, expandable retained choices and explicit unspent-resource warnings.
+The exact-tree APK10 native route reached final review, expanded/collapsed retained
+choices without recalculation and canceled back to Create with all 21 saved workspace
+JSON hashes unchanged. Six focused actual Core/MAUI scenarios passed. Earlier APK09
+Apply/Career/new-process proof remains bound to its own source; it is not an APK10
+restart or signed-AAB execution claim. Proposal generation remained slow on the
+loaded emulator host, and SystemUI/accessibility limitations remain recorded.
+The separate future Mystic Adept patch is not in 239. Physical installation,
+complete playable chargen, all-method Creation/Career, live Origin, Rook and
+startup/performance improvements remain unverified. Play showed 8756 supported
+phones, no newly unsupported phones and the existing mapping/native-symbol
+warnings. Version239 is consumed; do not rebuild or replay its upload.
+
+Preview 238 was previously [observed on Internal](../play/evidence/preview238-internal-observation.json).
 Play Console records release on 14 October at 18:59 Europe/Vienna; availability
 was observed at 17:00:15 UTC (19:00:15 Europe/Vienna). Its exact local ARM64 build,
 original-key isolated signing, independent keyless verification and one Play
