@@ -245,6 +245,11 @@ class FinalizationOwnerNavigationSourceContractTests(unittest.TestCase):
             values = {entry.attrib["name"]: entry.findtext("value") for entry in root.findall("data")}
             for key in keys:
                 self.assertTrue(values.get(key), (suffix, key))
+            allocation = ET.parse(resources / f"CreationAllocationStrings{suffix}.resx").getroot()
+            for key in re.findall(r'CreationAllocationStrings.Get\("(Completion\.[^"]+)"', source):
+                entries = [entry for entry in allocation.findall("data") if entry.attrib["name"] == key]
+                self.assertEqual(1, len(entries), (suffix, key))
+                self.assertTrue(entries[0].findtext("value"), (suffix, key))
         labels = source.split("private string SuggestionLabel", 1)[1].split("private static string RemainingTask", 1)[0]
         self.assertNotIn(": choice.SourceId", labels)
         self.assertIn("SkillCatalogStrings.SkillName", labels)

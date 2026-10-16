@@ -79,7 +79,7 @@ public sealed partial class RunnerSessionCoordinator
 
     public Task<CharacterCreationFoundationResult<CompletionAssistantProposal>> BuildCreationCompletionProposalAsync(
         CharacterCreationCompletionReviewInputs inputs, CompletionAssistantIntent intent,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, Action<CompletionAnalysisProgress>? progress = null)
     {
         ArgumentNullException.ThrowIfNull(inputs);
         ArgumentNullException.ThrowIfNull(intent);
@@ -92,7 +92,14 @@ public sealed partial class RunnerSessionCoordinator
                 return CompletionUnavailable<CompletionAssistantProposal>();
             // The shared builder detaches inputs and independently verifies their
             // digest. Android neither allocates points nor changes draft stages.
-            var result = CompletionRecommendationBuilder.BuildMissingOnly(inputs, intent, cancellationToken);
+            var result = CompletionRecommendationBuilder.BuildMissingOnly(inputs, intent, cancellationToken, status =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (CompletionDisplayCurrent(issued.Display)
+                    && intent.OwnerContext == issued.Display.DisplayOwnerContext
+                    && intent.InputsSnapshotDigest == issued.SnapshotDigest && inputs.SnapshotDigest == issued.SnapshotDigest)
+                    progress?.Invoke(status);
+            });
             if (!CompletionDisplayCurrent(issued.Display)) return CompletionUnavailable<CompletionAssistantProposal>();
             if (result.Value is { } proposal)
                 _completionProposals.GetValue(proposal, _ => new(issued.Display, proposal.ProposalDigest));

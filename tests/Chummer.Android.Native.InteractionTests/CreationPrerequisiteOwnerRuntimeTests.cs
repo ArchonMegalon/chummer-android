@@ -446,6 +446,7 @@ internal static partial class AfterRunAuthorityHarness
         AttributesCommitProbe? attributes = null;
         await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners, creationPrerequisite: true,
             creationAttributes: scenario.StartsWith("forward", StringComparison.Ordinal),
+            productionCreationOverview: scenario is "forward" or "forward-sum" or "forward-load-fault",
             attributesDecorator: actual => attributes = new(actual),
             prerequisiteDecorator: actual =>
             {
@@ -707,11 +708,15 @@ internal static partial class AfterRunAuthorityHarness
                 Require(after.All(pair => pair.Value.Digest == before[pair.Key].Digest), "Rejected read changed a cold partition.");
             if (scenario.StartsWith("parent-return-confirmed", StringComparison.Ordinal)
                 || scenario.StartsWith("forward", StringComparison.Ordinal))
-                Require(after["account-a"].Content == before["account-a"].Content + 1
+            {
+                int expectedSaves = scenario is "forward" or "forward-sum" or "forward-load-fault" ? 2 : 1;
+                Require(after["account-a"].Content == before["account-a"].Content + expectedSaves
                     && after["account-a"].Saved == after["account-a"].Content
                     && after["account-a"].Draft is not null
+                    && (attributes?.ConfirmCalls ?? 0) == expectedSaves - 1
                     && after.Where(pair => pair.Key != "account-a").All(pair => pair.Value.Digest == before[pair.Key].Digest),
-                    "Confirmed return did not preserve exactly one saved owner-A mutation and untouched other partitions.");
+                    "Confirmed return did not preserve the prerequisite save, expected Attribute autosave, and untouched other partitions.");
+            }
         }
 
         async Task ReplaceOwnerAsync()
@@ -753,7 +758,7 @@ internal static partial class AfterRunAuthorityHarness
     }
 
     private static (IReadOnlyDictionary<string, string>, CreationPrerequisitePhoneSelections)
-        PrerequisiteSelections(CharacterCreationPrerequisiteState state)
+        PrerequisiteSelections(CharacterCreationPrerequisiteState state, bool mysticAdept = false)
     {
         // Choose exact real Core-projected options, as the existing finalization fixture does.
         var ranks = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -769,13 +774,26 @@ internal static partial class AfterRunAuthorityHarness
             ranks[CharacterCreationPriorityCategoryIds.Skills] = "A";
             ranks[CharacterCreationPriorityCategoryIds.Resources] = "C";
         }
+        if (mysticAdept)
+        {
+            ranks[CharacterCreationPriorityCategoryIds.Heritage] = "E";
+            ranks[CharacterCreationPriorityCategoryIds.Talent] = "C";
+            ranks[CharacterCreationPriorityCategoryIds.Attributes] = "A";
+            ranks[CharacterCreationPriorityCategoryIds.Skills] = state.BuildMethod == CharacterCreationBuildMethods.SumToTen ? "C" : "B";
+            ranks[CharacterCreationPriorityCategoryIds.Resources] = state.BuildMethod == CharacterCreationBuildMethods.SumToTen ? "C" : "D";
+        }
         var human = state.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Heritage
                 && item.Rank == ranks[CharacterCreationPriorityCategoryIds.Heritage])
             .HeritageOptions.First(item => item.IsEnabled && item.MetavariantSourceId is null && item.MetatypeName == "Human");
-        var mundane = state.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Talent && item.Rank == "E")
-            .TalentOptions.First(item => item.IsEnabled && item.Value.Equals(CharacterCreationMagicResonanceKinds.Mundane, StringComparison.OrdinalIgnoreCase)
-                && item.Magic is null && item.Resonance is null && item.Depth is null && item.ActiveSkillGrant is null && item.SkillGroupGrant is null);
-        return (ranks, new(human.SelectionId, mundane.SelectionId, [], []));
+        var talent = state.Authority.Options.Single(item => item.CategoryId == CharacterCreationPriorityCategoryIds.Talent
+                && item.Rank == ranks[CharacterCreationPriorityCategoryIds.Talent])
+            .TalentOptions.First(item => item.IsEnabled && (mysticAdept ? item.Value == "Mystic Adept"
+                : item.Value.Equals(CharacterCreationMagicResonanceKinds.Mundane, StringComparison.OrdinalIgnoreCase)
+                    && item.Magic is null && item.Resonance is null && item.Depth is null
+                    && item.ActiveSkillGrant is null && item.SkillGroupGrant is null));
+        string[] skills = talent.ActiveSkillGrant?.Options.Where(item => item.IsEnabled)
+            .Take(talent.ActiveSkillGrant.Quantity).Select(item => item.SelectionId).ToArray() ?? [];
+        return (ranks, new(human.SelectionId, talent.SelectionId, skills, []));
     }
 
     private static async Task RunPrerequisiteConfirmedParentReturnAsync(NativeRewardRuntime runtime,
@@ -783,7 +801,10 @@ internal static partial class AfterRunAuthorityHarness
         CharacterCreationPrerequisiteState state, string scenario, AttributesCommitProbe? attributes = null)
     {
         var page = new CreationPrerequisitePage(runtime.Coordinator, state);
-        var navigation = new NavigationPage(new ContentPage());
+        ContentPage root = attributes is not null ? new BuildPage(runtime.Coordinator) : new ContentPage();
+        if (root.Content is ScrollView scroll)
+            scroll.ScrollToRequested += (_, _) => scroll.SendScrollFinished();
+        var navigation = new NavigationPage(root);
         await navigation.PushAsync(page, animated: false);
         var window = new Window(navigation);
         using var alerts = new IssuedPageAlerts(page, window);
@@ -796,12 +817,15 @@ internal static partial class AfterRunAuthorityHarness
                 .GetField("_dashboardAuthority", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
             var draft = (CreationPrerequisitePhoneDraft)typeof(CreationPrerequisitePage)
                 .GetField("_draft", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
-            var (assignments, selections) = PrerequisiteSelections(state);
+            var (assignments, selections) = PrerequisiteSelections(state, mysticAdept: scenario == "forward");
             foreach (var pair in assignments)
                 Require(draft.TrySelect(state, runtime.Coordinator.State, pair.Key, pair.Value), "SETUP: rank unavailable.");
             Require(draft.TrySelectHeritage(state, runtime.Coordinator.State, selections.HeritageSelectionId)
                 && draft.TrySelectTalent(state, runtime.Coordinator.State, selections.TalentSelectionId),
-                "SETUP: exact Human/Mundane selections unavailable.");
+                "SETUP: exact heritage/talent selections unavailable.");
+            foreach (string selectionId in selections.TalentActiveSkillSelectionIds)
+                Require(draft.TryToggleTalentActiveSkill(state, runtime.Coordinator.State, selectionId),
+                    "SETUP: exact talent skill choice unavailable.");
             typeof(CreationPrerequisitePage).GetMethod("Refresh",
                 BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)!.Invoke(page, null);
             Button oldPreview = IssuedElements(page).OfType<Button>()
@@ -810,6 +834,10 @@ internal static partial class AfterRunAuthorityHarness
             await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)oldPreview).SendClicked()));
             review = navigation.Navigation.NavigationStack.Last() as CreationPrerequisitePreviewPage;
             Require(review is not null, "SETUP: real parent action did not open review.");
+            navigation.Pushed += (_, args) =>
+            {
+                if (args.Page is CreationAttributesPage) IssuedPageLifecycle(review!, "OnDisappearing");
+            };
             IssuedPageLifecycle(page, "OnDisappearing");
             await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(review!, "OnAppearing")));
             Button confirm = IssuedElements(review!).OfType<Button>()
@@ -852,24 +880,9 @@ internal static partial class AfterRunAuthorityHarness
                 Require(attributes.LoadCalls == 1 && attributes.PreviewCalls == 0 && attributes.ConfirmCalls == 0,
                     "Confirmation must load the next step once, without an Attribute mutation.");
                 bool advanced = scenario is "forward" or "forward-sum";
-                if (advanced)
-                {
-                    Require(navigation.Navigation.NavigationStack.Last() is CreationAttributesPage
-                        && !navigation.Navigation.NavigationStack.Contains(review!),
-                        "Successful assignment confirmation stranded the user on the receipt instead of opening Attributes.");
-                    var next = (CreationAttributesPage)navigation.Navigation.NavigationStack.Last();
-                    attributes.BeforeRead = null;
-                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(next, "OnAppearing")));
-                    Require(IssuedElements(next).Any(item => item.AutomationId == "creation-attributes-normal-heading"),
-                        "Forward navigation did not render the actual Attribute allocation controls.");
-                    IssuedPageLifecycle(next, "OnDisappearing");
-                    await navigation.PopAsync(animated: false);
-                    Require(ReferenceEquals(navigation.Navigation.NavigationStack.Last(), page),
-                        "Back from Attributes must return to assignments, not a consumed receipt.");
-                }
-                else
-                    Require(ReferenceEquals(navigation.Navigation.NavigationStack.Last(), review),
-                        "Failed/stale/departed next-step load stole navigation.");
+                if (!advanced)
+                    Require(navigation.Navigation.NavigationStack.SequenceEqual(new[] { root, page, review! }),
+                        "Failed/stale/departed next-step load stole navigation or retired its issuing page.");
                 if (scenario == "forward-load-fault")
                 {
                     Require(IssuedElements(review!).Any(item => item.AutomationId == "creation-prerequisite-next-unavailable"),
@@ -881,10 +894,67 @@ internal static partial class AfterRunAuthorityHarness
                     Require(navigation.Navigation.NavigationStack.Last() is CreationAttributesPage
                         && attributes.LoadCalls == 2 && probe.ConfirmCalls == 1,
                         "Continuing after a read failure must retry only the read, never the committed assignment.");
+                    advanced = true;
+                }
+                if (advanced)
+                {
+                    Require(navigation.Navigation.NavigationStack.Last() is CreationAttributesPage,
+                        "Successful assignment confirmation did not open Attributes.");
+                    var next = (CreationAttributesPage)navigation.Navigation.NavigationStack.Last();
+                    Require(navigation.Navigation.NavigationStack.SequenceEqual(new[] { root, next }),
+                        "Forward navigation must preserve Build and retire both consumed prerequisite pages.");
+                    var confirmed = new FileWorkspaceStore(runtime.StateDirectory).Get(owners.Current, runtime.Id).Value!;
+                    Require(confirmed.ContentRevision == 2 && probe.ConfirmCalls == 1,
+                        "Assignment confirmation must commit exactly one revision.");
+                    attributes.BeforeRead = null;
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle(next, "OnAppearing")));
+                    Require(IssuedElements(next).Any(item => item.AutomationId == "creation-attributes-normal-heading"),
+                        "Forward navigation did not render the actual Attribute allocation controls.");
+                    var slider = MinimalVisible(next).OfType<Slider>()
+                        .Single(item => item.AutomationId == "creation-attributes-slider-bod");
+                    ((ISliderController)slider).SendDragStarted();
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => slider.Value = 2));
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => slider.Value = 3));
+                    await ui.DrainDispatchedAsyncVoidAsync();
+                    Require(attributes.ConfirmCalls == 0, "The Body drag wrote an intermediate rating.");
+                    ((ISliderController)slider).SendDragCompleted();
+                    var status = MinimalVisible(next).OfType<Label>()
+                        .Single(item => item.AutomationId == "creation-attributes-save-status");
+                    for (int wait = 0; wait < 400 && status.Text != PhoneStrings.Get("CreationAutosaveSaved", "Saved"); wait++)
+                        await Task.Delay(50);
+                    Require(status.Text == PhoneStrings.Get("CreationAutosaveSaved", "Saved")
+                        && attributes.ConfirmCalls == 1 && await next.FlushAutosaveAsync(),
+                        "The automatic Body save did not finish exactly once.");
+                    var saved = new FileWorkspaceStore(runtime.StateDirectory).Get(owners.Current, runtime.Id).Value!;
+                    Require(saved.ContentRevision == 3
+                        && saved.Document.AuxiliaryState.CharacterCreationAttributesDraft!.Attributes
+                            .Single(item => item.AttributeId == "BOD").Current == 3,
+                        "Body 3 must persist at revision 3 before Back.");
+                    IssuedPageLifecycle(next, "OnDisappearing");
+                    await navigation.PopAsync(animated: false);
+                    Require(navigation.Navigation.NavigationStack.SequenceEqual(new[] { root }),
+                        "Back after Attribute autosave must return to Build with no consumed pages.");
+                    await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => IssuedPageLifecycle((BuildPage)root, "OnAppearing")));
+                    Require(runtime.Coordinator.State.ContentRevision == saved.ContentRevision
+                        && runtime.Coordinator.State.CreationWizard?.WorkspaceRevision == saved.ContentRevision
+                        && IssuedElements(root).Any(item => item.AutomationId == "creation-wizard-dashboard")
+                        && IssuedElements(root).OfType<Label>().Single(item => item.AutomationId == "creation-wizard-binding")
+                            .Text.StartsWith($"Revision {saved.ContentRevision} ·", StringComparison.Ordinal)
+                        && root.ToolbarItems.Single(item => item.AutomationId == "build-save-runner").IsEnabled,
+                        "Back did not refresh the usable Build root from the saved Attribute revision.");
+                    Require(probe.ConfirmCalls == 1 && attributes.ConfirmCalls == 1,
+                        "Returning to Build replayed a prerequisite or Attribute mutation.");
+                    Console.WriteLine("PREREQUISITE_FORWARD_RETURN " + JsonSerializer.Serialize(new
+                        { scenario, buildMethod = state.BuildMethod, revision = saved.ContentRevision, body = 3,
+                            prerequisiteConfirms = probe.ConfirmCalls, attributeConfirms = attributes.ConfirmCalls,
+                            scope = "actual managed slider/autosave and Back to Build; device smoke is separate" }));
                 }
                 var committed = PrerequisiteColdRows(runtime);
+                Page[] returnedStack = navigation.Navigation.NavigationStack.ToArray();
+                await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)oldPreview).SendClicked()));
                 await JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)confirm).SendClicked()));
-                Require(probe.ConfirmCalls == 1 && alerts.Titles.Count == 0
+                Require(probe.ConfirmCalls == 1 && attributes.ConfirmCalls == (advanced ? 1 : 0) && alerts.Titles.Count == 0
+                    && navigation.Navigation.NavigationStack.SequenceEqual(returnedStack)
                     && PrerequisiteColdRows(runtime).All(pair => pair.Value.Digest == committed[pair.Key].Digest),
                     "Forward navigation replayed a consumed confirmation, changed storage or raised an unhandled alert.");
                 return;
@@ -928,6 +998,7 @@ internal static partial class AfterRunAuthorityHarness
         {
             if (review is not null) IssuedPageLifecycle(review, "OnDisappearing");
             IssuedPageLifecycle(page, "OnDisappearing");
+            if (root is BuildPage buildRoot) IssuedPageLifecycle(buildRoot, "OnDisappearing");
             await JoinIssuedPageAsync(ui.RunAsync(() => Task.CompletedTask));
         }
     }

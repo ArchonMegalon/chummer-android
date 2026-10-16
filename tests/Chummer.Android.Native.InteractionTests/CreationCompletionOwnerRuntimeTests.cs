@@ -53,8 +53,22 @@ internal static partial class AfterRunAuthorityHarness
         var intent = CompletionIntent(owners.Capture(), inputs);
         string inputBytes = JsonSerializer.Serialize(inputs);
         string intentBytes = JsonSerializer.Serialize(intent);
+        var analysis = new List<CompletionAnalysisProgress>();
         var built = await StartFromUiContext(ui,
-            () => runtime.Coordinator.BuildCreationCompletionProposalAsync(inputs, intent));
+            () => runtime.Coordinator.BuildCreationCompletionProposalAsync(inputs, intent, progress: status =>
+            {
+                Require(!ReferenceEquals(SynchronizationContext.Current, ui),
+                    "Builder progress must originate from the background analysis, not a UI timer.");
+                analysis.Add(status);
+            }));
+        AssertCompletionAnalysisSequence(analysis,
+            [CompletionAnalysisStage.PreparingChoices, CompletionAnalysisStage.Skills, CompletionAnalysisStage.Magic,
+                CompletionAnalysisStage.Attributes, CompletionAnalysisStage.Contacts, CompletionAnalysisStage.Karma,
+                CompletionAnalysisStage.FinalBudgets, CompletionAnalysisStage.PreparingReview], completed: true);
+        var withoutProgress = await runtime.Coordinator.BuildCreationCompletionProposalAsync(inputs, intent);
+        Require(built.Value?.ProposalDigest == withoutProgress.Value?.ProposalDigest,
+            "Ephemeral progress changed the proposal digest or recommendation.");
+        await AssertCompletionAnalysisCancellationAsync(runtime, inputs, intent);
         Require(built.Value is { CanReview: true } proposal
             && runtime.Coordinator.IsCreationCompletionProposalCurrent(proposal)
             && proposal.AllocationPolicy == CompletionAllocationPolicy.MissingOnly
@@ -63,9 +77,10 @@ internal static partial class AfterRunAuthorityHarness
             "The starter proposal lost its exact original input or owner: " + string.Join(",", built.Blockers));
         Require(JsonSerializer.Serialize(inputs) == inputBytes && JsonSerializer.Serialize(intent) == intentBytes,
             "Preparing a proposal mutated the caller's original inputs or intent.");
+        int unavailableProgress = 0;
         var wrongSnapshot = await runtime.Coordinator.BuildCreationCompletionProposalAsync(
-            inputs, intent with { InputsSnapshotDigest = new string('0', 64) });
-        Require(wrongSnapshot.Value is null && wrongSnapshot.Outcome != CharacterCreationFoundationOutcomes.Success,
+            inputs, intent with { InputsSnapshotDigest = new string('0', 64) }, progress: _ => unavailableProgress++);
+        Require(wrongSnapshot.Value is null && wrongSnapshot.Outcome != CharacterCreationFoundationOutcomes.Success && unavailableProgress == 0,
             "Missing-only suggestions accepted intent for a different source-bound input snapshot.");
         Require(reader!.Calls > 0 && service!.ApplyCalls == 0,
             "Preparing a proposal must use the real reader without dispatching an Apply.");
@@ -75,7 +90,7 @@ internal static partial class AfterRunAuthorityHarness
         Func<Task>[] canceledWork =
         [
             () => runtime.Coordinator.LoadCreationCompletionInputsAsync(canceled.Token),
-            () => runtime.Coordinator.BuildCreationCompletionProposalAsync(inputs, intent, canceled.Token)
+            () => runtime.Coordinator.BuildCreationCompletionProposalAsync(inputs, intent, canceled.Token, _ => unavailableProgress++)
         ];
         foreach (var start in canceledWork)
         {
@@ -86,13 +101,61 @@ internal static partial class AfterRunAuthorityHarness
             }
             catch (OperationCanceledException) when (canceled.IsCancellationRequested) { }
         }
-        Require(reader.Calls == readsBeforeCancellation,
+        Require(reader.Calls == readsBeforeCancellation && unavailableProgress == 0,
             "Already-canceled completion preparation reached the Core reader.");
         AssertCompletionFilesUnchanged(runtime, files);
         Require(FinalizationDocumentDigest(new FileWorkspaceStore(runtime.StateDirectory).Get(runtime.Id).Value!)
             == FinalizationDocumentDigest(before) && owners.ActiveLeases == 0,
             "Completion preparation changed the saved unfinished runner or retained an owner lease.");
         Console.WriteLine("PASS completion preparation keeps actual unfinished runner unchanged");
+    }
+
+    private static void AssertCompletionAnalysisSequence(IReadOnlyList<CompletionAnalysisProgress> events,
+        CompletionAnalysisStage[] stages, bool completed)
+    {
+        Require(events.Select(row => row.Stage).Distinct().SequenceEqual(stages)
+            && events[0].CompletedStages == 0
+            && events.All(row => row.TotalStages == CompletionAnalysisProgress.MissingOnlyStageCount)
+            && events.Zip(events.Skip(1)).All(pair => pair.Second.CompletedStages >= pair.First.CompletedStages
+                && pair.Second.CompletedStages <= pair.First.CompletedStages + 1)
+            && (events[^1].CompletedStages == CompletionAnalysisProgress.MissingOnlyStageCount) == completed,
+            "Progress must follow real ordered phases, completing only after work returns.");
+        var resources = events.Where(row => row.Stage is CompletionAnalysisStage.Attributes
+            or CompletionAnalysisStage.Contacts or CompletionAnalysisStage.RulesAndBudgets or CompletionAnalysisStage.Equipment);
+        Require(resources.Where(row => row.CompletedStages < 4).All(row => row.CompletedStages == 3),
+            "Resource details must not invent within-phase progress or separate opaque Core completions.");
+    }
+
+    private static async Task AssertCompletionAnalysisCancellationAsync(NativeRewardRuntime runtime,
+        CharacterCreationCompletionReviewInputs inputs, CompletionAssistantIntent intent)
+    {
+        // Cancellation/failure at the actual equipment boundary needs no timer
+        // and must not publish resource completion, final budgets or a result.
+        foreach (bool fail in new[] { false, true })
+        {
+            using var cancellation = new CancellationTokenSource();
+            var events = new List<CompletionAnalysisProgress>();
+            try
+            {
+                await runtime.Coordinator.BuildCreationCompletionProposalAsync(inputs,
+                    intent with { MaximumAdditionalPurchaseSpend = decimal.MaxValue }, cancellation.Token, status =>
+                    {
+                        events.Add(status);
+                        if (status.Stage != CompletionAnalysisStage.Equipment) return;
+                        if (fail) throw new IOException("Synthetic analysis observer failure.");
+                        cancellation.Cancel();
+                    });
+                throw new InvalidOperationException("Interrupted analysis returned a proposal.");
+            }
+            catch (OperationCanceledException) when (!fail && cancellation.IsCancellationRequested) { }
+            catch (IOException) when (fail) { }
+            AssertCompletionAnalysisSequence(events,
+                [CompletionAnalysisStage.PreparingChoices, CompletionAnalysisStage.Skills, CompletionAnalysisStage.Magic,
+                    CompletionAnalysisStage.Attributes, CompletionAnalysisStage.Contacts,
+                    CompletionAnalysisStage.RulesAndBudgets, CompletionAnalysisStage.Equipment], completed: false);
+            Require(events[^1].CompletedStages == 3,
+                "A canceled or failed equipment phase was falsely counted as complete.");
+        }
     }
 
     private static async Task CompletionExplicitApplySavesOnceAsync(string contentRoot)
@@ -320,10 +383,12 @@ internal static partial class AfterRunAuthorityHarness
             && !runtime.Coordinator.IsCreationCompletionReviewCurrent(review),
             "Retained completion authority became current again after owner ABA.");
         int reviews = service.ReviewCalls;
-        var staleBuild = await runtime.Coordinator.BuildCreationCompletionProposalAsync(inputs, proposal.Intent);
+        int staleProgress = 0;
+        var staleBuild = await runtime.Coordinator.BuildCreationCompletionProposalAsync(inputs, proposal.Intent,
+            progress: _ => staleProgress++);
         var staleReview = await runtime.Coordinator.ReviewCreationCompletionAsync(proposal,
             CompletionCash(runtime, before));
-        Require(staleBuild.Value is null && staleReview.Value is null && service.ReviewCalls == reviews,
+        Require(staleBuild.Value is null && staleReview.Value is null && service.ReviewCalls == reviews && staleProgress == 0,
             "An old input or proposal was rebound into fresh authority after owner ABA.");
         AssertCompletionFilesUnchanged(runtime, files);
         Require(owners.ActiveLeases == 0, "Rejected completion retained an owner lease.");

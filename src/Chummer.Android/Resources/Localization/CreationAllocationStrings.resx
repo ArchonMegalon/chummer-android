@@ -1011,4 +1011,42 @@ Karma remaining: {1}</value></data>
   <data name="QualitiesReReview.Keep" xml:space="preserve"><value>Keep and continue</value></data>
   <data name="QualitiesReReview.Cancel" xml:space="preserve"><value>Cancel</value></data>
   <data name="QualitiesReReview.Reopen" xml:space="preserve"><value>Reopen the runner to check the saved qualities before continuing.</value></data>
+  <data name="Completion.Archetype.Adept" xml:space="preserve"><value>Adept</value></data>
+  <data name="Completion.Archetype.MysticAdept" xml:space="preserve"><value>Mystic adept</value></data>
+  <data name="Completion.Archetype.Technomancer" xml:space="preserve"><value>Technomancer</value></data>
+  <data name="Completion.Archetype.ArtificialIntelligence" xml:space="preserve"><value>Artificial intelligence</value></data>
+  <data name="Completion.Archetype.Unknown" xml:space="preserve"><value>Other suggestion style</value></data>
+  <data name="Completion.MysticFoundation" xml:space="preserve"><value>Suggestions are only a foundation. Review tradition and spells, and choose adept powers manually; this is not a complete Mystic Adept build.</value></data>
+  <data name="Completion.Progress.Count" xml:space="preserve"><value>Analysis stages completed: {0} of {1}. Stage count, not a time estimate.</value></data>
+
+  <data name="Completion.Progress.LoadingChoices" xml:space="preserve"><value>Loading choices and checking rules…</value></data>
+
+  <data name="Completion.Progress.Prerequisites" xml:space="preserve"><value>Checking build method prerequisites…</value></data>
+
+  <data name="Completion.Progress.Archetype" xml:space="preserve"><value>Analyzing your existing role…</value></data>
+
+  <data name="Completion.Progress.PreparingChoices" xml:space="preserve"><value>Preparing your choices and locks…</value></data>
+
+  <data name="Completion.Progress.Skills" xml:space="preserve"><value>Analyzing skill and group suggestions…</value></data>
+
+  <data name="Completion.Progress.Magic" xml:space="preserve"><value>Preparing magic and resonance suggestions…</value></data>
+
+  <data name="Completion.Progress.Attributes" xml:space="preserve"><value>Checking attribute allocations…</value></data>
+
+  <data name="Completion.Progress.Contacts" xml:space="preserve"><value>Checking contacts and their budgets…</value></data>
+
+  <data name="Completion.Progress.RulesAndBudgets" xml:space="preserve"><value>Checking skills, magic, qualities and budgets together…</value></data>
+
+  <data name="Completion.Progress.Equipment" xml:space="preserve"><value>Checking equipment and lifestyle options…</value></data>
+
+  <data name="Completion.Progress.Karma" xml:space="preserve"><value>Analyzing remaining Karma options…</value></data>
+
+  <data name="Completion.Progress.FinalBudgets" xml:space="preserve"><value>Checking the complete plan and final budgets…</value></data>
+
+  <data name="Completion.Progress.PreparingReview" xml:space="preserve"><value>Preparing your proposal review…</value></data>
+
+  <data name="Completion.Progress.StartingCash" xml:space="preserve"><value>Checking starting-cash terms…</value></data>
+
+  <data name="Completion.Progress.FinalReview" xml:space="preserve"><value>Checking final budgets and completion…</value></data>
+
 </root>

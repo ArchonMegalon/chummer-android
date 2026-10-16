@@ -25,6 +25,17 @@ public sealed class CreationCompletionPage : NativePageBase
     private IReadOnlyList<string> _blockers = [];
     private bool _busy, _visible, _applyStarted, _outcomeLookupAllowed, _leaving;
     private long _render, _inputVersion;
+    private ReadAnalysis? _analysis;
+    private Grid? _analysisView;
+    private ActivityIndicator? _analysisSpinner;
+    private ProgressBar? _analysisBar;
+    private Label? _analysisStatus, _analysisCount;
+
+    private sealed class ReadAnalysis(CompletionAnalysisProgress initial)
+    {
+        public CompletionAnalysisProgress Status { get; set; } = initial;
+        public Action<CompletionAnalysisProgress> Report { get; set; } = null!;
+    }
 
     // Local harness observation only: no character/source text, exception messages,
     // stacks, persistence, telemetry or UI diagnostics. Each appearance owns its list.
@@ -63,6 +74,7 @@ public sealed class CreationCompletionPage : NativePageBase
     protected override void OnDisappearing()
     {
         _visible = false;
+        EndReadAnalysis(_analysis);
         _render++;
         _inputVersion++;
         _reads?.Cancel();
@@ -93,6 +105,9 @@ public sealed class CreationCompletionPage : NativePageBase
         _blockers = [];
         _busy = true;
         if (!Supports(original)) { _busy = false; return; }
+        long inputGeneration = _inputVersion;
+        var analysis = BeginReadAnalysis(new(CompletionAnalysisStage.LoadingChoices, 0, 3),
+            () => inputGeneration == _inputVersion && CurrentLoad(), cancellationToken);
         Refresh();
         try
         {
@@ -122,6 +137,7 @@ public sealed class CreationCompletionPage : NativePageBase
                 // the real priority prerequisite has not been confirmed yet.
                 // Only a current, owner-bound Core read may choose that guidance.
                 stage = "prerequisite-fallback";
+                analysis.Report(new(CompletionAnalysisStage.Prerequisites, 0, 3));
                 Observe();
                 var prerequisite = await Coordinator.LoadCreationPrerequisiteAsync(cancellationToken);
                 Observe(prerequisite.Outcome, prerequisite.Blockers);
@@ -133,12 +149,14 @@ public sealed class CreationCompletionPage : NativePageBase
             }
             if (!Coordinator.IsCreationCompletionInputsCurrent(inputs)) return;
             stage = "archetype";
+            analysis.Report(new(CompletionAnalysisStage.Archetype, 1, 3));
             Observe();
             var suggestion = await Task.Run(() => CompletionRecommendationBuilder.SuggestArchetype(
                 inputs, cancellationToken: cancellationToken), cancellationToken);
             Observe(suggestion.Outcome, suggestion.Blockers);
             if (!CurrentLoad() || !Coordinator.IsCreationCompletionInputsCurrent(inputs)) return;
             stage = "finalization-cash";
+            analysis.Report(new(CompletionAnalysisStage.StartingCash, 2, 3));
             Observe();
             var cash = await Task.Run(() => Coordinator.LoadCreationFinalizationInBackground(
                 display, cancellationToken), cancellationToken);
@@ -170,6 +188,7 @@ public sealed class CreationCompletionPage : NativePageBase
         }
         finally
         {
+            EndReadAnalysis(analysis);
             if (IsCurrentAppearanceGeneration(appearance)) _busy = false;
         }
         bool PageLoadCurrent() => IsCurrentPage(appearance) && ReferenceEquals(Shell.Current?.CurrentPage, this)
@@ -213,6 +232,7 @@ public sealed class CreationCompletionPage : NativePageBase
     protected override void Refresh()
     {
         long render = ++_render, appearance = CaptureAppearanceGeneration();
+        DetachReadProgress();
         _body.Clear();
         _footer.Clear();
         _body.IsEnabled = !_busy;
@@ -239,7 +259,7 @@ public sealed class CreationCompletionPage : NativePageBase
                     () => ApplyAsync(recoveryOnly: true), appearance, render);
             return;
         }
-        if (_busy) AddReadProgress();
+        if (_busy && _analysis is not null) AddReadProgress();
         AddCancel(appearance, render);
         if (_display is null || !Supports(_display))
         {
@@ -262,6 +282,13 @@ public sealed class CreationCompletionPage : NativePageBase
             return;
         }
         _body.Add(NativeTheme.Body(Copy("Scope", "Fill unused points and suggest contacts, a lifestyle, basic supplies, a weapon and armor. Some equipment and magic choices still need review. Nothing changes until Apply."), NativeTheme.Muted));
+        if (_inputs.Magic.SelectedTalent.Kind == CharacterCreationMagicResonanceKinds.MysticAdept)
+        {
+            Label boundary = NativeTheme.Body(CreationAllocationStrings.Get("Completion.MysticFoundation",
+                "Suggestions are only a foundation. Review tradition and spells, and choose adept powers manually; this is not a complete Mystic Adept build."), NativeTheme.Muted);
+            boundary.AutomationId = "creation-completion-mystic-foundation";
+            _body.Add(boundary);
+        }
         if (_review is not null)
         {
             RenderFinalReview(appearance, render);
@@ -287,24 +314,117 @@ public sealed class CreationCompletionPage : NativePageBase
         {
             AutomationId = "creation-completion-read-busy",
             ColumnDefinitions = { new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Star) },
-            ColumnSpacing = 10
+            RowDefinitions = { new RowDefinition(GridLength.Auto), new RowDefinition(GridLength.Auto), new RowDefinition(GridLength.Auto) },
+            ColumnSpacing = 10, RowSpacing = 6
         };
-        progress.Add(new ActivityIndicator
+        _analysisView = progress;
+        _analysisSpinner = new ActivityIndicator
         {
             AutomationId = "creation-completion-read-progress", IsRunning = true,
             Color = NativeTheme.Text, WidthRequest = 24, HeightRequest = 24,
             VerticalOptions = LayoutOptions.Center
-        });
-        Label status = NativeTheme.Body(Copy("Working", "Checking your choices…"));
-        status.AutomationId = "creation-completion-read-status";
-        status.VerticalOptions = LayoutOptions.Center;
-        progress.Add(status, 1);
+        };
+        progress.Add(_analysisSpinner);
+        _analysisStatus = NativeTheme.Body(string.Empty);
+        _analysisStatus.AutomationId = "creation-completion-read-status";
+        _analysisStatus.VerticalOptions = LayoutOptions.Center;
+        progress.Add(_analysisStatus, 1);
+        _analysisBar = new ProgressBar
+        {
+            AutomationId = "creation-completion-stage-progress", ProgressColor = NativeTheme.Text,
+            BackgroundColor = NativeTheme.Surface, HeightRequest = 6
+        };
+        progress.Add(_analysisBar, 0, 1);
+        Grid.SetColumnSpan(_analysisBar, 2);
+        _analysisCount = NativeTheme.Body(string.Empty, NativeTheme.Muted);
+        _analysisCount.AutomationId = "creation-completion-stage-count";
+        progress.Add(_analysisCount, 0, 2);
+        Grid.SetColumnSpan(_analysisCount, 2);
         _footer.Add(progress);
+        UpdateReadProgress();
     }
+
+    private ReadAnalysis BeginReadAnalysis(CompletionAnalysisProgress initial, Func<bool> current,
+        CancellationToken cancellationToken)
+    {
+        EndReadAnalysis(_analysis);
+        var analysis = new ReadAnalysis(initial);
+        _analysis = analysis;
+        var dispatcher = Dispatcher;
+        analysis.Report = status =>
+        {
+            // Never capture UI authority on the worker thread. Recheck all of it
+            // at dispatch time, including operation identity and the live owner.
+            dispatcher.Dispatch(() =>
+            {
+                if (!ReferenceEquals(_analysis, analysis) || !_busy || !_visible || _leaving || _applyStarted
+                    || cancellationToken.IsCancellationRequested || ReadToken.IsCancellationRequested || !current()
+                    || status.TotalStages != analysis.Status.TotalStages
+                    || status.CompletedStages < analysis.Status.CompletedStages
+                    || status.CompletedStages == analysis.Status.CompletedStages && (int)status.Stage < (int)analysis.Status.Stage
+                    || status.CompletedStages < 0 || status.CompletedStages > status.TotalStages
+                    || !Enum.IsDefined(status.Stage)) return;
+                analysis.Status = status;
+                UpdateReadProgress(); // no Refresh: keep controls and cancel handlers attached
+            });
+        };
+        return analysis;
+    }
+
+    private void EndReadAnalysis(ReadAnalysis? analysis)
+    {
+        if (!ReferenceEquals(_analysis, analysis)) return;
+        _analysis = null;
+        DetachReadProgress();
+    }
+
+    private void DetachReadProgress()
+    {
+        if (_analysisSpinner is not null) _analysisSpinner.IsRunning = false;
+        if (_analysisView is not null) _analysisView.IsVisible = false;
+        _analysisView = null;
+        _analysisSpinner = null;
+        _analysisBar = null;
+        _analysisStatus = _analysisCount = null;
+    }
+
+    private void UpdateReadProgress()
+    {
+        if (_analysis is not { Status: var status } || _analysisBar is null) return;
+        _analysisBar.Progress = (double)status.CompletedStages / status.TotalStages;
+        _analysisStatus!.Text = AnalysisStageText(status.Stage);
+        _analysisCount!.Text = string.Format(CultureInfo.CurrentUICulture,
+            CreationAllocationStrings.Get("Completion.Progress.Count",
+                "Analysis stages completed: {0} of {1}. Stage count, not a time estimate."),
+            status.CompletedStages, status.TotalStages);
+    }
+
+    internal static string AnalysisStageText(CompletionAnalysisStage stage)
+        => CreationAllocationStrings.Get("Completion.Progress." + stage, stage switch
+        {
+            CompletionAnalysisStage.LoadingChoices => "Loading choices and checking rules…",
+            CompletionAnalysisStage.Prerequisites => "Checking build method prerequisites…",
+            CompletionAnalysisStage.Archetype => "Analyzing your existing role…",
+            CompletionAnalysisStage.PreparingChoices => "Preparing your choices and locks…",
+            CompletionAnalysisStage.Skills => "Analyzing skill and group suggestions…",
+            CompletionAnalysisStage.Magic => "Preparing magic and resonance suggestions…",
+            CompletionAnalysisStage.Attributes => "Checking attribute allocations…",
+            CompletionAnalysisStage.Contacts => "Checking contacts and their budgets…",
+            CompletionAnalysisStage.RulesAndBudgets => "Checking skills, magic, qualities and budgets together…",
+            CompletionAnalysisStage.Equipment => "Checking equipment and lifestyle options…",
+            CompletionAnalysisStage.Karma => "Analyzing remaining Karma options…",
+            CompletionAnalysisStage.FinalBudgets => "Checking the complete plan and final budgets…",
+            CompletionAnalysisStage.PreparingReview => "Preparing your proposal review…",
+            CompletionAnalysisStage.StartingCash => "Checking starting-cash terms…",
+            CompletionAnalysisStage.FinalReview => "Checking final budgets and completion…",
+            _ => "Checking your choices…"
+        });
 
     private void RenderChoices(long appearance, long render)
     {
-        string[] archetypes = new[] { _archetypeId, CompletionAssistantRules.GeneralSurvivor,
+        // The inferred identity belongs to the original inputs, not the current
+        // suggestion style. Keep it available after the player tries another style.
+        string[] archetypes = new[] { _archetypeId, _archetype?.ArchetypeId ?? _archetypeId, CompletionAssistantRules.GeneralSurvivor,
             CompletionAssistantRules.StreetSamurai, CompletionAssistantRules.Face, CompletionAssistantRules.Mage,
             CompletionAssistantRules.Decker, CompletionAssistantRules.Rigger }.Distinct(StringComparer.Ordinal).ToArray();
         Picker picker = new()
@@ -315,7 +435,8 @@ public sealed class CreationCompletionPage : NativePageBase
         };
         picker.SelectedIndexChanged += (_, _) =>
         {
-            if (!Current(appearance, render) || _busy || picker.SelectedIndex < 0) return;
+            if (!Current(appearance, render) || _busy || !ReferenceEquals(picker.Parent, _body) || picker.SelectedIndex < 0
+                || picker.SelectedIndex >= archetypes.Length) return;
             _archetypeId = archetypes[picker.SelectedIndex];
             InvalidateProposal();
         };
@@ -427,6 +548,10 @@ public sealed class CreationCompletionPage : NativePageBase
             MaximumAdditionalPurchaseSpend = decimal.MaxValue
         };
         _busy = true;
+        CancellationToken readToken = ReadToken;
+        var analysis = BeginReadAnalysis(new(CompletionAnalysisStage.PreparingChoices, 0,
+                CompletionAnalysisProgress.MissingOnlyStageCount + 1),
+            () => CurrentInput(appearance, version), readToken);
         Refresh();
         var clock = System.Diagnostics.Stopwatch.StartNew();
         var observations = new List<PreviewObservation>();
@@ -434,7 +559,8 @@ public sealed class CreationCompletionPage : NativePageBase
         try
         {
             Observe("proposal-start");
-            var result = await Coordinator.BuildCreationCompletionProposalAsync(inputs, intent, ReadToken);
+            var result = await Coordinator.BuildCreationCompletionProposalAsync(inputs, intent, readToken,
+                status => analysis.Report(status with { TotalStages = status.TotalStages + 1 }));
             Observe("proposal-returned", result.Outcome);
             if (!CurrentInput(appearance, version)) return;
             _proposal = result.Value;
@@ -451,7 +577,9 @@ public sealed class CreationCompletionPage : NativePageBase
                 // terms through the admitted proposal, never use the original
                 // Street fallback or construct an authority from display values.
                 Observe("cash-start");
-                var cash = await Coordinator.LoadCreationCompletionStartingCashAsync(proposal, ReadToken);
+                analysis.Report(new(CompletionAnalysisStage.StartingCash,
+                    CompletionAnalysisProgress.MissingOnlyStageCount, CompletionAnalysisProgress.MissingOnlyStageCount + 1));
+                var cash = await Coordinator.LoadCreationCompletionStartingCashAsync(proposal, readToken);
                 Observe("cash-returned", cash.Outcome);
                 if (!CurrentInput(appearance, version) || !ReferenceEquals(_proposal, proposal)) return;
                 if (cash is { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } source, Blockers.Count: 0 })
@@ -477,6 +605,7 @@ public sealed class CreationCompletionPage : NativePageBase
         }
         finally
         {
+            EndReadAnalysis(analysis);
             if (IsCurrentAppearanceGeneration(appearance))
             {
                 _busy = false;
@@ -514,6 +643,7 @@ public sealed class CreationCompletionPage : NativePageBase
                 label, actual, suggestion.TargetRating, state)));
         }
         RenderMagicProposal();
+        RenderKarmaQualityProposal();
         RenderResourceProposal();
         RenderLoadoutProposal();
         RenderOptionalAttributeKarmaGoals();
@@ -523,9 +653,57 @@ public sealed class CreationCompletionPage : NativePageBase
         if (_proposal.Evaluation.Value?.Review.Balances is { } balance)
         {
             _body.Add(NativeTheme.Metric(Copy("KarmaBefore", "Creation Karma remaining"), Number(balance.RemainingCreationKarma)));
+            if (balance.RemainingCreationKarma is > 0
+                && _proposal.Coverage.FirstOrDefault(row => row.Category == "karma-remaining") is { } remainder)
+            {
+                Label explanation = NativeTheme.Body(KarmaExplanation(remainder.ExplanationKey), NativeTheme.Muted);
+                explanation.AutomationId = "creation-completion-karma-remainder";
+                _body.Add(explanation);
+            }
             _body.Add(NativeTheme.Metric(Copy("NuyenBefore", "Creation nuyen remaining"), Number(balance.RemainingNuyen)));
         }
     }
+
+    private void RenderKarmaQualityProposal()
+    {
+        if (_inputs is not { } inputs || _proposal?.Evaluation.Value is not { } plan) return;
+        VerticalStackLayout changes = new() { AutomationId = "creation-completion-quality-changes", Spacing = 6 };
+        foreach (string id in plan.Selections.QualityOptionIds.Except(inputs.Lifestyles.Qualities.SelectedOptionIds))
+        {
+            var option = inputs.Lifestyles.Qualities.Authority.Options.SingleOrDefault(row => row.OptionId == id);
+            if (option is null) continue;
+            Label name = NativeTheme.Body(SafeReviewName(QualityCatalogStrings.Name(option.SourceId, option.Name)));
+            name.AutomationId = "creation-completion-proposed-quality";
+            changes.Add(name);
+            var reason = _proposal.Coverage.FirstOrDefault(row => row.Category == "karma-quality-" + option.SourceId);
+            if (reason is not null) changes.Add(NativeTheme.Body(KarmaExplanation(reason.ExplanationKey), NativeTheme.Muted));
+        }
+        if (changes.Children.Count == 0) return;
+        _body.Add(NativeTheme.Eyebrow(Copy("Karma.Qualities", "Proposed positive qualities")));
+        _body.Add(changes);
+    }
+
+    internal static string KarmaExplanation(string key)
+        => key switch
+        {
+            "completion.karma.explicit-reserve" => Copy("Karma.Reserved", "This Karma is reserved and stays unspent."),
+            "completion.karma.reason.courage" => Copy("Karma.Courage", "Helps this character face fear."),
+            "completion.karma.reason.handedness" => Copy("Karma.Handedness", "Supports using either hand."),
+            "completion.karma.reason.judgment" => Copy("Karma.Judgment", "Supports practical judgment in risky situations."),
+            "completion.karma.reason.timing" => Copy("Karma.Timing", "Supports precise timing."),
+            "completion.karma.reason.reading" => Copy("Karma.Reading", "Helps process written information quickly."),
+            "completion.karma.reason.driving" => Copy("Karma.Driving", "Fits this character's vehicle-focused role."),
+            "completion.karma.reason.repair" => Copy("Karma.Repair", "Fits hands-on technical improvisation."),
+            "completion.karma.reason.matrix" => Copy("Karma.Matrix", "Fits this character's Matrix-focused role."),
+            "completion.karma.reason.recovery" => Copy("Karma.Recovery", "Supports recovery after injury."),
+            "completion.karma.reason.stealth" => Copy("Karma.Stealth", "Supports moving unnoticed."),
+            "completion.karma.reason.mobility" => Copy("Karma.Mobility", "Supports physical mobility."),
+            "completion.karma.reason.resilience" => Copy("Karma.Resilience", "Supports surviving physical danger."),
+            "completion.karma.reason.memory" => Copy("Karma.Memory", "Supports remembering useful details."),
+            "completion.karma.reason.analysis" => Copy("Karma.Analysis", "Supports analytical problem-solving."),
+            "completion.karma.reason.first-impression" => Copy("Karma.FirstImpression", "Fits a role that depends on meeting new people."),
+            _ => Copy("Karma.Remaining", "The checked suggestions leave Karma available. Further legal options may exist; Karma purchases for skills and specializations still need manual selection.")
+        };
 
     private void RenderMagicProposal()
     {
@@ -678,10 +856,14 @@ public sealed class CreationCompletionPage : NativePageBase
             || !int.TryParse(_roll, NumberStyles.None, CultureInfo.InvariantCulture, out int dice)) return;
         long appearance = CaptureAppearanceGeneration(), version = _inputVersion;
         _busy = true;
+        CancellationToken readToken = ReadToken;
+        var analysis = BeginReadAnalysis(new(CompletionAnalysisStage.FinalReview, 0, 1),
+            () => CurrentInput(appearance, version) && ReferenceEquals(_proposal, proposal)
+                && Coordinator.IsCreationCompletionProposalCurrent(proposal), readToken);
         Refresh();
         try
         {
-            var result = await Coordinator.ReviewCreationCompletionAsync(proposal, new(source.AuthorityDigest, dice), ReadToken);
+            var result = await Coordinator.ReviewCreationCompletionAsync(proposal, new(source.AuthorityDigest, dice), readToken);
             if (!CurrentInput(appearance, version)) return;
             _blockers = result.Blockers;
             _review = result is { Outcome: CharacterCreationFoundationOutcomes.Success, Value: { } review, Blockers.Count: 0 }
@@ -696,6 +878,7 @@ public sealed class CreationCompletionPage : NativePageBase
         }
         finally
         {
+            EndReadAnalysis(analysis);
             if (IsCurrentAppearanceGeneration(appearance))
             {
                 _busy = false;
@@ -883,6 +1066,7 @@ public sealed class CreationCompletionPage : NativePageBase
             _leaving = true;
             cancel.IsEnabled = false;
             _reads?.Cancel();
+            EndReadAnalysis(_analysis);
             try { await Navigation.PopAsync(); }
             catch (Exception error) when (error is not OutOfMemoryException)
             {
@@ -1044,7 +1228,11 @@ public sealed class CreationCompletionPage : NativePageBase
         CompletionAssistantRules.Mage => Copy("Archetype.Mage", "Mage"),
         CompletionAssistantRules.Decker => Copy("Archetype.Decker", "Decker"),
         CompletionAssistantRules.Rigger => Copy("Archetype.Rigger", "Rigger"),
-        _ => MagicCatalogStrings.TalentName(id)
+        CharacterCreationMagicResonanceKinds.Adept => CreationAllocationStrings.Get("Completion.Archetype.Adept", "Adept"),
+        CharacterCreationMagicResonanceKinds.MysticAdept => CreationAllocationStrings.Get("Completion.Archetype.MysticAdept", "Mystic adept"),
+        CharacterCreationMagicResonanceKinds.Technomancer => CreationAllocationStrings.Get("Completion.Archetype.Technomancer", "Technomancer"),
+        CharacterCreationMagicResonanceKinds.ArtificialIntelligence => CreationAllocationStrings.Get("Completion.Archetype.ArtificialIntelligence", "Artificial intelligence"),
+        _ => CreationAllocationStrings.Get("Completion.Archetype.Unknown", "Other suggestion style")
     };
 
     internal sealed record FinalReviewRow(string Area, string Label, string Value, bool Retained = false, bool Setup = false);
@@ -1328,7 +1516,8 @@ public sealed class CreationCompletionPage : NativePageBase
     private bool IsCurrentPage(long appearance) => _visible && IsCurrentAppearanceGeneration(appearance)
         && ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), this);
     private bool Current(long appearance, long render) => IsCurrentPage(appearance) && render == _render && InputsCurrent();
-    private bool CurrentInput(long appearance, long version) => IsCurrentPage(appearance) && version == _inputVersion && InputsCurrent();
+    private bool CurrentInput(long appearance, long version) => IsCurrentPage(appearance) && !_leaving
+        && !ReadToken.IsCancellationRequested && version == _inputVersion && InputsCurrent();
     private CancellationToken ReadToken => _reads?.Token ?? new CancellationToken(canceled: true);
     private static string Number(decimal? value) => value?.ToString("0.##", CultureInfo.CurrentCulture) ?? "—";
     internal static string Copy(string key, string fallback) => CreationFlowStrings.Get("Completion." + key, fallback);

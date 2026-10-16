@@ -188,7 +188,7 @@ internal static partial class AfterRunAuthorityHarness
             try
             {
                 foreach (string scenario in scenarioFilter is null
-                    ? new[] { "prerequisite", "cash-read-throws", "busy-cancel", "cancel", "magic-choice-cancel", "loss-decline", "loss-owner-aba", "loss-departure", "apply", "lost-reply", "unknown", "optional-karma", "manual-weapon", "manual-armor", "manual-both", "manual-lost-reply", "manual-refresh-fault", "manual-cancel", ExactPartialManualScenario }
+                    ? new[] { "progress-guards", "prerequisite", "cash-read-throws", "busy-cancel", "cancel", "magic-choice-cancel", "talent-style-mystic-adept", "talent-style-adept", "talent-style-technomancer", "loss-decline", "loss-owner-aba", "loss-departure", "apply", "lost-reply", "unknown", "optional-karma", "manual-weapon", "manual-armor", "manual-both", "manual-lost-reply", "manual-refresh-fault", "manual-cancel", ExactPartialManualScenario }
                     : new[] { scenarioFilter })
                 {
                     CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(scenario switch
@@ -198,6 +198,13 @@ internal static partial class AfterRunAuthorityHarness
                         _ => "en-GB"
                     });
                     var owners = new ControlledLinkedOwner();
+                    string? distinctTalent = scenario switch
+                    {
+                        "talent-style-mystic-adept" => CharacterCreationMagicResonanceKinds.MysticAdept,
+                        "talent-style-adept" => CharacterCreationMagicResonanceKinds.Adept,
+                        "talent-style-technomancer" => CharacterCreationMagicResonanceKinds.Technomancer,
+                        _ => null
+                    };
                     using var reviewPause = scenario == "busy-cancel" ? new CompletionReviewPause() : null;
                     CompletionServiceProbe? service = null;
                     CompletionReadProbe? completionReader = null;
@@ -238,6 +245,10 @@ internal static partial class AfterRunAuthorityHarness
                         : scenario == "magic-choice-cancel"
                             ? PrepareActualFinalizationReadyContext(runtime, stopBeforeAttributes: true,
                                 attributeTalent: "Magician", attributeTalentRank: "B", completionMagic: true)
+                        : distinctTalent is not null
+                            ? PrepareActualFinalizationReadyContext(runtime, stopBeforeAttributes: true,
+                                attributeTalent: distinctTalent == CharacterCreationMagicResonanceKinds.MysticAdept
+                                    ? "Mystic Adept" : distinctTalent, attributeTalentRank: "C")
                         : PrepareActualFinalizationReadyContext(runtime, stopBeforeAttributes: scenario != "cancel");
                     await HydrateFinalizationOwnerAsync(runtime, owners, before, contentFreeFailure: scenario == ExactPartialManualScenario);
                     if (scenario == "prerequisite")
@@ -357,6 +368,31 @@ internal static partial class AfterRunAuthorityHarness
                         .GetField("_inputs", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)
                         ?? throw new InvalidOperationException("SETUP: the actual completion input read is missing.");
                     string inputsDigest = CharacterCreationCompletionReviewRules.ComputeInputsDigest(inputs);
+                    if (scenario == "progress-guards")
+                    {
+                        await AssertCompletionProgressGuardsAsync(ui, runtime, page);
+                        AssertCompletionFilesUnchanged(runtime, files);
+                        Require(service!.ReviewCalls == 0 && service.ApplyCalls == 0 && owners.ActiveLeases == 0,
+                            "Progress interaction dispatched a mutation or retained authority.");
+                        IssuedPageLifecycle(page, "OnDisappearing");
+                        ui.AssertHealthy();
+                        Console.WriteLine("PASS completion stage progress: controls, generation, cancellation and locales");
+                        continue;
+                    }
+                    if (distinctTalent is not null)
+                    {
+                        await AssertCompletionDistinctTalentPickerAsync(ui, runtime, page, inputs, files, distinctTalent);
+                        await ClickCompletionControlAsync(ui, CompletionPageControl<Button>(page, "creation-completion-cancel"));
+                        Require(navigation.NavigationStack.Count == 1 && ReferenceEquals(Shell.Current?.CurrentPage, root)
+                            && coordinator.State.Profile?.Created == false && service!.ReviewCalls == 0 && service.ApplyCalls == 0
+                            && owners.ActiveLeases == 0 && alerts.Titles.Count == 0,
+                            "Cancel after changing suggestion styles must return to unchanged creation without review or Apply.");
+                        AssertCompletionFilesUnchanged(runtime, files);
+                        IssuedPageLifecycle(page, "OnDisappearing");
+                        ui.AssertHealthy();
+                        Console.WriteLine("PASS actual Core/MAUI completion page: " + scenario);
+                        continue;
+                    }
                     if (scenario == "magic-choice-cancel")
                     {
                         var choices = CompletionRecommendationBuilder.GetMagicIdentityChoices(
@@ -396,7 +432,8 @@ internal static partial class AfterRunAuthorityHarness
                             "SETUP: the page must retain real original cash terms before its proposed-home read fails.");
                     }
                     Button preview = CompletionPageControl<Button>(page, "creation-completion-preview");
-                    await ClickCompletionControlAsync(ui, preview);
+                    var previousAnalysis = await ClickCompletionPreviewWithProgressAsync(ui, runtime, page, preview,
+                        expectFailure: scenario == "cash-read-throws");
                     AssertCompletionHasNoAllocationSettings(page);
                     var proposal = (CompletionAssistantProposal?)typeof(CreationCompletionPage)
                         .GetField("_proposal", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)
@@ -572,8 +609,8 @@ internal static partial class AfterRunAuthorityHarness
                     if (scenario == "apply") AssertCompletionRichProposal(page, inputs, proposal, cashSource);
                     if (scenario == "optional-karma")
                     {
-                        AssertOptionalAttributeKarmaDisclosure(page, proposal);
-                        await AssertOptionalAttributeKarmaRejectionsAsync(page, runtime, owners, ui, inputs, proposal, cashSource);
+                        AssertBoundedKarmaProposal(page, proposal);
+                        await AssertExplicitOptionalAttributeKarmaAsync(runtime, owners, ui, inputs, proposal);
                     }
                     AssertCompletionFilesUnchanged(runtime, files);
                     cash.Text = (cashSource.Dice * 3).ToString(CultureInfo.InvariantCulture);
@@ -585,11 +622,25 @@ internal static partial class AfterRunAuthorityHarness
                         {
                             await reviewPause.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
                             AssertCompletionReadProgress(page);
+                            var activeAnalysis = CaptureCompletionProgress(page);
+                            var activeBar = CompletionPageControl<ProgressBar>(page, "creation-completion-stage-progress");
+                            var activeStatus = CompletionPageControl<Label>(page, "creation-completion-read-status");
+                            string activeText = activeStatus.Text;
+                            await DispatchCompletionProgressAsync(ui, previousAnalysis,
+                                new(CompletionAnalysisStage.FinalReview, 1, 1));
+                            Require(activeBar.Progress == 0 && activeStatus.Text == activeText
+                                && ReferenceEquals(activeStatus, CompletionPageControl<Label>(page, "creation-completion-read-status")),
+                                "A callback from the previous operation changed the current review or rebuilt its controls.");
                             AssertCompletionFilesUnchanged(runtime, files);
                             // Join both actual callbacks through the in-flight
                             // UI operation; do not start a second harness gate.
                             ((IButtonController)CompletionPageControl<Button>(page, "creation-completion-cancel")).SendClicked();
                             await JoinIssuedPageAsync(pending);
+                            await DispatchCompletionProgressAsync(ui, activeAnalysis,
+                                new(CompletionAnalysisStage.FinalReview, 1, 1));
+                            Require(activeBar.Progress == 0 && activeStatus.Text == activeText
+                                && !MinimalVisible(page).Any(element => element.AutomationId == "creation-completion-read-busy"),
+                                "A canceled/departed review accepted delayed completion progress.");
                         }
                         finally
                         {
@@ -640,7 +691,7 @@ internal static partial class AfterRunAuthorityHarness
                     // The helper deliberately renders again to retire old controls.
                     apply = CompletionPageControl<Button>(page, "creation-completion-apply");
                     AssertCompletionFilesUnchanged(runtime, files);
-                    if (scenario == "optional-karma") AssertOptionalAttributeKarmaDisclosure(page, proposal);
+                    if (scenario == "optional-karma") AssertBoundedKarmaProposal(page, proposal);
                     int expectedLossConfirmations = CreationCompletionPage.LossItems(reviewed.Projection).Count > 0 ? 1 : 0;
 
                     if (scenario is "cancel" or "manual-cancel")
@@ -739,6 +790,137 @@ internal static partial class AfterRunAuthorityHarness
                 CultureInfo.CurrentUICulture = previousCulture;
             }
         });
+    }
+
+    private static async Task AssertCompletionDistinctTalentPickerAsync(IssuedPageUiContext ui, NativeRewardRuntime runtime,
+        CreationCompletionPage page, CharacterCreationCompletionReviewInputs inputs,
+        IReadOnlyDictionary<string, string> files, string talentKind)
+    {
+        var inferred = Field<CompletionArchetypeSuggestion>("_archetype");
+        string digest = CharacterCreationCompletionReviewRules.ComputeInputsDigest(inputs);
+        Require(inputs.Magic.SelectedTalent.Kind == talentKind && inferred.ArchetypeId == talentKind,
+            "SETUP: the actual Core talent must be the page's original distinct suggestion.");
+        foreach (var (locale, mystic, adept, technomancer, artificialIntelligence, unknown) in new[]
+        {
+            ("en-GB", "Mystic adept", "Adept", "Technomancer", "Artificial intelligence", "Other suggestion style"),
+            ("de-AT", "Mystischer Adept", "Adept", "Technomancer", "Künstliche Intelligenz", "Anderer Vorschlagsstil"),
+            ("es-ES", "Adepto místico", "Adepto", "Tecnomante", "Inteligencia artificial", "Otro estilo de sugerencias")
+        })
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(locale);
+            RefreshPage();
+            string talentName = talentKind switch
+            {
+                CharacterCreationMagicResonanceKinds.MysticAdept => mystic,
+                CharacterCreationMagicResonanceKinds.Adept => adept,
+                _ => technomancer
+            };
+            string general = CreationCompletionPage.Copy("Archetype.General", "missing-general");
+            string mage = CreationCompletionPage.Copy("Archetype.Mage", "missing-mage");
+            Picker original = AssertPicker(talentName, talentName);
+            bool hasPack = CompletionRecommendationBuilder.GetRecommendationPack(talentKind) is not null;
+            Require(CompletionPageControl<Button>(page, "creation-completion-preview").IsEnabled == hasPack
+                && MinimalVisible(page).OfType<Label>().Any(row => row.Text == CreationCompletionPage.Copy("NoPack", "missing-no-pack")) == !hasPack,
+                "A talent without a starter pack must retain manual guidance and disable Preview.");
+            Require(DisplayLabel(CharacterCreationMagicResonanceKinds.ArtificialIntelligence) == artificialIntelligence
+                && new[] { "internal.talent.unavailable", "future-talent", "d452a39b-7060-4e67-b03f-9b0b63b2f0fa" }
+                    .All(id => DisplayLabel(id) == unknown),
+                "Known distinct talents need localized names; unknown identifiers must never become visible labels.");
+
+            original.SelectedIndex = Index(original, general);
+            Picker changed = AssertPicker(general, talentName);
+            Require(Field<string>("_archetypeId") == CompletionAssistantRules.GeneralSurvivor
+                && ReferenceEquals(Field<CompletionArchetypeSuggestion>("_archetype"), inferred),
+                "The player's suggestion style must change without replacing the original inference.");
+            long version = Field<long>("_inputVersion");
+            original.SelectedIndex = Index(original, mage);
+            Require(ReferenceEquals(changed, CompletionPageControl<Picker>(page, "creation-completion-archetype"))
+                && Field<long>("_inputVersion") == version && Field<string>("_archetypeId") == CompletionAssistantRules.GeneralSurvivor,
+                "A retired picker event must not change the current style or invalidate current controls.");
+
+            var body = Field<VerticalStackLayout>("_body");
+            int position = body.Children.IndexOf(changed);
+            body.Remove(changed);
+            try
+            {
+                changed.SelectedIndex = Index(changed, mage);
+                Require(Field<long>("_inputVersion") == version && Field<string>("_archetypeId") == CompletionAssistantRules.GeneralSurvivor,
+                    "A detached picker must not accept a choice even within its original render.");
+            }
+            finally { body.Insert(position, changed); }
+            RefreshPage();
+            changed = AssertPicker(general, talentName);
+            changed.SelectedIndex = Index(changed, talentName);
+            AssertPicker(talentName, talentName);
+            Require(Field<string>("_archetypeId") == talentKind,
+                "The original distinct talent must remain selectable after changing suggestion styles.");
+            if (talentKind == CharacterCreationMagicResonanceKinds.MysticAdept)
+                Require(CompletionPageControl<Label>(page, "creation-completion-mystic-foundation").Text
+                    == CreationAllocationStrings.Get("Completion.MysticFoundation", "missing-mystic-boundary"),
+                    "Mystic advice must disclose its bounded foundation and manual adept-power choices.");
+            RequireOriginalInputs();
+            AssertCompletionFilesUnchanged(runtime, files);
+        }
+
+        // Exercise the actual Preview handler with the player's supported style,
+        // then retire that proposal by returning to the original talent.
+        Picker style = CompletionPageControl<Picker>(page, "creation-completion-archetype");
+        style.SelectedIndex = Index(style, CreationCompletionPage.Copy("Archetype.General", "missing-general"));
+        var language = MinimalVisible(page).OfType<Picker>()
+            .SingleOrDefault(row => row.AutomationId == "creation-completion-native-language");
+        if (language is not null)
+        {
+            Require(language.ItemsSource.Count > 0, "SETUP: an admitted native language is required for Preview.");
+            language.SelectedIndex = 0;
+        }
+        Button retiredPreview = CompletionPageControl<Button>(page, "creation-completion-preview");
+        await ClickCompletionControlAsync(ui, retiredPreview);
+        var proposal = Field<CompletionAssistantProposal?>("_proposal");
+        Require(proposal is not null && proposal.Intent.ArchetypeId == CompletionAssistantRules.GeneralSurvivor
+            && proposal.Intent.InputsSnapshotDigest == inputs.SnapshotDigest,
+            "Preview must retain the player's explicit suggestion style and original input authority.");
+        var retiredReview = MinimalVisible(page).OfType<Button>()
+            .SingleOrDefault(row => row.AutomationId == "creation-completion-review");
+        style = CompletionPageControl<Picker>(page, "creation-completion-archetype");
+        style.SelectedIndex = Index(style, DisplayLabel(talentKind));
+        Require(Field<CompletionAssistantProposal?>("_proposal") is null
+            && Field<CharacterCreationCompletionApplyReview?>("_review") is null && Field<string>("_roll") == string.Empty
+            && !MinimalVisible(page).Any(row => row.AutomationId is "creation-completion-review" or "creation-completion-apply"),
+            "Returning to the original talent must invalidate the proposal, review, and cash input.");
+        ((IButtonController)retiredPreview).SendClicked();
+        if (retiredReview is not null) ((IButtonController)retiredReview).SendClicked();
+        await ui.DrainDispatchedAsyncVoidAsync();
+        Require(Field<CompletionAssistantProposal?>("_proposal") is null && Field<string>("_archetypeId") == talentKind,
+            "Retired action controls must not restore a proposal for a previous style.");
+        RequireOriginalInputs();
+        AssertCompletionFilesUnchanged(runtime, files);
+
+        T Field<T>(string name) => (T)typeof(CreationCompletionPage)
+            .GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
+        void RefreshPage() => typeof(CreationCompletionPage)
+            .GetMethod("Refresh", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page, null);
+        static string DisplayLabel(string id) => (string)typeof(CreationCompletionPage)
+            .GetMethod("ArchetypeLabel", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, [id])!;
+        static int Index(Picker picker, string label)
+        {
+            int index = picker.ItemsSource.Cast<string>().ToList().IndexOf(label);
+            Require(index >= 0, "The actual suggestion-style picker lost a localized choice: " + label);
+            return index;
+        }
+        Picker AssertPicker(string selected, string retained)
+        {
+            Picker picker = CompletionPageControl<Picker>(page, "creation-completion-archetype");
+            var labels = picker.ItemsSource.Cast<string>().ToArray();
+            Require(labels.Length == 7 && labels.Distinct(StringComparer.Ordinal).Count() == labels.Length
+                && labels.Contains(retained, StringComparer.Ordinal) && picker.SelectedItem is string actual && actual == selected,
+                "The rendered picker must retain one localized talent choice alongside the six distinct ordinary styles.");
+            return picker;
+        }
+        void RequireOriginalInputs() => Require(ReferenceEquals(Field<CharacterCreationCompletionReviewInputs>("_inputs"), inputs)
+            && inputs.Magic.SelectedTalent.Kind == talentKind
+            && CharacterCreationCompletionReviewRules.ComputeInputsDigest(inputs) == digest
+            && runtime.Coordinator.IsCreationCompletionInputsCurrent(inputs),
+            "Suggestion-style display and handlers must not change the current saved talent or input authority.");
     }
 
     private static async Task RunInitialCompletionRefreshAsync(IssuedPageUiContext ui, NativeRewardRuntime runtime,
@@ -861,6 +1043,10 @@ internal static partial class AfterRunAuthorityHarness
 
                 // Hydration calls the real Shell/Presenter directly, not the coordinator's
                 // gated activation API. Their StateChanged events publish the replacement.
+                var staleProgress = CaptureCompletionProgress(page);
+                var staleBar = CompletionPageControl<ProgressBar>(page, "creation-completion-stage-progress");
+                var staleStatus = CompletionPageControl<Label>(page, "creation-completion-read-status");
+                string staleText = staleStatus.Text;
                 hydration = HydrateFinalizationOwnerAsync(runtime, owners, saved, contentFreeFailure: true);
                 await hydration.WaitAsync(timeout);
                 RequireSameSavedAuthority();
@@ -917,6 +1103,9 @@ internal static partial class AfterRunAuthorityHarness
                         Require(releaseRetryCash.Wait(timeout), "stage=initial-refresh-bound; cash gate timed out");
                     };
                 }
+                await DispatchCompletionProgressAsync(ui, staleProgress, new(CompletionAnalysisStage.StartingCash, 2, 3));
+                Require(staleBar.Progress == 0 && staleStatus.Text == staleText,
+                    "A delayed callback survived display hydration, owner ABA, cancellation or departure.");
             }
             finally
             {
@@ -1203,20 +1392,152 @@ internal static partial class AfterRunAuthorityHarness
         }
     }
 
+    private static void AssertBoundedKarmaProposal(CreationCompletionPage page, CompletionAssistantProposal proposal)
+    {
+        string diagnostics = OptionalKarmaDiagnostics(proposal.Request, proposal.Evaluation);
+        // The recommendation may retain unspent special points. That is an
+        // honest partial plan, not a failed final review or an unmet Karma goal.
+        // Keep every other planner finding disqualifying in this fixture.
+        Require(proposal.Evaluation.Value is { Review.Blockers.Count: 0 } plan
+            && (proposal.Evaluation.Outcome == CharacterCreationFoundationOutcomes.Success
+                    && proposal.Evaluation.Blockers.Count == 0 && plan.Blockers.Count == 0
+                || proposal.Evaluation.Outcome == CharacterCreationFoundationOutcomes.Blocked
+                    && proposal.Evaluation.Blockers.Count > 0
+                    && proposal.Evaluation.Blockers.All(code =>
+                        code == CharacterCreationAttributeCompletionBlockers.SpecialPointsUnallocated)
+                    && plan.Blockers.SequenceEqual(proposal.Evaluation.Blockers)),
+            "Bounded Karma suggestions must keep a legal whole review, with only unspent special points permitted. " + diagnostics);
+        var attributes = proposal.Evaluation.Value!.Review.Skills!.Attributes.Attributes;
+        Require(proposal.Request.Attributes.KarmaTargets?.All(goal => attributes.Single(row =>
+                row.AttributeId == goal.AttributeId).UnaugmentedCurrent >= goal.TargetUnaugmentedRating) != false
+            && CreationCompletionPage.OptionalAttributeKarmaShortfalls(proposal).Count == 0
+            && !MinimalVisible(page).Any(element => element.AutomationId?.StartsWith(
+                "creation-completion-optional-karma", StringComparison.Ordinal) == true),
+            "Reached bounded Karma goals must not render an optional shortfall before or after review. " + diagnostics);
+    }
+
+    private static string OptionalKarmaDiagnostics(CharacterCreationCompletionPlanRequest request,
+        CharacterCreationFoundationResult<CharacterCreationCompletionPlan> evaluated)
+    {
+        // Synthetic fixture only: report rule codes and numeric budgets/ratings,
+        // never serialize the proposal, owner, bindings or runner document.
+        var plan = evaluated.Value;
+        var attributes = plan?.Review.Skills?.Attributes;
+        var balances = plan?.Review.Balances;
+        return "optional-karma=" + JsonSerializer.Serialize(new
+        {
+            evaluated.Outcome,
+            RequestResultBlockers = evaluated.Blockers,
+            PlanBlockers = plan?.Blockers,
+            ReviewBlockers = plan?.Review.Blockers,
+            AttributePlanBlockers = plan?.Attributes?.Blockers,
+            AttributeReviewBlockers = attributes?.Blockers,
+            SkillPlanBlockers = plan?.Skills?.Blockers,
+            MagicPlanBlockers = plan?.Magic?.Blockers,
+            PurchasePlanBlockers = plan?.Purchases?.Blockers,
+            request.AllocateRemainingAttributeKarma,
+            Karma = new
+            {
+                Retained = balances?.RemainingCreationKarma,
+                Reserved = request.KarmaToReserve,
+                MagicReserved = request.Magic.KarmaToReserve,
+                request.Attributes.MaximumAdditionalKarmaSpend,
+                Total = balances?.CreationKarmaTotal,
+                AfterAttributesAndQualities = balances?.KarmaAfterAttributesAndQualities,
+                SkillsCost = balances?.SkillsKarmaCost,
+                PowerPointsCost = balances?.MysticAdeptPowerPointKarmaCost,
+                ResourcesInvestment = balances?.ResourcesKarmaInvestment,
+                ContactsCost = balances?.ContactsKarmaCost,
+                Overspend = balances?.KarmaOverspend
+            },
+            NormalPointsRemaining = attributes?.NormalPointBudget.Remaining,
+            SpecialPointsRemaining = attributes?.SpecialPointBudget.Remaining,
+            request.Attributes.NormalPointsToReserve,
+            request.Attributes.SpecialPointsToReserve,
+            Targets = request.Attributes.KarmaTargets?.Select(goal => new
+            {
+                goal.AttributeId,
+                Target = goal.TargetUnaugmentedRating,
+                Actual = attributes?.Attributes.FirstOrDefault(row => row.AttributeId == goal.AttributeId)?.UnaugmentedCurrent,
+                RetainedKarmaLevels = plan?.Selections.AttributeAllocations
+                    .FirstOrDefault(row => row.AttributeId == goal.AttributeId)?.KarmaLevels
+            }).ToArray()
+        });
+    }
+
+    private static async Task AssertExplicitOptionalAttributeKarmaAsync(NativeRewardRuntime runtime,
+        ControlledLinkedOwner owners, IssuedPageUiContext ui, CharacterCreationCompletionReviewInputs inputs,
+        CompletionAssistantProposal issuedProposal)
+    {
+        // Exercise partial-plan disclosure with explicit goals independently of
+        // the issued recommendation. Keep the existing saved-quality selection;
+        // the assertions below must establish legality and an actual shortfall.
+        var request = issuedProposal.Request with
+        {
+            QualityOptionIds = inputs.Lifestyles.Qualities.SelectedOptionIds,
+            AllocateRemainingAttributeKarma = true,
+            Attributes = issuedProposal.Request.Attributes with
+            {
+                KarmaTargets = [new("BOD", 5), new("REA", 5)],
+                MaximumAdditionalKarmaSpend = int.MaxValue
+            }
+        };
+        var evaluated = await Task.Run(() => CharacterCreationCompletionPlanner.Plan(inputs, request));
+        string diagnostics = OptionalKarmaDiagnostics(request, evaluated);
+        Require(evaluated.Value is not null,
+            "SETUP: explicit optional goals need a real Core plan. " + diagnostics);
+        var proposal = issuedProposal with { Request = request, Evaluation = evaluated, ProposalDigest = string.Empty };
+        proposal = proposal with { ProposalDigest = CompletionAssistantRules.ComputeProposalDigest(proposal) };
+
+        var actual = runtime.Services.GetRequiredService<IOwnerBoundCharacterCreationCompletionService>();
+        var reviewRequest = new CharacterCreationCompletionReviewRequest(inputs.SnapshotDigest, evaluated.Value!.Selections);
+        var cash = await Task.Run(() => actual.LoadStartingCash(owners.Capture(), runtime.Id, reviewRequest));
+        Require(cash is { Outcome: CharacterCreationFoundationOutcomes.Success, Value: not null, Blockers.Count: 0 },
+            "SETUP: the partial plan must resolve its own real starting-cash authority. cashOutcome=" + cash.Outcome
+            + "; cashRequestBlockers=[" + string.Join(",", cash.Blockers) + "]; " + diagnostics);
+        var reviewed = await Task.Run(() => actual.Review(owners.Capture(), runtime.Id, reviewRequest,
+            new(cash.Value!.AuthorityDigest, cash.Value.Dice * 3)));
+        Require(reviewed is { Outcome: CharacterCreationFoundationOutcomes.Success, Value: not null, Blockers.Count: 0 },
+            "Unmet optional goals must retain selections accepted by the actual owner-bound final review. reviewOutcome="
+            + reviewed.Outcome + "; ownerReviewBlockers=[" + string.Join(",", reviewed.Blockers) + "]; " + diagnostics);
+
+        CultureInfo previousCulture = CultureInfo.CurrentUICulture;
+        try
+        {
+            foreach (string locale in new[] { "en-GB", "de-AT" })
+            {
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(locale);
+                // Exercise the native disclosure renderer without forging the
+                // coordinator's issued-proposal admission or replacing its live
+                // page. The original preview continues through Review and Apply.
+                var disclosure = new CreationCompletionPage(runtime.Coordinator);
+                typeof(CreationCompletionPage).GetField("_proposal", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .SetValue(disclosure, proposal);
+                typeof(CreationCompletionPage).GetMethod("RenderOptionalAttributeKarmaGoals",
+                    BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(disclosure, null);
+                AssertOptionalAttributeKarmaDisclosure(disclosure, proposal);
+                if (locale == "en-GB")
+                    await AssertOptionalAttributeKarmaRejectionsAsync(disclosure, runtime, owners, ui, inputs, proposal, cash.Value!);
+            }
+        }
+        finally { CultureInfo.CurrentUICulture = previousCulture; }
+    }
+
     private static void AssertOptionalAttributeKarmaDisclosure(CreationCompletionPage page, CompletionAssistantProposal proposal)
     {
+        string diagnostics = OptionalKarmaDiagnostics(proposal.Request, proposal.Evaluation);
         var plan = proposal.Evaluation.Value!;
         Require(proposal.Request.AllocateRemainingAttributeKarma
             && proposal.Evaluation.Outcome == CharacterCreationFoundationOutcomes.Blocked
             && plan.Review.Blockers.Count == 0
             && plan.Blockers.Contains(CharacterCreationAttributeCompletionBlockers.KarmaTargetsUnfulfilled),
-            "SETUP: this scenario needs an actual blocked plan with a legal complete review and unmet Karma goals.");
+            "SETUP: this scenario needs an actual blocked plan with a legal complete review and unmet Karma goals. " + diagnostics);
         var expected = proposal.Request.Attributes.KarmaTargets!
             .Select(goal => (Goal: goal, Actual: plan.Review.Skills!.Attributes.Attributes
                 .Single(row => row.AttributeId == goal.AttributeId).UnaugmentedCurrent))
             .Where(row => row.Actual < row.Goal.TargetUnaugmentedRating).ToArray();
         Require(expected.Length > 0 && plan.Selections.AttributeAllocations.Any(row => row.KarmaLevels > 0),
-            "SETUP: the real proposal must retain an affordable Karma increase and leave optional goals unmet.");
+            "SETUP: the real proposal must retain an affordable Karma increase and leave optional goals unmet. " + diagnostics);
         Require(!CreationCompletionPage.RequiredProposalBlockers(proposal, plan.Blockers)
                 .Contains(CharacterCreationAttributeCompletionBlockers.KarmaTargetsUnfulfilled),
             "A legal optional-goal shortfall still produces generic failure copy.");
@@ -1469,17 +1790,157 @@ internal static partial class AfterRunAuthorityHarness
             .OrderBy(value => value, StringComparer.Ordinal);
     }
 
+    private static Action<CompletionAnalysisProgress> CaptureCompletionProgress(CreationCompletionPage page)
+    {
+        object analysis = typeof(CreationCompletionPage).GetField("_analysis", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(page) ?? throw new InvalidOperationException("No active completion analysis.");
+        return (Action<CompletionAnalysisProgress>)analysis.GetType().GetProperty("Report")!.GetValue(analysis)!;
+    }
+
+    private static async Task DispatchCompletionProgressAsync(IssuedPageUiContext ui,
+        Action<CompletionAnalysisProgress> report, CompletionAnalysisProgress status)
+    {
+        var dispatched = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await Task.Run(() =>
+        {
+            report(status);
+            ui.Dispatch(() => dispatched.SetResult()); // FIFO marker, no delay or timer
+        });
+        await dispatched.Task;
+    }
+
+    private static async Task<Action<CompletionAnalysisProgress>> ClickCompletionPreviewWithProgressAsync(
+        IssuedPageUiContext ui, NativeRewardRuntime runtime, CreationCompletionPage page, Button preview, bool expectFailure)
+    {
+        var gate = (SemaphoreSlim)typeof(RunnerSessionCoordinator).GetField("_workspaceActivationGate",
+            BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(runtime.Coordinator)!;
+        await gate.WaitAsync();
+        Task? pending = null;
+        Action<CompletionAnalysisProgress> report;
+        ProgressBar bar;
+        ActivityIndicator spinner;
+        Grid progress;
+        try
+        {
+            pending = ui.BeginAsyncVoid(() => ((IButtonController)preview).SendClicked());
+            report = CaptureCompletionProgress(page);
+            bar = CompletionPageControl<ProgressBar>(page, "creation-completion-stage-progress");
+            spinner = CompletionPageControl<ActivityIndicator>(page, "creation-completion-read-progress");
+            progress = CompletionPageControl<Grid>(page, "creation-completion-read-busy");
+            Require(bar.Progress == 0 && spinner.IsRunning,
+                "Waiting at the actual workspace gate invented analysis progress.");
+        }
+        finally { gate.Release(); }
+        await JoinIssuedPageAsync(pending!);
+        double lastProgress = bar.Progress;
+        await DispatchCompletionProgressAsync(ui, report,
+            new(CompletionAnalysisStage.StartingCash, 8, 8));
+        Require(!spinner.IsRunning && !progress.IsVisible && bar.Progress == lastProgress && (!expectFailure || lastProgress < 1)
+            && !MinimalVisible(page).Any(element => element.AutomationId == "creation-completion-read-busy"),
+            "A returned or failed preview left spinning UI or accepted a delayed done callback.");
+        return report;
+    }
+
+    private static async Task AssertCompletionProgressGuardsAsync(IssuedPageUiContext ui,
+        NativeRewardRuntime runtime, CreationCompletionPage page)
+    {
+        CultureInfo originalCulture = CultureInfo.CurrentUICulture;
+        try
+        {
+            foreach (string locale in new[] { "en-US", "de-AT", "es-ES" })
+            {
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(locale);
+                foreach (var stage in Enum.GetValues<CompletionAnalysisStage>())
+                {
+                    string localized = CreationAllocationStrings.Get("Completion.Progress." + stage, "missing-progress");
+                    Require(localized != "missing-progress" && CreationCompletionPage.AnalysisStageText(stage) == localized,
+                        "An analysis stage lacks its shipping-locale resource.");
+                }
+                string count = CreationAllocationStrings.Get("Completion.Progress.Count", "missing-progress");
+                foreach (var reason in new[]
+                {
+                    ("explicit-reserve", "Reserved"), ("remaining-bounded-or-manual", "Remaining"),
+                    ("reason.courage", "Courage"), ("reason.handedness", "Handedness"),
+                    ("reason.judgment", "Judgment"), ("reason.timing", "Timing"), ("reason.reading", "Reading"),
+                    ("reason.driving", "Driving"), ("reason.repair", "Repair"), ("reason.matrix", "Matrix"),
+                    ("reason.recovery", "Recovery"), ("reason.stealth", "Stealth"), ("reason.mobility", "Mobility"),
+                    ("reason.resilience", "Resilience"), ("reason.memory", "Memory"), ("reason.analysis", "Analysis"),
+                    ("reason.first-impression", "FirstImpression")
+                })
+                {
+                    string explanation = CreationFlowStrings.Get("Completion.Karma." + reason.Item2, "missing-karma");
+                    Require(explanation != "missing-karma"
+                        && CreationCompletionPage.KarmaExplanation("completion.karma." + reason.Item1) == explanation,
+                        "Karma benefit and remainder explanations must use the shipping locale, not internal keys.");
+                }
+                Require(count.Contains("{0}", StringComparison.Ordinal) && count.Contains("{1}", StringComparison.Ordinal)
+                    && !string.Format(CultureInfo.CurrentUICulture, count, 3, 8).Contains('{'),
+                    "The localized stage counter lost its completed/total values.");
+            }
+        }
+        finally { CultureInfo.CurrentUICulture = originalCulture; }
+
+        var gate = (SemaphoreSlim)typeof(RunnerSessionCoordinator).GetField("_workspaceActivationGate",
+            BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(runtime.Coordinator)!;
+        await gate.WaitAsync();
+        Task? pending = null;
+        try
+        {
+            var preview = CompletionPageControl<Button>(page, "creation-completion-preview");
+            pending = ui.BeginAsyncVoid(() => ((IButtonController)preview).SendClicked());
+            var report = CaptureCompletionProgress(page);
+            var bar = CompletionPageControl<ProgressBar>(page, "creation-completion-stage-progress");
+            var status = CompletionPageControl<Label>(page, "creation-completion-read-status");
+            var cancel = CompletionPageControl<Button>(page, "creation-completion-cancel");
+            var picker = CompletionPageControl<Picker>(page, "creation-completion-archetype");
+            // Inject protocol events into the genuine queued operation. Separate
+            // coordinator tests prove the builder emits these only after work.
+            await DispatchCompletionProgressAsync(ui, report, new(CompletionAnalysisStage.Skills, 1, 8));
+            Require(bar.Progress == 1d / 8 && status.Text == CreationCompletionPage.AnalysisStageText(CompletionAnalysisStage.Skills),
+                "A completed analysis phase did not update the visible bar and stage.");
+            await DispatchCompletionProgressAsync(ui, report, new(CompletionAnalysisStage.Attributes, 3, 8));
+            await DispatchCompletionProgressAsync(ui, report, new(CompletionAnalysisStage.Equipment, 3, 8));
+            Require(bar.Progress == 3d / 8 && status.Text == CreationCompletionPage.AnalysisStageText(CompletionAnalysisStage.Equipment)
+                && ReferenceEquals(picker, CompletionPageControl<Picker>(page, "creation-completion-archetype"))
+                && ReferenceEquals(cancel, CompletionPageControl<Button>(page, "creation-completion-cancel")) && cancel.IsEnabled,
+                "Resource detail updates invented precision, rebuilt active controls or disabled Cancel.");
+            string lastText = status.Text;
+            await DispatchCompletionProgressAsync(ui, report, new(CompletionAnalysisStage.Skills, 1, 8));
+            await DispatchCompletionProgressAsync(ui, report, new(CompletionAnalysisStage.Attributes, 3, 8));
+            await DispatchCompletionProgressAsync(ui, report, new(CompletionAnalysisStage.FinalBudgets, 9, 8));
+            await DispatchCompletionProgressAsync(ui, report, new(CompletionAnalysisStage.FinalBudgets, 4, 7));
+            var version = typeof(CreationCompletionPage).GetField("_inputVersion", BindingFlags.NonPublic | BindingFlags.Instance)!;
+            version.SetValue(page, (long)version.GetValue(page)! + 1);
+            await DispatchCompletionProgressAsync(ui, report, new(CompletionAnalysisStage.FinalBudgets, 6, 8));
+            Require(bar.Progress == 3d / 8 && status.Text == lastText,
+                "A regressive, invalid or stale-input progress callback changed the display.");
+            ((IButtonController)cancel).SendClicked();
+            await DispatchCompletionProgressAsync(ui, report, new(CompletionAnalysisStage.StartingCash, 8, 8));
+            Require(bar.Progress == 3d / 8 && status.Text == lastText,
+                "Canceled progress falsely completed the analysis.");
+        }
+        finally
+        {
+            gate.Release();
+            if (pending is not null) await JoinIssuedPageAsync(pending);
+        }
+    }
+
     private static void AssertCompletionReadProgress(CreationCompletionPage page)
     {
         var progress = CompletionPageControl<Grid>(page, "creation-completion-read-busy");
         var spinner = CompletionPageControl<ActivityIndicator>(page, "creation-completion-read-progress");
         var status = CompletionPageControl<Label>(page, "creation-completion-read-status");
+        var bar = CompletionPageControl<ProgressBar>(page, "creation-completion-stage-progress");
+        var count = CompletionPageControl<Label>(page, "creation-completion-stage-count");
         var cancel = CompletionPageControl<Button>(page, "creation-completion-cancel");
         Require(progress.Parent is VerticalStackLayout footer
             && ReferenceEquals(footer.Parent, page.Content) && Grid.GetRow(footer) == 1
             && spinner.IsRunning && spinner.IsVisible
-            && status.Text == CreationCompletionPage.Copy("Working", "missing-busy-status")
-            && status.Text != "missing-busy-status"
+            && status.Text == CreationCompletionPage.AnalysisStageText(CompletionAnalysisStage.FinalReview)
+            && bar.IsVisible && bar.Progress == 0
+            && count.Text == string.Format(CultureInfo.CurrentUICulture,
+                CreationAllocationStrings.Get("Completion.Progress.Count", "missing-stage-count"), 0, 1)
             && cancel.IsEnabled && ReferenceEquals(cancel.Parent, progress.Parent)
             && !MinimalVisible(page).OfType<Button>().Any(button => button.IsEnabled && button.AutomationId is
                 ("creation-completion-preview" or "creation-completion-review" or "creation-completion-apply")),

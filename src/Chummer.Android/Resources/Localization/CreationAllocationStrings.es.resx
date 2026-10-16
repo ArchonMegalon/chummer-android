@@ -1008,4 +1008,42 @@ Karma restante: {1}</value></data>
   <data name="QualitiesReReview.Keep" xml:space="preserve"><value>Conservar y continuar</value></data>
   <data name="QualitiesReReview.Cancel" xml:space="preserve"><value>Cancelar</value></data>
   <data name="QualitiesReReview.Reopen" xml:space="preserve"><value>Vuelve a abrir el personaje y comprueba las cualidades guardadas antes de continuar.</value></data>
+  <data name="Completion.Archetype.Adept" xml:space="preserve"><value>Adepto</value></data>
+  <data name="Completion.Archetype.MysticAdept" xml:space="preserve"><value>Adepto místico</value></data>
+  <data name="Completion.Archetype.Technomancer" xml:space="preserve"><value>Tecnomante</value></data>
+  <data name="Completion.Archetype.ArtificialIntelligence" xml:space="preserve"><value>Inteligencia artificial</value></data>
+  <data name="Completion.Archetype.Unknown" xml:space="preserve"><value>Otro estilo de sugerencias</value></data>
+  <data name="Completion.MysticFoundation" xml:space="preserve"><value>Las sugerencias son solo una base. Revisa la tradición y los hechizos y elige los poderes de adepto manualmente; no es un adepto místico completo.</value></data>
+  <data name="Completion.Progress.Count" xml:space="preserve"><value>Etapas de análisis completadas: {0} de {1}. Cuenta etapas, no estima el tiempo.</value></data>
+
+  <data name="Completion.Progress.LoadingChoices" xml:space="preserve"><value>Cargando elecciones y comprobando reglas…</value></data>
+
+  <data name="Completion.Progress.Prerequisites" xml:space="preserve"><value>Comprobando requisitos del método de creación…</value></data>
+
+  <data name="Completion.Progress.Archetype" xml:space="preserve"><value>Analizando tu rol actual…</value></data>
+
+  <data name="Completion.Progress.PreparingChoices" xml:space="preserve"><value>Preparando tus elecciones y decisiones protegidas…</value></data>
+
+  <data name="Completion.Progress.Skills" xml:space="preserve"><value>Analizando sugerencias de habilidades y grupos…</value></data>
+
+  <data name="Completion.Progress.Magic" xml:space="preserve"><value>Preparando sugerencias de magia y resonancia…</value></data>
+
+  <data name="Completion.Progress.Attributes" xml:space="preserve"><value>Comprobando la distribución de atributos…</value></data>
+
+  <data name="Completion.Progress.Contacts" xml:space="preserve"><value>Comprobando contactos y sus presupuestos…</value></data>
+
+  <data name="Completion.Progress.RulesAndBudgets" xml:space="preserve"><value>Comprobando habilidades, magia, cualidades y presupuestos en conjunto…</value></data>
+
+  <data name="Completion.Progress.Equipment" xml:space="preserve"><value>Comprobando equipo y opciones de estilo de vida…</value></data>
+
+  <data name="Completion.Progress.Karma" xml:space="preserve"><value>Analizando opciones para el Karma restante…</value></data>
+
+  <data name="Completion.Progress.FinalBudgets" xml:space="preserve"><value>Comprobando el plan completo y los presupuestos finales…</value></data>
+
+  <data name="Completion.Progress.PreparingReview" xml:space="preserve"><value>Preparando la revisión de tu propuesta…</value></data>
+
+  <data name="Completion.Progress.StartingCash" xml:space="preserve"><value>Comprobando condiciones del dinero inicial…</value></data>
+
+  <data name="Completion.Progress.FinalReview" xml:space="preserve"><value>Comprobando presupuestos finales y finalización…</value></data>
+
 </root>
