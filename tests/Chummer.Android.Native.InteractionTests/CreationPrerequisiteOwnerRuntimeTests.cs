@@ -708,11 +708,15 @@ internal static partial class AfterRunAuthorityHarness
                 Require(after.All(pair => pair.Value.Digest == before[pair.Key].Digest), "Rejected read changed a cold partition.");
             if (scenario.StartsWith("parent-return-confirmed", StringComparison.Ordinal)
                 || scenario.StartsWith("forward", StringComparison.Ordinal))
-                Require(after["account-a"].Content == before["account-a"].Content + 1
+            {
+                int expectedSaves = scenario is "forward" or "forward-sum" or "forward-load-fault" ? 2 : 1;
+                Require(after["account-a"].Content == before["account-a"].Content + expectedSaves
                     && after["account-a"].Saved == after["account-a"].Content
                     && after["account-a"].Draft is not null
+                    && (attributes?.ConfirmCalls ?? 0) == expectedSaves - 1
                     && after.Where(pair => pair.Key != "account-a").All(pair => pair.Value.Digest == before[pair.Key].Digest),
-                    "Confirmed return did not preserve exactly one saved owner-A mutation and untouched other partitions.");
+                    "Confirmed return did not preserve the prerequisite save, expected Attribute autosave, and untouched other partitions.");
+            }
         }
 
         async Task ReplaceOwnerAsync()
