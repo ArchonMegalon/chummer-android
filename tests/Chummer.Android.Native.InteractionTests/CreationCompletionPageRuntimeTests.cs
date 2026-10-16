@@ -188,7 +188,7 @@ internal static partial class AfterRunAuthorityHarness
             try
             {
                 foreach (string scenario in scenarioFilter is null
-                    ? new[] { "prerequisite", "cash-read-throws", "busy-cancel", "cancel", "magic-choice-cancel", "talent-style-mystic-adept", "talent-style-adept", "talent-style-technomancer", "loss-decline", "loss-owner-aba", "loss-departure", "apply", "lost-reply", "unknown", "optional-karma", "manual-weapon", "manual-armor", "manual-both", "manual-lost-reply", "manual-refresh-fault", "manual-cancel", ExactPartialManualScenario }
+                    ? new[] { "progress-guards", "prerequisite", "cash-read-throws", "busy-cancel", "cancel", "magic-choice-cancel", "talent-style-mystic-adept", "talent-style-adept", "talent-style-technomancer", "loss-decline", "loss-owner-aba", "loss-departure", "apply", "lost-reply", "unknown", "optional-karma", "manual-weapon", "manual-armor", "manual-both", "manual-lost-reply", "manual-refresh-fault", "manual-cancel", ExactPartialManualScenario }
                     : new[] { scenarioFilter })
                 {
                     CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(scenario switch
@@ -368,6 +368,17 @@ internal static partial class AfterRunAuthorityHarness
                         .GetField("_inputs", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)
                         ?? throw new InvalidOperationException("SETUP: the actual completion input read is missing.");
                     string inputsDigest = CharacterCreationCompletionReviewRules.ComputeInputsDigest(inputs);
+                    if (scenario == "progress-guards")
+                    {
+                        await AssertCompletionProgressGuardsAsync(ui, runtime, page);
+                        AssertCompletionFilesUnchanged(runtime, files);
+                        Require(service!.ReviewCalls == 0 && service.ApplyCalls == 0 && owners.ActiveLeases == 0,
+                            "Progress interaction dispatched a mutation or retained authority.");
+                        IssuedPageLifecycle(page, "OnDisappearing");
+                        ui.AssertHealthy();
+                        Console.WriteLine("PASS completion stage progress: controls, generation, cancellation and locales");
+                        continue;
+                    }
                     if (distinctTalent is not null)
                     {
                         await AssertCompletionDistinctTalentPickerAsync(ui, runtime, page, inputs, files, distinctTalent);
@@ -421,7 +432,8 @@ internal static partial class AfterRunAuthorityHarness
                             "SETUP: the page must retain real original cash terms before its proposed-home read fails.");
                     }
                     Button preview = CompletionPageControl<Button>(page, "creation-completion-preview");
-                    await ClickCompletionControlAsync(ui, preview);
+                    var previousAnalysis = await ClickCompletionPreviewWithProgressAsync(ui, runtime, page, preview,
+                        expectFailure: scenario == "cash-read-throws");
                     AssertCompletionHasNoAllocationSettings(page);
                     var proposal = (CompletionAssistantProposal?)typeof(CreationCompletionPage)
                         .GetField("_proposal", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)
@@ -610,11 +622,25 @@ internal static partial class AfterRunAuthorityHarness
                         {
                             await reviewPause.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
                             AssertCompletionReadProgress(page);
+                            var activeAnalysis = CaptureCompletionProgress(page);
+                            var activeBar = CompletionPageControl<ProgressBar>(page, "creation-completion-stage-progress");
+                            var activeStatus = CompletionPageControl<Label>(page, "creation-completion-read-status");
+                            string activeText = activeStatus.Text;
+                            await DispatchCompletionProgressAsync(ui, previousAnalysis,
+                                new(CompletionAnalysisStage.FinalReview, 1, 1));
+                            Require(activeBar.Progress == 0 && activeStatus.Text == activeText
+                                && ReferenceEquals(activeStatus, CompletionPageControl<Label>(page, "creation-completion-read-status")),
+                                "A callback from the previous operation changed the current review or rebuilt its controls.");
                             AssertCompletionFilesUnchanged(runtime, files);
                             // Join both actual callbacks through the in-flight
                             // UI operation; do not start a second harness gate.
                             ((IButtonController)CompletionPageControl<Button>(page, "creation-completion-cancel")).SendClicked();
                             await JoinIssuedPageAsync(pending);
+                            await DispatchCompletionProgressAsync(ui, activeAnalysis,
+                                new(CompletionAnalysisStage.FinalReview, 1, 1));
+                            Require(activeBar.Progress == 0 && activeStatus.Text == activeText
+                                && !MinimalVisible(page).Any(element => element.AutomationId == "creation-completion-read-busy"),
+                                "A canceled/departed review accepted delayed completion progress.");
                         }
                         finally
                         {
@@ -1017,6 +1043,10 @@ internal static partial class AfterRunAuthorityHarness
 
                 // Hydration calls the real Shell/Presenter directly, not the coordinator's
                 // gated activation API. Their StateChanged events publish the replacement.
+                var staleProgress = CaptureCompletionProgress(page);
+                var staleBar = CompletionPageControl<ProgressBar>(page, "creation-completion-stage-progress");
+                var staleStatus = CompletionPageControl<Label>(page, "creation-completion-read-status");
+                string staleText = staleStatus.Text;
                 hydration = HydrateFinalizationOwnerAsync(runtime, owners, saved, contentFreeFailure: true);
                 await hydration.WaitAsync(timeout);
                 RequireSameSavedAuthority();
@@ -1073,6 +1103,9 @@ internal static partial class AfterRunAuthorityHarness
                         Require(releaseRetryCash.Wait(timeout), "stage=initial-refresh-bound; cash gate timed out");
                     };
                 }
+                await DispatchCompletionProgressAsync(ui, staleProgress, new(CompletionAnalysisStage.StartingCash, 2, 3));
+                Require(staleBar.Progress == 0 && staleStatus.Text == staleText,
+                    "A delayed callback survived display hydration, owner ABA, cancellation or departure.");
             }
             finally
             {
@@ -1625,17 +1658,157 @@ internal static partial class AfterRunAuthorityHarness
             .OrderBy(value => value, StringComparer.Ordinal);
     }
 
+    private static Action<CompletionAnalysisProgress> CaptureCompletionProgress(CreationCompletionPage page)
+    {
+        object analysis = typeof(CreationCompletionPage).GetField("_analysis", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(page) ?? throw new InvalidOperationException("No active completion analysis.");
+        return (Action<CompletionAnalysisProgress>)analysis.GetType().GetProperty("Report")!.GetValue(analysis)!;
+    }
+
+    private static async Task DispatchCompletionProgressAsync(IssuedPageUiContext ui,
+        Action<CompletionAnalysisProgress> report, CompletionAnalysisProgress status)
+    {
+        var dispatched = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await Task.Run(() =>
+        {
+            report(status);
+            ui.Dispatch(() => dispatched.SetResult()); // FIFO marker, no delay or timer
+        });
+        await dispatched.Task;
+    }
+
+    private static async Task<Action<CompletionAnalysisProgress>> ClickCompletionPreviewWithProgressAsync(
+        IssuedPageUiContext ui, NativeRewardRuntime runtime, CreationCompletionPage page, Button preview, bool expectFailure)
+    {
+        var gate = (SemaphoreSlim)typeof(RunnerSessionCoordinator).GetField("_workspaceActivationGate",
+            BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(runtime.Coordinator)!;
+        await gate.WaitAsync();
+        Task? pending = null;
+        Action<CompletionAnalysisProgress> report;
+        ProgressBar bar;
+        ActivityIndicator spinner;
+        Grid progress;
+        try
+        {
+            pending = ui.BeginAsyncVoid(() => ((IButtonController)preview).SendClicked());
+            report = CaptureCompletionProgress(page);
+            bar = CompletionPageControl<ProgressBar>(page, "creation-completion-stage-progress");
+            spinner = CompletionPageControl<ActivityIndicator>(page, "creation-completion-read-progress");
+            progress = CompletionPageControl<Grid>(page, "creation-completion-read-busy");
+            Require(bar.Progress == 0 && spinner.IsRunning,
+                "Waiting at the actual workspace gate invented analysis progress.");
+        }
+        finally { gate.Release(); }
+        await JoinIssuedPageAsync(pending!);
+        double lastProgress = bar.Progress;
+        await DispatchCompletionProgressAsync(ui, report,
+            new(CompletionAnalysisStage.StartingCash, 8, 8));
+        Require(!spinner.IsRunning && !progress.IsVisible && bar.Progress == lastProgress && (!expectFailure || lastProgress < 1)
+            && !MinimalVisible(page).Any(element => element.AutomationId == "creation-completion-read-busy"),
+            "A returned or failed preview left spinning UI or accepted a delayed done callback.");
+        return report;
+    }
+
+    private static async Task AssertCompletionProgressGuardsAsync(IssuedPageUiContext ui,
+        NativeRewardRuntime runtime, CreationCompletionPage page)
+    {
+        CultureInfo originalCulture = CultureInfo.CurrentUICulture;
+        try
+        {
+            foreach (string locale in new[] { "en-US", "de-AT", "es-ES" })
+            {
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(locale);
+                foreach (var stage in Enum.GetValues<CompletionAnalysisStage>())
+                {
+                    string localized = CreationAllocationStrings.Get("Completion.Progress." + stage, "missing-progress");
+                    Require(localized != "missing-progress" && CreationCompletionPage.AnalysisStageText(stage) == localized,
+                        "An analysis stage lacks its shipping-locale resource.");
+                }
+                string count = CreationAllocationStrings.Get("Completion.Progress.Count", "missing-progress");
+                foreach (var reason in new[]
+                {
+                    ("explicit-reserve", "Reserved"), ("remaining-bounded-or-manual", "Remaining"),
+                    ("reason.courage", "Courage"), ("reason.handedness", "Handedness"),
+                    ("reason.judgment", "Judgment"), ("reason.timing", "Timing"), ("reason.reading", "Reading"),
+                    ("reason.driving", "Driving"), ("reason.repair", "Repair"), ("reason.matrix", "Matrix"),
+                    ("reason.recovery", "Recovery"), ("reason.stealth", "Stealth"), ("reason.mobility", "Mobility"),
+                    ("reason.resilience", "Resilience"), ("reason.memory", "Memory"), ("reason.analysis", "Analysis"),
+                    ("reason.first-impression", "FirstImpression")
+                })
+                {
+                    string explanation = CreationFlowStrings.Get("Completion.Karma." + reason.Item2, "missing-karma");
+                    Require(explanation != "missing-karma"
+                        && CreationCompletionPage.KarmaExplanation("completion.karma." + reason.Item1) == explanation,
+                        "Karma benefit and remainder explanations must use the shipping locale, not internal keys.");
+                }
+                Require(count.Contains("{0}", StringComparison.Ordinal) && count.Contains("{1}", StringComparison.Ordinal)
+                    && !string.Format(CultureInfo.CurrentUICulture, count, 3, 8).Contains('{'),
+                    "The localized stage counter lost its completed/total values.");
+            }
+        }
+        finally { CultureInfo.CurrentUICulture = originalCulture; }
+
+        var gate = (SemaphoreSlim)typeof(RunnerSessionCoordinator).GetField("_workspaceActivationGate",
+            BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(runtime.Coordinator)!;
+        await gate.WaitAsync();
+        Task? pending = null;
+        try
+        {
+            var preview = CompletionPageControl<Button>(page, "creation-completion-preview");
+            pending = ui.BeginAsyncVoid(() => ((IButtonController)preview).SendClicked());
+            var report = CaptureCompletionProgress(page);
+            var bar = CompletionPageControl<ProgressBar>(page, "creation-completion-stage-progress");
+            var status = CompletionPageControl<Label>(page, "creation-completion-read-status");
+            var cancel = CompletionPageControl<Button>(page, "creation-completion-cancel");
+            var picker = CompletionPageControl<Picker>(page, "creation-completion-archetype");
+            // Inject protocol events into the genuine queued operation. Separate
+            // coordinator tests prove the builder emits these only after work.
+            await DispatchCompletionProgressAsync(ui, report, new(CompletionAnalysisStage.Skills, 1, 8));
+            Require(bar.Progress == 1d / 8 && status.Text == CreationCompletionPage.AnalysisStageText(CompletionAnalysisStage.Skills),
+                "A completed analysis phase did not update the visible bar and stage.");
+            await DispatchCompletionProgressAsync(ui, report, new(CompletionAnalysisStage.Attributes, 3, 8));
+            await DispatchCompletionProgressAsync(ui, report, new(CompletionAnalysisStage.Equipment, 3, 8));
+            Require(bar.Progress == 3d / 8 && status.Text == CreationCompletionPage.AnalysisStageText(CompletionAnalysisStage.Equipment)
+                && ReferenceEquals(picker, CompletionPageControl<Picker>(page, "creation-completion-archetype"))
+                && ReferenceEquals(cancel, CompletionPageControl<Button>(page, "creation-completion-cancel")) && cancel.IsEnabled,
+                "Resource detail updates invented precision, rebuilt active controls or disabled Cancel.");
+            string lastText = status.Text;
+            await DispatchCompletionProgressAsync(ui, report, new(CompletionAnalysisStage.Skills, 1, 8));
+            await DispatchCompletionProgressAsync(ui, report, new(CompletionAnalysisStage.Attributes, 3, 8));
+            await DispatchCompletionProgressAsync(ui, report, new(CompletionAnalysisStage.FinalBudgets, 9, 8));
+            await DispatchCompletionProgressAsync(ui, report, new(CompletionAnalysisStage.FinalBudgets, 4, 7));
+            var version = typeof(CreationCompletionPage).GetField("_inputVersion", BindingFlags.NonPublic | BindingFlags.Instance)!;
+            version.SetValue(page, (long)version.GetValue(page)! + 1);
+            await DispatchCompletionProgressAsync(ui, report, new(CompletionAnalysisStage.FinalBudgets, 6, 8));
+            Require(bar.Progress == 3d / 8 && status.Text == lastText,
+                "A regressive, invalid or stale-input progress callback changed the display.");
+            ((IButtonController)cancel).SendClicked();
+            await DispatchCompletionProgressAsync(ui, report, new(CompletionAnalysisStage.StartingCash, 8, 8));
+            Require(bar.Progress == 3d / 8 && status.Text == lastText,
+                "Canceled progress falsely completed the analysis.");
+        }
+        finally
+        {
+            gate.Release();
+            if (pending is not null) await JoinIssuedPageAsync(pending);
+        }
+    }
+
     private static void AssertCompletionReadProgress(CreationCompletionPage page)
     {
         var progress = CompletionPageControl<Grid>(page, "creation-completion-read-busy");
         var spinner = CompletionPageControl<ActivityIndicator>(page, "creation-completion-read-progress");
         var status = CompletionPageControl<Label>(page, "creation-completion-read-status");
+        var bar = CompletionPageControl<ProgressBar>(page, "creation-completion-stage-progress");
+        var count = CompletionPageControl<Label>(page, "creation-completion-stage-count");
         var cancel = CompletionPageControl<Button>(page, "creation-completion-cancel");
         Require(progress.Parent is VerticalStackLayout footer
             && ReferenceEquals(footer.Parent, page.Content) && Grid.GetRow(footer) == 1
             && spinner.IsRunning && spinner.IsVisible
-            && status.Text == CreationCompletionPage.Copy("Working", "missing-busy-status")
-            && status.Text != "missing-busy-status"
+            && status.Text == CreationCompletionPage.AnalysisStageText(CompletionAnalysisStage.FinalReview)
+            && bar.IsVisible && bar.Progress == 0
+            && count.Text == string.Format(CultureInfo.CurrentUICulture,
+                CreationAllocationStrings.Get("Completion.Progress.Count", "missing-stage-count"), 0, 1)
             && cancel.IsEnabled && ReferenceEquals(cancel.Parent, progress.Parent)
             && !MinimalVisible(page).OfType<Button>().Any(button => button.IsEnabled && button.AutomationId is
                 ("creation-completion-preview" or "creation-completion-review" or "creation-completion-apply")),

@@ -2386,4 +2386,22 @@
   <data name="Completion.Review.Retained" xml:space="preserve"><value>{0} · conservado</value></data>
   <data name="Completion.Review.BeforeAfter" xml:space="preserve"><value>antes {0} → después {1}</value></data>
   <data name="Completion.Review.Cost" xml:space="preserve"><value>coste total revisado: {0} Karma, {1} ¥</value></data>
+  <data name="Completion.Karma.Qualities" xml:space="preserve"><value>Ventajas propuestas</value></data>
+  <data name="Completion.Karma.Reserved" xml:space="preserve"><value>Este karma está reservado y no se gastará.</value></data>
+  <data name="Completion.Karma.Remaining" xml:space="preserve"><value>Las propuestas comprobadas dejan karma disponible. Puede haber otras opciones válidas; las compras de habilidades y especializaciones con karma siguen siendo manuales.</value></data>
+  <data name="Completion.Karma.Courage" xml:space="preserve"><value>Ayuda al personaje a afrontar el miedo.</value></data>
+  <data name="Completion.Karma.Handedness" xml:space="preserve"><value>Facilita el uso de ambas manos.</value></data>
+  <data name="Completion.Karma.Judgment" xml:space="preserve"><value>Favorece el buen juicio en situaciones arriesgadas.</value></data>
+  <data name="Completion.Karma.Timing" xml:space="preserve"><value>Favorece la precisión temporal.</value></data>
+  <data name="Completion.Karma.Reading" xml:space="preserve"><value>Ayuda a procesar rápidamente información escrita.</value></data>
+  <data name="Completion.Karma.Driving" xml:space="preserve"><value>Encaja con un personaje centrado en vehículos.</value></data>
+  <data name="Completion.Karma.Repair" xml:space="preserve"><value>Encaja con la improvisación técnica práctica.</value></data>
+  <data name="Completion.Karma.Matrix" xml:space="preserve"><value>Encaja con un personaje centrado en la Matriz.</value></data>
+  <data name="Completion.Karma.Recovery" xml:space="preserve"><value>Favorece la recuperación tras una lesión.</value></data>
+  <data name="Completion.Karma.Stealth" xml:space="preserve"><value>Ayuda a moverse sin ser detectado.</value></data>
+  <data name="Completion.Karma.Mobility" xml:space="preserve"><value>Favorece la movilidad física.</value></data>
+  <data name="Completion.Karma.Resilience" xml:space="preserve"><value>Ayuda a sobrevivir a peligros físicos.</value></data>
+  <data name="Completion.Karma.Memory" xml:space="preserve"><value>Ayuda a recordar detalles útiles.</value></data>
+  <data name="Completion.Karma.Analysis" xml:space="preserve"><value>Favorece la resolución analítica de problemas.</value></data>
+  <data name="Completion.Karma.FirstImpression" xml:space="preserve"><value>Encaja con una función basada en conocer gente.</value></data>
 </root>
