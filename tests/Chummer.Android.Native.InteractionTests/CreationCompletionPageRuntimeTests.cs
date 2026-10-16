@@ -15,6 +15,155 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
+    private static void AssertCompletionFinalReviewDisplay(CharacterCreationCompletionReviewInputs inputs,
+        CharacterCreationCompletionPlan plan, CharacterCreationCompletionFinalizationProjection projection)
+    {
+        string originalInputs = CharacterCreationCompletionReviewRules.ComputeInputsDigest(inputs);
+        string originalProjection = CharacterCreationCompletionFinalizationRules.ComputeProjectionDigest(projection);
+        CultureInfo culture = CultureInfo.CurrentUICulture;
+        CultureInfo numberCulture = CultureInfo.CurrentCulture;
+        try
+        {
+            foreach (string language in new[] { "en-US", "de-AT", "es-ES" })
+            {
+                CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+                CultureInfo.CurrentCulture = CultureInfo.CurrentUICulture;
+                var rows = CreationCompletionPage.FinalReviewRows(projection.OrderedDeltas, inputs, plan);
+                Require(rows.Count == projection.OrderedDeltas.Count,
+                    "The compact display must account for every reviewed delta, including retained/setup details.");
+                Require(rows.Any(row => row.Retained) && rows.Any(row => !row.Retained && !row.Setup),
+                    "Final review must distinguish retained assignments from changes.");
+                string text = string.Join("\n", rows.Select(row => row.Area + ": " + row.Label + ": " + row.Value));
+                Require(!System.Text.RegularExpressions.Regex.IsMatch(text, @"(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+                    && !text.Contains("Character change", StringComparison.Ordinal),
+                    "Review copy must not expose identities or generic change rows in any covered language.");
+
+                var assignment = inputs.Skills.PrerequisiteDraft.Assignments.First();
+                var priority = new CharacterCreationFinalizationDelta(1, "priority:" + assignment.CategoryId,
+                    CharacterCreationFinalizationDeltaKinds.Build, assignment.CategoryId, null,
+                    string.Create(CultureInfo.InvariantCulture, $"{assignment.Rank},{assignment.SumToTenValue}"), 0, 0, []);
+                foreach (string method in new[] { CharacterCreationBuildMethods.Priority, CharacterCreationBuildMethods.SumToTen, CharacterCreationBuildMethods.Karma })
+                {
+                    var observation = inputs with { Skills = inputs.Skills with
+                        { PrerequisiteDraft = inputs.Skills.PrerequisiteDraft with { BuildMethod = method } } };
+                    var row = CreationCompletionPage.FinalReviewRows([priority], observation, plan).Single();
+                    Require(row.Retained && !row.Value.Contains(priority.AfterValue!, StringComparison.Ordinal),
+                        "Baseline assignments must not become changes or expose internal Priority tuples.");
+                    if (method == CharacterCreationBuildMethods.SumToTen)
+                        Require(row.Value.Contains(assignment.SumToTenValue.ToString(CultureInfo.CurrentCulture), StringComparison.Ordinal)
+                            && row.Value.Contains(assignment.Rank, StringComparison.Ordinal),
+                            "Sum-to-Ten review must retain both the rank and its point value.");
+                    if (method == CharacterCreationBuildMethods.Karma)
+                        Require(row.Value.Contains(CreationCompletionPage.Copy("Review.Unknown", "Choice details unavailable"), StringComparison.Ordinal),
+                            "An unsupported method must not be described as Priority.");
+                }
+
+                var attribute = inputs.Skills.Attributes.Attributes.First();
+                var rating = new CharacterCreationFinalizationDelta(1, "attribute:" + attribute.AttributeId,
+                    CharacterCreationFinalizationDeltaKinds.Attribute, attribute.AttributeId, null,
+                    attribute.Current.ToString(CultureInfo.InvariantCulture), 0, 0, []);
+                Require(CreationCompletionPage.FinalReviewRows([rating], inputs, plan).Single().Retained,
+                    "An unchanged baseline attribute must be retained even when the serialized delta has no before value.");
+                var changed = CreationCompletionPage.FinalReviewRows([rating with
+                    { AfterValue = (attribute.Current + 1).ToString(CultureInfo.InvariantCulture) }], inputs, plan).Single();
+                Require(!changed.Retained && changed.Value == CreationFlowStrings.Format(
+                    "Completion.Review.BeforeAfter", "before {0} → after {1}",
+                    attribute.Current.ToString(CultureInfo.CurrentCulture), (attribute.Current + 1).ToString(CultureInfo.CurrentCulture)),
+                    "Attribute changes must keep actual original and proposed ratings.");
+
+                var tradition = inputs.Magic.Authority.Traditions.First() with
+                {
+                    Identity = new(CharacterCreationMagicResonanceKinds.Tradition, "c0405095-5304-4fbd-b955-203a11f88b73"),
+                    Name = "Dr. Singer School"
+                };
+                var traditionInputs = inputs with { Magic = inputs.Magic with
+                {
+                    Authority = inputs.Magic.Authority with { Traditions = [tradition] },
+                    Selections = inputs.Magic.Selections with { Tradition = tradition.Identity }
+                } };
+                var traditionDelta = new CharacterCreationFinalizationDelta(1,
+                    tradition.Identity.Kind + ":" + tradition.Identity.SourceId, CharacterCreationFinalizationDeltaKinds.MagicResonance,
+                    tradition.Identity.SourceId, null, tradition.Name, 0, 0, []) { TargetName = tradition.Name };
+                string traditionName = language == "de-AT" ? "Dr.-Singer-Schule" : "Dr. Singer School";
+                var traditionRow = CreationCompletionPage.FinalReviewRows([traditionDelta], traditionInputs, plan).Single();
+                Require(traditionRow.Retained && traditionRow.Value == CreationFlowStrings.Format(
+                    "Completion.Review.Retained", "{0} · retained", traditionName),
+                    "The real localized tradition name must survive punctuation filtering and retain its admitted status.");
+
+                var purchases = plan.Review.Lifestyles ?? throw new InvalidOperationException("SETUP: no reviewed lifestyles.");
+                var firstHome = purchases.Lifestyles.First() with { Configuration = purchases.Lifestyles.First().Configuration with
+                    { LifestyleId = Guid.Parse("b27966ed-3bb4-4d92-a447-85f1ac25e031"), Name = "Dr.-Singer-Haus", Increments = 2 } };
+                var secondHome = firstHome with { Configuration = firstHome.Configuration with
+                    { LifestyleId = Guid.Parse("b27966ed-3bb4-4d92-a447-85f1ac25e032"), Name = "St.-Pauli-Haus" } };
+                var homePlan = plan with { Review = plan.Review with { Lifestyles = purchases with { Lifestyles = [firstHome, secondHome] } } };
+                var homeInputs = inputs with { Lifestyles = inputs.Lifestyles with { Lifestyles = [] } };
+                var homeDeltas = new[] { firstHome, secondHome }.Select((home, index) => new CharacterCreationFinalizationDelta(
+                    index + 1, "lifestyle:" + home.Configuration.LifestyleId.ToString("D"), "lifestyle", home.Configuration.LifestyleId.ToString("D"),
+                    null, "2", 0, 37, []) { TargetName = home.Configuration.Name }).ToArray();
+                var homeRows = CreationCompletionPage.FinalReviewRows(homeDeltas, homeInputs, homePlan);
+                Require(homeRows.Select(row => row.Label).Distinct(StringComparer.Ordinal).Count() == 2
+                    && homeRows.Select(row => row.Label).SequenceEqual(new[] { firstHome, secondHome }.Select(home =>
+                        CreationFlowStrings.Format("Completion.Review.Increments", "{0} · periods",
+                            home.Configuration.Name + " (" + home.BaseLifestyleName + ")")))
+                    && homeRows.All(row => !row.Retained && !row.Setup && row.Value == "2" + ReviewedCost(0, 37)),
+                    "Two admitted homes with the same base, periods and cost must retain their distinct punctuated configuration names.");
+                var oldHomes = homeInputs with { Lifestyles = homeInputs.Lifestyles with
+                    { Lifestyles = [firstHome.Configuration with { Increments = 1 }, secondHome.Configuration] } };
+                var existingHomes = CreationCompletionPage.FinalReviewRows(homeDeltas, oldHomes, homePlan);
+                Require(!existingHomes[0].Retained && existingHomes[0].Value == CreationFlowStrings.Format(
+                        "Completion.Review.BeforeAfter", "before {0} → after {1}", "1", "2") + ReviewedCost(0, 37)
+                    && existingHomes[1].Retained && existingHomes[1].Value == CreationFlowStrings.Format(
+                        "Completion.Review.Retained", "{0} · retained", "2") + ReviewedCost(0, 37),
+                    "Named homes must preserve actual before/after periods and retained configuration semantics.");
+
+                const string machine = "future.choice:14b6417b-5c41-4eaf-a285-04d0ef7702ea";
+                var unknown = new CharacterCreationFinalizationDelta(1, machine, "future-kind", machine,
+                    machine, "internal.choice.key", 2, 3, []) { TargetName = machine };
+                var fallback = CreationCompletionPage.FinalReviewRows([unknown], inputs, plan).Single();
+                Require(!fallback.Retained && !fallback.Setup
+                    && !fallback.Value.Contains(machine, StringComparison.Ordinal)
+                    && !fallback.Value.Contains("internal.choice.key", StringComparison.Ordinal)
+                    && !fallback.Label.Contains(machine, StringComparison.Ordinal),
+                    "Unknown semantics must stay visible without exposing technical keys or claiming they are retained.");
+                var numeric = CreationCompletionPage.FinalReviewRows([unknown with { BeforeValue = "17.25", AfterValue = "29.5" }], inputs, plan).Single();
+                Require(numeric.Value == CreationFlowStrings.Format("Completion.Review.BeforeAfter", "before {0} → after {1}",
+                    17.25m.ToString("0.##", CultureInfo.CurrentCulture), 29.5m.ToString("0.##", CultureInfo.CurrentCulture)) + ReviewedCost(2, 3),
+                    "Safe unknown numeric before/after values must remain inspectable.");
+                foreach (string identity in new[] { machine, "internal.choice.key", new string('a', 32), new string('b', 64) })
+                {
+                    var named = CreationCompletionPage.FinalReviewRows([unknown with
+                        { Kind = CharacterCreationFinalizationDeltaKinds.Gear, AfterValue = "3", TargetName = "Item " + identity }], inputs, plan).Single();
+                    Require(named.Label == CreationFlowStrings.Format("Completion.Review.Quantity", "{0} · quantity",
+                            CreationCompletionPage.Copy("Review.Unknown", "Choice details unavailable"))
+                        && named.Value == "3" + ReviewedCost(2, 3),
+                        "Embedded GUIDs, hashes and internal identities must not leak or hide the numeric quantity.");
+                }
+                const string unknownKey = "unrecognized.choice.key";
+                foreach (string kind in new[] { "future-kind", "lifestyle", CharacterCreationFinalizationDeltaKinds.MagicResonance })
+                {
+                    var unadmitted = CreationCompletionPage.FinalReviewRows([unknown with
+                    {
+                        Kind = kind, DeltaId = unknownKey, TargetId = unknownKey, TargetName = unknownKey,
+                        BeforeValue = null, AfterValue = unknownKey, KarmaCost = 0, NuyenCost = 0
+                    }], inputs, plan).Single();
+                    string unavailable = CreationCompletionPage.Copy("Review.Unknown", "Choice details unavailable");
+                    Require(!unadmitted.Retained && unadmitted.Value == unavailable
+                        && unadmitted.Label == (kind == "lifestyle"
+                            ? CreationFlowStrings.Format("Completion.Review.Increments", "{0} · periods", unavailable) : unavailable),
+                        "Unknown identities without an admitted display name must fall back without exposing raw delta keys.");
+                }
+            }
+        }
+        finally { CultureInfo.CurrentUICulture = culture; CultureInfo.CurrentCulture = numberCulture; }
+        Require(originalInputs == CharacterCreationCompletionReviewRules.ComputeInputsDigest(inputs)
+            && originalProjection == CharacterCreationCompletionFinalizationRules.ComputeProjectionDigest(projection),
+            "Display projection must not modify the original inputs or Core review.");
+
+        static string ReviewedCost(decimal karma, decimal nuyen) => " · " + CreationFlowStrings.Format(
+            "Completion.Review.Cost", "reviewed total: {0} Karma, {1} ¥",
+            karma.ToString("0.##", CultureInfo.CurrentCulture), nuyen.ToString("0.##", CultureInfo.CurrentCulture));
+    }
+
     // Explicit filter only; keep the ordinary unfiltered scenario set unchanged.
     private const string InitialCompletionRefreshScenario = "initial-load-refresh-preview239";
     private const string InitialCompletionDepartureScenario = "initial-load-refresh-departure";
@@ -58,8 +207,7 @@ internal static partial class AfterRunAuthorityHarness
                     await using var runtime = new NativeRewardRuntime(contentRoot, linkedOwners: owners,
                         creationCompletion: true, creationFinalization: true, creationPrerequisite: true,
                         productionCreationOverview: true,
-                        completionReaderDecorator: IsInitialCompletionRefreshScenario(scenario)
-                            ? actual => completionReader = new(actual, ui) : null,
+                        completionReaderDecorator: actual => completionReader = new(actual, ui),
                         finalizationDecorator: scenario == InitialCompletionRetryBoundScenario
                             ? actual => finalizationReader = new(actual, ui) : null,
                         loadoutDecorator: actual => loadoutService = new(actual, ui)
@@ -482,6 +630,16 @@ internal static partial class AfterRunAuthorityHarness
                     var reviewed = (CharacterCreationCompletionApplyReview)typeof(CreationCompletionPage)
                         .GetField("_review", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page)!;
                     AssertCompletionLossDisclosure(page, reviewed.Projection);
+                    AssertCompletionFinalReviewDisplay(inputs, proposal.Evaluation.Value!, reviewed.Projection);
+                    int disclosureReads = completionReader!.Calls;
+                    var disclosureState = coordinator.State;
+                    var (retained, retainedDetails) = await AssertCompletionRetainedDetailsAsync(ui, page);
+                    Require(completionReader.Calls == disclosureReads && ReferenceEquals(coordinator.State, disclosureState)
+                        && service.ReviewCalls == 1 && service.ApplyCalls == 0,
+                        "Review disclosure must not reload inputs, change runner state, review or apply completion.");
+                    // The helper deliberately renders again to retire old controls.
+                    apply = CompletionPageControl<Button>(page, "creation-completion-apply");
+                    AssertCompletionFilesUnchanged(runtime, files);
                     if (scenario == "optional-karma") AssertOptionalAttributeKarmaDisclosure(page, proposal);
                     int expectedLossConfirmations = CreationCompletionPage.LossItems(reviewed.Projection).Count > 0 ? 1 : 0;
 
@@ -492,6 +650,11 @@ internal static partial class AfterRunAuthorityHarness
                         Require(navigation.NavigationStack.Count == 1
                             && ReferenceEquals(Shell.Current?.CurrentPage, root),
                             "Cancel did not return to the original creation page.");
+                        await ClickCompletionDisclosureAsync(ui, retained);
+                        Require(!retainedDetails.IsVisible
+                            && retained.Text == CreationCompletionPage.Copy("Review.ShowRetained", "Show retained choices and Career setup")
+                            && completionReader.Calls == disclosureReads && service.ReviewCalls == 1,
+                            "A retained disclosure control reacted after leaving the completion page.");
                         ((IButtonController)apply).SendClicked();
                         await ui.DrainDispatchedAsyncVoidAsync();
                         AssertCompletionFilesUnchanged(runtime, files);
@@ -1152,6 +1315,68 @@ internal static partial class AfterRunAuthorityHarness
 
     private static Task ClickCompletionControlAsync(IssuedPageUiContext ui, Button button)
         => JoinIssuedPageAsync(ui.BeginAsyncVoid(() => ((IButtonController)button).SendClicked()));
+
+    private static async Task ClickCompletionDisclosureAsync(IssuedPageUiContext ui, Button button)
+    {
+        // Disclosure is deliberately synchronous, unlike the admitted read/save actions.
+        ((IButtonController)button).SendClicked();
+        await ui.DrainDispatchedAsyncVoidAsync();
+    }
+
+    private static async Task<(Button Toggle, VerticalStackLayout Details)> AssertCompletionRetainedDetailsAsync(
+        IssuedPageUiContext ui, CreationCompletionPage page)
+    {
+        string show = CreationCompletionPage.Copy("Review.ShowRetained", "Show retained choices and Career setup");
+        string hide = CreationCompletionPage.Copy("Review.HideRetained", "Hide retained choices and Career setup");
+        Button retained = CompletionPageControl<Button>(page, "creation-completion-retained-toggle");
+        var body = (VerticalStackLayout)retained.Parent!;
+        var details = body.Children.OfType<VerticalStackLayout>().Single(
+            child => child.AutomationId == "creation-completion-retained-details");
+        var controls = body.Children.ToArray();
+        var apply = CompletionPageControl<Button>(page, "creation-completion-apply");
+        var cancel = CompletionPageControl<Button>(page, "creation-completion-cancel");
+        Require(!details.IsVisible && !MinimalVisible(page).Contains(details) && retained.Text == show
+            && retained.IsEnabled && retained.LineBreakMode == LineBreakMode.WordWrap
+            && retained.HeightRequest == -1 && retained.MinimumHeightRequest >= 50,
+            "Retained details must start collapsed behind a readable, wrapping disclosure button.");
+
+        await ClickCompletionDisclosureAsync(ui, retained);
+        Require(CompletionPageControl<VerticalStackLayout>(page, "creation-completion-retained-details").IsVisible,
+            "Retained choices must remain inspectable in the final review.");
+        var detailLabels = MinimalVisible(details).OfType<Label>().ToArray();
+        Require(retained.Text == hide && detailLabels.Length > 0
+            && detailLabels.All(label => MinimalVisible(page).Contains(label)),
+            "Expanding retained details must expose their actual labels with a localized collapse action.");
+        MinimalRequireNoMachineValues(page);
+        await ClickCompletionDisclosureAsync(ui, retained);
+        Require(!details.IsVisible && !MinimalVisible(page).Contains(details)
+            && detailLabels.All(label => !MinimalVisible(page).Contains(label)) && retained.Text == show
+            && body.Children.SequenceEqual(controls)
+            && ReferenceEquals(CompletionPageControl<Button>(page, "creation-completion-apply"), apply)
+            && ReferenceEquals(CompletionPageControl<Button>(page, "creation-completion-cancel"), cancel),
+            "Collapsing retained details must hide their labels without replacing the review or its actions.");
+
+        int toggleIndex = body.Children.IndexOf(retained);
+        body.Remove(retained);
+        try
+        {
+            await ClickCompletionDisclosureAsync(ui, retained);
+            Require(!details.IsVisible && retained.Text == show,
+                "A detached disclosure control changed retained details in the current review.");
+        }
+        finally { body.Insert(toggleIndex, retained); }
+
+        typeof(CreationCompletionPage).GetMethod("Refresh", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page, null);
+        Button current = CompletionPageControl<Button>(page, "creation-completion-retained-toggle");
+        var currentDetails = body.Children.OfType<VerticalStackLayout>().Single(
+            child => child.AutomationId == "creation-completion-retained-details");
+        Require(!ReferenceEquals(current, retained), "SETUP: refreshing the review did not retire its disclosure control.");
+        await ClickCompletionDisclosureAsync(ui, retained);
+        Require(!details.IsVisible && retained.Text == show && !currentDetails.IsVisible && current.Text == show
+            && ReferenceEquals(CompletionPageControl<Button>(page, "creation-completion-retained-toggle"), current),
+            "A stale disclosure click changed old or current details, or refreshed the current review.");
+        return (current, currentDetails);
+    }
 
     private static void AssertCompletionHasNoAllocationSettings(NativePageBase page)
     {
