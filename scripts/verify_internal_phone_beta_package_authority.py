@@ -38,17 +38,17 @@ RECEIPT_TOP_LEVEL_KEYS = {
     "sdkArchiveSha512", "sdkVersion", "sourceInventory", "status",
     "stubPackagesAllowed", "testExecutions", "testProjects", "uiOwnerFeed",
 }
-EXPECTED_PRESENTATION_COMMIT = "e1d348400265156db01473016cf440ba581ad978"
-EXPECTED_PRESENTATION_TREE = "7fd17204c5add213bbd9af02e3331238930fcc1f"
+EXPECTED_PRESENTATION_COMMIT = "3b3aa1b696cbdc15ec80274c0265a955ac26c4c2"
+EXPECTED_PRESENTATION_TREE = "df02fabe1852ed9c523914a07b06ca8e23e285cc"
 EXPECTED_PRESENTATION_REPOSITORY = "https://github.com/ArchonMegalon/chummer6-ui.git"
 EXPECTED_LOCK_PATH = "config/package-plane.lock.json"
-EXPECTED_LOCK_SHA256 = "2a276dc0888a06c0905e4d630337b2c2d96ab3b5d256fca84af64db3cb5270fa"
-EXPECTED_LOCK_SIZE = 72493
-EXPECTED_LOCK_BLOB = "374f9ab6370e79896b881be1fa037ee184a62488"
-EXPECTED_RECEIPT_SHA256 = "6923132a3aecd90ff2fe9a885b3ea38d6f53dd31a48195daa3406eb499234d17"
-EXPECTED_RECEIPT_SIZE = 87299
-EXPECTED_CACHE_KEY = "3a2f13b0a6dd74d44c5a8214ee6707238c93fc5a7bcc8f18a70d48836fcec21d"
-EXPECTED_CACHE_MANIFEST_SHA256 = "1aca94d7d48da4f10be1b6777ba827d7712efe4748165c9883898dd8a26e2c90"
+EXPECTED_LOCK_SHA256 = "9a059743ff5b5b62cb0fdf1b16f17926ec2bb1132666109ae2df12e500cf3d84"
+EXPECTED_LOCK_SIZE = 73117
+EXPECTED_LOCK_BLOB = "8af862570e5ba7c54d7bf8ef183be79dfa59d5eb"
+EXPECTED_RECEIPT_SHA256 = "5e692d73c8347b465127dc03e288bd7f8312dc52aeac57c3c526cb8300403116"
+EXPECTED_RECEIPT_SIZE = 88169
+EXPECTED_CACHE_KEY = "9362d50647b27245ca36e280a8fdf13cf9b9ef3d526ec71251bb90ef61fb57ca"
+EXPECTED_CACHE_MANIFEST_SHA256 = "77f592524ccac5ed49cbb3f3a6f108fd1fed1aff497a812332b358fb9deec630"
 EXPECTED_CACHE_MANIFEST_SIZE = 13790
 EXPECTED_PACKAGE_COUNT = 18
 EXPECTED_CACHE_AUTHORITY_COUNT = 13
@@ -779,7 +779,7 @@ def validate_owner_test_executions(receipt: Mapping[str, Any]) -> None:
         or full["disableBuildServers"] is not True
         or full["useSharedCompilation"] is not False
         or type(full["maxCpuCount"]) is not int or full["maxCpuCount"] != 1
-        or type(full["minimumExpectedTests"]) is not int or full["minimumExpectedTests"] != 932
+        or type(full["minimumExpectedTests"]) is not int or full["minimumExpectedTests"] != 945
     ):
         raise ValueError("UI full Product test invocation is not exact")
     assembly = require_exact_object(full["testAssembly"], "UI Product test assembly", {"path", "sha256", "sizeBytes"})
