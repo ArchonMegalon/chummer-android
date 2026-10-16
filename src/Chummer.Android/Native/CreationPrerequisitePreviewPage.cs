@@ -591,6 +591,9 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
             || confirmation.Blockers.Count != 0) return;
         INavigation navigation = Navigation;
         Page[] stack = navigation.NavigationStack.ToArray();
+        CreationPrerequisitePage? issuingPage = stack.Length > 2
+            && stack[^2] is CreationPrerequisitePage parent && parent.UsesCoordinator(Coordinator)
+                ? parent : null;
         bool Current() => render == _renderGeneration && IsCurrentAppearanceGeneration(appearance)
             && ReferenceEquals(_confirmation, confirmation)
             && Coordinator.IsCreationPrerequisiteReceiptCurrent(receipt, refreshed)
@@ -618,10 +621,12 @@ public sealed class CreationPrerequisitePreviewPage : NativePageBase
             }
             var next = new CreationAttributesPage(Coordinator, attributes);
             await navigation.PushAsync(next, animated: false);
-            // Retire just this consumed review, keeping its assignments parent
-            // available through Back. Never chain pops through Shell's root.
-            if (navigation.NavigationStack.SequenceEqual(stack.Append(next)))
-                navigation.RemovePage(this);
+            if (!navigation.NavigationStack.SequenceEqual(stack.Append(next))) return;
+            // Push intentionally ends this appearance. Retire only the captured
+            // non-root issuer so Back cannot reopen its pre-Attributes revision.
+            // Remove the ancestor before this review detaches its NavigationProxy.
+            if (issuingPage is not null) navigation.RemovePage(issuingPage);
+            navigation.RemovePage(this);
         }
         catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
         catch (Exception error) when (error is not OutOfMemoryException)
