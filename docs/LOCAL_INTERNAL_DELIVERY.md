@@ -132,7 +132,38 @@ stored data, not an Android downgrade. Keep the previous artifact and evidence.
 
 ## Current evidence boundary
 
-Preview 240 is the latest [observed Internal availability](../play/evidence/preview240-internal-observation.json),
+Preview 241 is the latest [observed Internal availability](../play/evidence/preview241-internal-observation.json),
+recorded on 17 October at 06:37 Europe/Vienna. The exact ARM64 AAB was built
+locally from protected Android merge `09aaf533`, signed separately with the
+existing upload key, independently verified without keys and uploaded/confirmed
+once under the standing approval. Signed SHA-256:
+`e54b3c5257e4d4795b7cdf135531e91dff2f6d2246ede39a8cffc9627e70f8f7`.
+It consumes original Presentation `2258f103`, Core recipe `97661986` and runtime
+`d007b96b`; the original receipts retain their producer identities. This remains
+a locked package closure with pinned Presentation source and Core content, not
+a source-free package-only build. The diagnostic contract still needs its local feed.
+
+This increment reuses an admitted completion plan while retaining fresh
+independent admission, selected-plan replay, owner/revision checks and atomic
+persistence. One exact-tree API36 x64 Release/Internal emulator route completed
+Priority Human Mystic Adept review, one confirmed Apply, Career entry and verified
+new-process reopen. All 63 workspace files were unchanged by Back and final
+review; Apply changed only the owned runner, preserving manual attributes and
+Priority grants. Saved and restarted files matched byte-for-byte. This is
+bounded source-graph evidence, not execution of the signed AAB or a physical
+Play-installed build.
+
+Performance is still open: approximately 14 minutes to first observed proposal
+readiness, 2m36s for final review and 2m47s for cold usable restoration on the
+pressured emulator are observation bounds, not a physical-device improvement
+claim. Five Karma, full loadout and adept-power choices remain manual; Core #166
+and the planned once-per-upgrade highlights are not in this artifact. Full
+Creation/Career/Origin, tablets and Rook are not complete. Play reports 8764
+supported phones, zero newly unsupported phones and the existing mapping/native
+symbol warnings. Physical Play241 installation remains unverified. Version241
+is consumed; retain this exact artifact and never rebuild or replay that upload.
+
+Preview 240 was previously [observed on Internal](../play/evidence/preview240-internal-observation.json),
 recorded on 16 October at 22:07 Europe/Vienna. The local ARM64 AAB was built from
 protected merge `dd315b2c`, signed separately with the existing upload key,
 independently verified without keys and uploaded/confirmed once under the standing
