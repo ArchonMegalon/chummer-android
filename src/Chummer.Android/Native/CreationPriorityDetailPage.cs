@@ -111,6 +111,20 @@ public sealed class CreationPriorityDetailPage : NativePageBase
             _draft.SelectedHeritage(state, Coordinator.State);
         foreach (CharacterCreationPriorityHeritageOptionProjection option in options)
         {
+            _technicalDetails.Add(NativeTheme.Body(JoinDetails(
+                option.SelectionId,
+                option.SourceAnchorIds.Count > 0
+                    ? WizardStrings.Format(
+                        "Common.Anchors",
+                        "Anchors {0}",
+                        string.Join(" · ", option.SourceAnchorIds))
+                    : null,
+                string.Join(" · ", option.Blockers)), NativeTheme.Muted));
+            // Keep Core's rejected choices in diagnostics, not in the selectable list.
+            // Selection and save still revalidate the original authority projection.
+            if (!option.IsEnabled || option.Blockers.Count != 0)
+                continue;
+
             bool isSelected = selected is not null
                               && string.Equals(
                                   selected.SelectionId,
@@ -136,15 +150,6 @@ public sealed class CreationPriorityDetailPage : NativePageBase
                     ? WizardStrings.Get("Priority.DetailPage.HalvesAttributes", "Halves normal Attribute points")
                     : null,
                 ChoiceBlockerDetails(option.Blockers));
-            _technicalDetails.Add(NativeTheme.Body(JoinDetails(
-                option.SelectionId,
-                option.SourceAnchorIds.Count > 0
-                    ? WizardStrings.Format(
-                        "Common.Anchors",
-                        "Anchors {0}",
-                        string.Join(" · ", option.SourceAnchorIds))
-                    : null,
-                string.Join(" · ", option.Blockers)), NativeTheme.Muted));
             _body.Add(NativeTheme.NavigationRow(
                 title,
                 detail,
@@ -153,6 +158,8 @@ public sealed class CreationPriorityDetailPage : NativePageBase
                 option.IsEnabled && option.Blockers.Count == 0,
                 $"creation-prerequisite-heritage-option-{Token(option.SelectionId)}"));
         }
+        if (!options.Any(option => option.IsEnabled && option.Blockers.Count == 0))
+            AddBlockers([CharacterCreationPrerequisiteBlockers.AuthorityUnavailable]);
     }
 
     private void AddTalentOptions(CharacterCreationPrerequisiteState state)
