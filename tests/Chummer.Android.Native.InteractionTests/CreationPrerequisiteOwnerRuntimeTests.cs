@@ -13,7 +13,7 @@ using Microsoft.Maui.Controls;
 
 internal static partial class AfterRunAuthorityHarness
 {
-    private static async Task RunPriorityChoiceGuidanceAsync(string contentRoot)
+    internal static async Task RunPriorityChoiceGuidanceAsync(string contentRoot)
     {
         using var ui = new IssuedPageUiContext();
         await ui.RunAsync(async () =>
@@ -49,21 +49,28 @@ internal static partial class AfterRunAuthorityHarness
                     MinimalRender(page);
                     string text = MinimalVisibleText(page);
                     string explanation = CreationFlowStrings.Get("Priority.Choice.Unsupported", "missing");
-                    Require(explanation != "missing" && text.Contains(explanation)
+                    Require(explanation != "missing" && !text.Contains(explanation)
                         && !text.Contains("creation-prerequisite-"),
-                        "Choice guidance must be localized and keep raw blocker codes out of ordinary text/accessibility: " + locale);
+                        "Hidden Heritage choices must not leave explanations or raw blockers in ordinary text/accessibility: " + locale);
                     MinimalRequireNoMachineValues(page);
                     foreach (var option in options)
                     {
                         string token = new(option.SelectionId.Trim().ToLowerInvariant()
                             .Select(character => char.IsLetterOrDigit(character) ? character : '-').ToArray());
-                        var row = MinimalVisible(page).Single(element =>
+                        var row = MinimalVisible(page).SingleOrDefault(element =>
                             element.AutomationId == "creation-prerequisite-heritage-option-" + token);
-                        Require(row.IsEnabled == (option.IsEnabled && option.Blockers.Count == 0),
-                            "Friendly explanations changed Core choice admission.");
-                        if (!option.IsEnabled || option.Blockers.Count != 0)
+                        if (option.IsEnabled && option.Blockers.Count == 0)
+                        {
+                            Require(row is { IsEnabled: true },
+                                "An allowed Heritage choice is missing or disabled: " + locale);
+                        }
+                        else
+                        {
+                            Require(row is null,
+                                "A disallowed Heritage choice remains in the selectable list: " + locale);
                             Require(!draft.TrySelectHeritage(state, runtime.Coordinator.State, option.SelectionId),
-                                "A disabled heritage became selectable after changing its displayed explanation.");
+                                "A hidden Heritage choice bypassed Core admission.");
+                        }
                     }
                     var disclosure = MinimalVisible(page).Single(element =>
                         element.AutomationId == "creation-prerequisite-detail-diagnostics");
@@ -85,7 +92,7 @@ internal static partial class AfterRunAuthorityHarness
             Require(PrerequisiteColdRows(runtime).All(pair => pair.Value.Digest == before[pair.Key].Digest),
                 "Rendering choice explanations changed saved runner data.");
             ui.AssertHealthy();
-            Console.WriteLine("PASS actual Core/native Priority choice guidance: EN/DE/ES, disabled admission, exact technical codes, unchanged storage");
+            Console.WriteLine("PASS actual Core/native Priority choice guidance: EN/DE/ES, allowed-only Heritage rows, hidden-choice admission, exact technical codes, unchanged storage");
         });
     }
 

@@ -149,6 +149,11 @@ internal static class Program
             await AfterRunAuthorityHarness.RunCreationRankCorrectionAsync(args[1]);
             return;
         }
+        if (args.Length == 2 && args[0] == "--creation-heritage-choices-content-root")
+        {
+            await AfterRunAuthorityHarness.RunPriorityChoiceGuidanceAsync(args[1]);
+            return;
+        }
         if (args.Length == 2 && args[0] == "--private-stories-content-root")
         {
             await AfterRunAuthorityHarness.RunPrivateStoriesNavigationAsync(args[1]);
