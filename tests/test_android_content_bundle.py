@@ -8,6 +8,7 @@ import zipfile
 from pathlib import Path
 
 from scripts.verify_android_content_bundle import (
+    AAB_PACKAGED_ROOT,
     CORE_REVISION,
     MANIFEST_ENTRY,
     PACKAGED_ROOT,
@@ -15,6 +16,7 @@ from scripts.verify_android_content_bundle import (
     _bundle_digest,
     validate_manifest,
     verify_apk,
+    verify_aab,
     verify_project_contract,
 )
 
@@ -62,13 +64,14 @@ class AndroidContentBundleTests(unittest.TestCase):
         omit: str | None = None,
         tamper: str | None = None,
         duplicate: str | None = None,
+        packaged_root: str = PACKAGED_ROOT,
     ) -> None:
         with zipfile.ZipFile(apk_path, "w") as archive:
-            archive.writestr(MANIFEST_ENTRY, manifest_bytes)
+            archive.writestr(f"{packaged_root}/manifest.json", manifest_bytes)
             for relative, value in sorted(files.items()):
                 if relative == omit:
                     continue
-                entry = f"{PACKAGED_ROOT}/{relative}"
+                entry = f"{packaged_root}/{relative}"
                 archive.writestr(entry, b"tampered" if relative == tamper else value)
                 if relative == duplicate:
                     archive.writestr(entry, value)
@@ -195,6 +198,76 @@ class AndroidContentBundleTests(unittest.TestCase):
         wrong_revision = copy.deepcopy(manifest)
         wrong_revision["coreRevision"] = "0" * 40
         self.assertIn("content-manifest-core-revision-invalid", validate_manifest(wrong_revision))
+
+
+    def test_unsigned_aab_hashes_current_catalogs_including_customdata(self) -> None:
+        files = self.make_catalogs()
+        manifest, manifest_bytes = self.make_manifest(files)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "candidate.aab"
+            self.write_apk(path, files, manifest_bytes, packaged_root=AAB_PACKAGED_ROOT)
+            self.assertEqual(verify_aab(path, manifest, manifest_bytes), (len(files), []))
+
+    def test_unsigned_aab_rejects_missing_and_changed_catalog_bytes(self) -> None:
+        files = self.make_catalogs()
+        manifest, manifest_bytes = self.make_manifest(files)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "candidate.aab"
+            for relative in files:
+                with self.subTest(relative=relative, mutation="omit"):
+                    self.write_apk(path, files, manifest_bytes, omit=relative,
+                                   packaged_root=AAB_PACKAGED_ROOT)
+                    count, issues = verify_aab(path, manifest, manifest_bytes)
+                    self.assertEqual(count, len(files) - 1)
+                    self.assertTrue(any(issue.startswith("unsigned-aab-canonical-content-missing:")
+                                        for issue in issues))
+                with self.subTest(relative=relative, mutation="tamper"):
+                    self.write_apk(path, files, manifest_bytes, tamper=relative,
+                                   packaged_root=AAB_PACKAGED_ROOT)
+                    _, issues = verify_aab(path, manifest, manifest_bytes)
+                    self.assertIn(f"unsigned-aab-content-sha256-mismatch:{AAB_PACKAGED_ROOT}/{relative}",
+                                  issues)
+
+    def test_unsigned_aab_rejects_wrong_root_duplicate_and_extra_members(self) -> None:
+        files = self.make_catalogs()
+        manifest, manifest_bytes = self.make_manifest(files)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "candidate.aab"
+            self.write_apk(path, files, manifest_bytes)
+            count, issues = verify_aab(path, manifest, manifest_bytes)
+            self.assertEqual(count, 0)
+            self.assertTrue(any(issue.startswith("unsigned-aab-canonical-content-missing:")
+                                for issue in issues))
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                self.write_apk(path, files, manifest_bytes, duplicate=next(iter(files)),
+                               packaged_root=AAB_PACKAGED_ROOT)
+            _, issues = verify_aab(path, manifest, manifest_bytes)
+            self.assertTrue(any(issue.startswith("unsigned-aab-duplicate-members:")
+                                for issue in issues))
+            self.write_apk(path, files, manifest_bytes, packaged_root=AAB_PACKAGED_ROOT)
+            with zipfile.ZipFile(path, "a") as archive:
+                archive.writestr(f"{AAB_PACKAGED_ROOT}/data/unexpected.xml", b"<chummer />")
+            _, issues = verify_aab(path, manifest, manifest_bytes)
+            self.assertTrue(any(issue.startswith("unsigned-aab-canonical-content-unexpected:")
+                                for issue in issues))
+
+    def test_unsigned_aab_rejects_changed_manifest_and_unreadable_archive(self) -> None:
+        files = self.make_catalogs()
+        manifest, manifest_bytes = self.make_manifest(files)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "candidate.aab"
+            self.write_apk(path, files, manifest_bytes + b"\n", packaged_root=AAB_PACKAGED_ROOT)
+            self.assertIn("unsigned-aab-content-manifest-bytes-mismatch",
+                          verify_aab(path, manifest, manifest_bytes)[1])
+            self.write_apk(path, files, b'{"files": [], "files": []}',
+                           packaged_root=AAB_PACKAGED_ROOT)
+            self.assertTrue(any("unsigned-aab-content-manifest-json" in issue
+                                for issue in verify_aab(path, manifest, manifest_bytes)[1]))
+            path.write_bytes(b"not a zip archive")
+            self.assertEqual(verify_aab(path, manifest, manifest_bytes)[0], 0)
+            self.assertTrue(verify_aab(path, manifest, manifest_bytes)[1][0].startswith(
+                "unsigned-aab-unreadable:"))
 
 
 if __name__ == "__main__":
