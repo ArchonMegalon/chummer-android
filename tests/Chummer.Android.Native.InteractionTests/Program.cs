@@ -1244,7 +1244,7 @@ internal static class Program
             phoneMessage.Contains("asistentes actuales de Android", StringComparison.Ordinal)
             && phoneMessage.Contains("ocultos", StringComparison.Ordinal)
             && phoneMessage.Contains(
-                "Experimental — no cubierto por la autoridad de la vista previa actual",
+                "Experimental — aún no verificado por completo",
                 StringComparison.Ordinal),
             "The phone-only settings scope and experimental status were not explained in Spanish.");
 
